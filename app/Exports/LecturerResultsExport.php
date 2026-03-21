@@ -4,6 +4,7 @@ namespace App\Exports;
 
 use App\Models\Course;
 use App\Models\CourseRegistration;
+use App\Models\Result;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LecturerResultsExport
@@ -41,7 +42,7 @@ class LecturerResultsExport
             })
             ->get();
 
-        $results = \App\Models\Result::where('academic_session_id', $this->sessionId)
+        $results = Result::where('academic_session_id', $this->sessionId)
             ->where('semester_id', $this->semesterId)
             ->where('course_id', $this->courseId)
             ->get()
@@ -49,6 +50,7 @@ class LecturerResultsExport
 
         return $registrations->map(function ($registration) use ($results) {
             $result = $results->get($registration->student_id);
+
             return [
                 'matric_number' => $registration->student->matric_number,
                 'student_name' => $registration->student->full_name,

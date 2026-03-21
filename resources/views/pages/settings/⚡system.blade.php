@@ -1,13 +1,22 @@
 <?php
 
+use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 new #[Title('System Configuration')] class extends Component
 {
+    use WithFileUploads;
+
+    public $system_logo;
+
+    public ?string $current_logo = null;
+
     public string $php_version;
 
     public string $environment;
@@ -40,9 +49,40 @@ new #[Title('System Configuration')] class extends Component
             abort(403);
         }
 
+        $this->current_logo = Cache::rememberForever('system_logo', fn () => SystemSetting::where('key', 'system_logo')->value('value'));
+
         $this->refreshStats();
         $this->discoverSeeders();
         $this->fetchBackups();
+    }
+
+    public function updateLogo(): void
+    {
+        $this->validate([
+            'system_logo' => 'image|max:2048', // 2MB Max
+        ]);
+
+        if ($this->system_logo) {
+            $base64 = base64_encode(file_get_contents($this->system_logo->getRealPath()));
+            SystemSetting::updateOrCreate(
+                ['key' => 'system_logo'],
+                ['value' => $base64]
+            );
+
+            Cache::forget('system_logo');
+            $this->current_logo = $base64;
+            $this->system_logo = null;
+
+            $this->dispatch('notify', message: __('System logo updated successfully.'), variant: 'success');
+        }
+    }
+
+    public function removeLogo(): void
+    {
+        SystemSetting::where('key', 'system_logo')->delete();
+        Cache::forget('system_logo');
+        $this->current_logo = null;
+        $this->dispatch('notify', message: __('System logo removed.'), variant: 'success');
     }
 
     public function discoverSeeders(): void
@@ -278,6 +318,40 @@ new #[Title('System Configuration')] class extends Component
                     </div>
                 </flux:card>
             </div>
+
+            <!-- System Branding -->
+            <flux:card class="space-y-4 border-zinc-100 dark:border-zinc-800">
+                <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-zinc-400">{{ __('System Branding') }}</flux:heading>
+                <div class="flex flex-col sm:flex-row gap-6 items-start">
+                    <div class="flex-shrink-0 flex flex-col items-center gap-2">
+                        <div class="size-24 rounded-xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 flex items-center justify-center bg-zinc-50 dark:bg-zinc-900 overflow-hidden">
+                            @if($system_logo)
+                                <img src="{{ $system_logo->temporaryUrl() }}" class="w-full h-full object-contain p-2" />
+                            @elseif($current_logo)
+                                <img src="data:image/png;base64,{{ $current_logo }}" class="w-full h-full object-contain p-2" />
+                            @else
+                                <flux:icon.photo class="size-8 text-zinc-300 dark:text-zinc-600" />
+                            @endif
+                        </div>
+                        @if($current_logo && !$system_logo)
+                            <flux:button wire:click="removeLogo" size="xs" variant="danger" icon="trash">{{ __('Remove Logo') }}</flux:button>
+                        @endif
+                    </div>
+                    
+                    <div class="flex-1 space-y-4 w-full">
+                        <form wire:submit="updateLogo" class="space-y-4">
+                            <flux:field>
+                                <flux:label>{{ __('Upload New Logo') }}</flux:label>
+                                <flux:input type="file" wire:model="system_logo" accept="image/*" />
+                                <flux:error name="system_logo" />
+                                <flux:description>{{ __('Recommended size: 200x200px. Max: 2MB. Updates the application icon globally.') }}</flux:description>
+                            </flux:field>
+                            
+                            <flux:button type="submit" variant="primary" :disabled="!$system_logo" wire:loading.attr="disabled">{{ __('Save Logo') }}</flux:button>
+                        </form>
+                    </div>
+                </div>
+            </flux:card>
 
             <!-- Detailed Status Indicators -->
             <flux:card class="space-y-4 border-zinc-100 dark:border-zinc-800">

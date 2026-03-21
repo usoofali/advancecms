@@ -7,6 +7,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -28,10 +29,10 @@ class AppServiceProvider extends ServiceProvider
         // Fallback session and cache drivers for setup wizard if database isn't ready
         if (request()->is('setup') || request()->is('*livewire*')) {
             try {
-                if (! \Illuminate\Support\Facades\Schema::hasTable('sessions')) {
+                if (! Schema::hasTable('sessions')) {
                     config(['session.driver' => 'file']);
                 }
-                if (! \Illuminate\Support\Facades\Schema::hasTable('cache')) {
+                if (! Schema::hasTable('cache')) {
                     config(['cache.default' => 'file']);
                 }
             } catch (\Exception $e) {
@@ -45,7 +46,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
 
         // Fix 1071 Specified key was too long error on shared hosting (older MySQL/MariaDB)
-        \Illuminate\Support\Facades\Schema::defaultStringLength(191);
+        Schema::defaultStringLength(191);
 
         // Super Admin bypass
         Gate::before(function (User $user, string $ability) {

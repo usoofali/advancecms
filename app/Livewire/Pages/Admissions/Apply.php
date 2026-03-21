@@ -48,8 +48,9 @@ class Apply extends Component
         ]);
 
         $institution = Institution::findOrFail($this->institution_id);
-        if (!$institution->isAdmissionActive()) {
+        if (! $institution->isAdmissionActive()) {
             $this->addError('institution_id', 'Admissions are currently closed for this institution.');
+
             return;
         }
 

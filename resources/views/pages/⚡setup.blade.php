@@ -9,8 +9,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Title('System Setup')] #[Layout('layouts.guest')] class extends Component
-{
+new #[Title('System Setup')] #[Layout('layouts.guest')] class extends Component {
     public string $step = 'welcome';
 
     public bool $db_connected = false;
@@ -44,7 +43,7 @@ new #[Title('System Setup')] #[Layout('layouts.guest')] class extends Component
     {
         // Security Check: If a Super Admin already exists, redirect to login.
         try {
-            $hasSuperAdmin = User::whereHas('roles', fn ($q) => $q->where('role_name', 'Super Admin'))->exists();
+            $hasSuperAdmin = User::whereHas('roles', fn($q) => $q->where('role_name', 'Super Admin'))->exists();
             if ($hasSuperAdmin) {
                 redirect()->route('login');
             }
@@ -98,7 +97,7 @@ new #[Title('System Setup')] #[Layout('layouts.guest')] class extends Component
             ]);
         } catch (Exception $e) {
             $this->dispatch('notify', [
-                'message' => __('Failed to create storage link: ').$e->getMessage(),
+                'message' => __('Failed to create storage link: ') . $e->getMessage(),
                 'variant' => 'error',
             ]);
         }
@@ -107,7 +106,7 @@ new #[Title('System Setup')] #[Layout('layouts.guest')] class extends Component
     public function initializeDatabase(): void
     {
         try {
-            Artisan::call('migrate', ['--force' => true]);
+            Artisan::call('migrate:fresh', ['--force' => true]);
             Artisan::call('db:seed', ['--force' => true]);
             $this->last_output = Artisan::output();
             $this->step = 'admin';
@@ -154,104 +153,170 @@ new #[Title('System Setup')] #[Layout('layouts.guest')] class extends Component
             redirect()->route('login')->with('status', __('Setup complete! You can now log in.'));
         } catch (Exception $e) {
             $this->dispatch('notify', [
-                'message' => __('Failed to create admin: ').$e->getMessage(),
+                'message' => __('Failed to create admin: ') . $e->getMessage(),
                 'variant' => 'error',
             ]);
         }
     }
 }; ?>
 
-<x-layouts::auth :title="__('System Setup')">
-    <div class="space-y-6">
-        <x-auth-header :title="__('System Setup Wizard')" :description="__('Complete the following steps to initialize your CMS environment.')" />
-
-        @if($step === 'welcome')
-            <div class="space-y-4">
-                <flux:card class="p-4 space-y-4 border-zinc-100 dark:border-zinc-800">
-                    <flux:text>{{ __('Welcome to the CMS Setup Wizard. This tool will help you configure your database and create your first administrative account.') }}</flux:text>
-                    <flux:button wire:click="$set('step', 'environment')" variant="primary" class="w-full">{{ __('Start Setup') }}</flux:button>
-                </flux:card>
-            </div>
-        @elseif($step === 'environment')
-            <div class="space-y-4">
-                <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-zinc-400">{{ __('Environment Audit') }}</flux:heading>
-                
-                <flux:card class="p-0 border-zinc-100 dark:border-zinc-800 overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800">
-                    <!-- PHP & DB -->
-                    <div class="p-4 flex items-center justify-between">
-                        <flux:text size="sm">{{ __('PHP Version') }}</flux:text>
-                        <flux:badge size="sm" color="blue">{{ $php_version }}</flux:badge>
-                    </div>
-                    <div class="p-4 flex items-center justify-between">
-                        <flux:text size="sm">{{ __('Database Connection') }}</flux:text>
-                        <flux:badge size="sm" :color="$db_connected ? 'green' : 'red'">
-                            {{ $db_connected ? __('Connected') : __('Failed') }}
-                        </flux:badge>
-                    </div>
-                    <div class="p-4 flex items-center justify-between">
-                        <flux:text size="sm">{{ __('Storage Link') }}</flux:text>
-                        <div class="flex items-center gap-2">
-                            <flux:badge size="sm" :color="$storage_linked ? 'green' : 'amber'">
-                                {{ $storage_linked ? __('Linked') : __('Missing') }}
-                            </flux:badge>
-                            @if(!$storage_linked)
-                                <flux:button wire:click="createStorageLink" size="xs" variant="ghost" icon="link" />
-                            @endif
-                        </div>
-                    </div>
-
-                    <!-- Folders -->
-                    @foreach($target_folders as $folder)
-                    <div class="p-4 flex items-center justify-between">
-                        <flux:text size="xs" class="font-mono">{{ $folder }}</flux:text>
-                        <div class="flex items-center gap-2">
-                            <flux:text size="xs" class="font-mono {{ in_array($folder_perms[$folder], ['0775', '0755']) ? 'text-green-600' : 'text-red-600' }}">
-                                {{ $folder_perms[$folder] }}
-                            </flux:text>
-                            @if(!in_array($folder_perms[$folder], ['0775', '0755', 'missing']))
-                                <flux:button wire:click="fixPermission('{{ $folder }}')" size="xs" variant="ghost" icon="wrench" />
-                            @endif
-                        </div>
-                    </div>
-                    @endforeach
-                </flux:card>
-
-                <div class="flex gap-2">
-                    <flux:button wire:click="$set('step', 'welcome')" variant="ghost" class="flex-1">{{ __('Back') }}</flux:button>
-                    <flux:button wire:click="$set('step', 'database')" variant="primary" class="flex-1" :disabled="!$db_connected">{{ __('Next: Database') }}</flux:button>
-                </div>
-            </div>
-        @elseif($step === 'database')
-            <div class="space-y-4">
-                <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-zinc-400">{{ __('Database Initialization') }}</flux:heading>
-                
-                <flux:card class="p-4 space-y-4 border-zinc-100 dark:border-zinc-800 text-center">
-                    <flux:icon.table-cells class="size-12 mx-auto text-zinc-300" />
-                    <flux:text size="sm">{{ __('This will run all system migrations and seed the database with required roles and permissions.') }}</flux:text>
-                    <flux:button wire:click="initializeDatabase" variant="primary" class="w-full" icon="play">{{ __('Initialize Database') }}</flux:button>
-                </flux:card>
-
-                @if($last_output)
-                    <pre class="p-3 bg-zinc-900 text-zinc-300 rounded-lg text-[10px] overflow-auto max-h-40 whitespace-pre-wrap">{{ $last_output }}</pre>
-                @endif
-
-                <div class="flex gap-2">
-                    <flux:button wire:click="$set('step', 'environment')" variant="ghost" class="flex-1">{{ __('Back') }}</flux:button>
-                </div>
-            </div>
-        @elseif($step === 'admin')
-            <div class="space-y-4">
-                <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-zinc-400">{{ __('Create Super Admin') }}</flux:heading>
-                
-                <form wire:submit="createAdmin" class="space-y-4">
-                    <flux:input wire:model="admin_name" :label="__('Full Name')" placeholder="Super Admin" required />
-                    <flux:input wire:model="admin_email" type="email" :label="__('Email Address')" placeholder="admin@example.com" required />
-                    <flux:input wire:model="admin_password" type="password" :label="__('Password')" required viewable />
-                    <flux:input wire:model="admin_password_confirmation" type="password" :label="__('Confirm Password')" required viewable />
-
-                    <flux:button type="submit" variant="primary" class="w-full">{{ __('Complete Setup') }}</flux:button>
-                </form>
-            </div>
-        @endif
+<div class="max-w-3xl mx-auto py-8 lg:py-12">
+    <div class="text-center mb-10 space-y-3">
+        <div class="size-16 bg-zinc-100 dark:bg-zinc-800/50 rounded-2xl flex items-center justify-center mx-auto mb-2">
+            <flux:icon name="cog-6-tooth" class="size-8 text-zinc-500 dark:text-zinc-400" />
+        </div>
+        <flux:heading size="xl" level="1">{{ __('System Setup') }}</flux:heading>
+        <flux:subheading size="lg">{{ __('Initialize your environment, database, and admin account.') }}
+        </flux:subheading>
     </div>
-</x-layouts::auth>
+
+    <flux:card class="p-0 overflow-hidden border-zinc-200 dark:border-zinc-800 space-y-0 shadow-sm">
+
+        <!-- Step 1: Environment -->
+        <div class="p-6 sm:p-8">
+            <div class="flex items-center gap-3 mb-6">
+                <div
+                    class="flex items-center justify-center size-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-sm font-semibold text-zinc-600 dark:text-zinc-300">
+                    1</div>
+                <div>
+                    <flux:heading size="lg">{{ __('Environment Audit') }}</flux:heading>
+                    <flux:subheading>{{ __('Ensuring your server meets requirements.') }}</flux:subheading>
+                </div>
+            </div>
+
+            <div class="grid gap-3">
+                <div
+                    class="flex items-center justify-between p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800/60">
+                    <flux:text size="sm" weight="medium">{{ __('PHP Version') }}</flux:text>
+                    <flux:badge size="sm" color="blue">{{ $php_version }}</flux:badge>
+                </div>
+
+                <div
+                    class="flex items-center justify-between p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800/60">
+                    <flux:text size="sm" weight="medium">{{ __('Database Connection') }}</flux:text>
+                    <flux:badge size="sm" :color="$db_connected ? 'green' : 'red'">
+                        {{ $db_connected ? __('Connected') : __('Failed') }}
+                    </flux:badge>
+                </div>
+
+                <div
+                    class="flex items-center justify-between p-4 rounded-xl bg-zinc-50 dark:bg-zinc-800/40 border border-zinc-100 dark:border-zinc-800/60">
+                    <flux:text size="sm" weight="medium">{{ __('Storage Link') }}</flux:text>
+                    <div class="flex items-center gap-2">
+                        <flux:badge size="sm" :color="$storage_linked ? 'green' : 'amber'">
+                            {{ $storage_linked ? __('Linked') : __('Missing') }}
+                        </flux:badge>
+                        @if(!$storage_linked)
+                            <flux:button wire:click="createStorageLink" size="xs" variant="outline" icon="link" />
+                        @endif
+                    </div>
+                </div>
+
+                <div
+                    class="mt-2 rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden divide-y divide-zinc-100 dark:divide-zinc-800/60">
+                    @foreach($target_folders as $folder)
+                        <div class="flex items-center justify-between p-3 bg-white dark:bg-zinc-900/40">
+                            <flux:text size="xs" class="font-mono text-zinc-500">{{ $folder }}</flux:text>
+                            <div class="flex items-center gap-3">
+                                <flux:text size="xs"
+                                    class="font-mono {{ in_array($folder_perms[$folder], ['0775', '0755']) ? 'text-green-600' : 'text-red-500' }}">
+                                    {{ $folder_perms[$folder] }}
+                                </flux:text>
+                                @if(!in_array($folder_perms[$folder], ['0775', '0755', 'missing']))
+                                    <flux:button wire:click="fixPermission('{{ $folder }}')" size="xs" variant="subtle"
+                                        icon="wrench" />
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
+        <flux:separator variant="subtle" />
+
+        <!-- Step 2: Database -->
+        <div class="p-6 sm:p-8 bg-zinc-50/30 dark:bg-zinc-800/10">
+            <div class="flex items-center gap-3 mb-6">
+                <div
+                    class="flex items-center justify-center size-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-sm font-semibold text-zinc-600 dark:text-zinc-300">
+                    2</div>
+                <div>
+                    <flux:heading size="lg">{{ __('Database Initialization') }}</flux:heading>
+                    <flux:subheading>{{ __('Run system migrations and seeders.') }}</flux:subheading>
+                </div>
+            </div>
+
+            <div class="p-5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900/50">
+                <div class="flex flex-col sm:flex-row gap-5 items-start">
+                    <div class="mt-1 hidden sm:block">
+                        <flux:icon name="circle-stack" class="size-8 text-zinc-400 dark:text-zinc-500" />
+                    </div>
+                    <div class="flex-1 space-y-4 w-full">
+                        <flux:text size="sm" class="text-zinc-600 dark:text-zinc-400">
+                            {{ __('This action will create all necessary tables and insert default roles. Ensure your database is empty to avoid conflicts.') }}
+                        </flux:text>
+                        <flux:button wire:click="initializeDatabase" variant="primary" :disabled="!$db_connected"
+                            icon="play">
+                            {{ __('Initialize Database') }}
+                        </flux:button>
+                        @if($last_output)
+                            <pre
+                                class="p-4 bg-zinc-950 text-emerald-400 rounded-lg text-xs overflow-auto max-h-40 whitespace-pre-wrap border border-zinc-800">{{ $last_output }}</pre>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <flux:separator variant="subtle" />
+
+        <!-- Step 3: Admin -->
+        <div class="p-6 sm:p-8">
+            <div class="flex items-center gap-3 mb-6">
+                <div
+                    class="flex items-center justify-center size-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-sm font-semibold text-zinc-600 dark:text-zinc-300">
+                    3</div>
+                <div>
+                    <flux:heading size="lg">{{ __('Super Admin') }}</flux:heading>
+                    <flux:subheading>{{ __('Create the primary administrative account.') }}</flux:subheading>
+                </div>
+            </div>
+
+            <form wire:submit="createAdmin" class="space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <flux:field>
+                        <flux:label>{{ __('Full Name') }}</flux:label>
+                        <flux:input wire:model="admin_name" placeholder="System Admin" required />
+                        <flux:error name="admin_name" />
+                    </flux:field>
+
+                    <flux:field>
+                        <flux:label>{{ __('Email Address') }}</flux:label>
+                        <flux:input wire:model="admin_email" type="email" placeholder="admin@example.com" required />
+                        <flux:error name="admin_email" />
+                    </flux:field>
+
+                    <flux:field>
+                        <flux:label>{{ __('Password') }}</flux:label>
+                        <flux:input wire:model="admin_password" type="password" required viewable />
+                        <flux:error name="admin_password" />
+                    </flux:field>
+
+                    <flux:field>
+                        <flux:label>{{ __('Confirm Password') }}</flux:label>
+                        <flux:input wire:model="admin_password_confirmation" type="password" required viewable />
+                        <flux:error name="admin_password_confirmation" />
+                    </flux:field>
+                </div>
+
+                <div class="pt-4 flex justify-end">
+                    <flux:button type="submit" variant="primary" class="w-full sm:w-auto" icon="check-badge">
+                        {{ __('Complete Setup') }}
+                    </flux:button>
+                </div>
+            </form>
+        </div>
+
+    </flux:card>
+</div>

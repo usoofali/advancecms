@@ -109,8 +109,16 @@ new #[Title('System Setup')] #[Layout('layouts.auth')] class extends Component {
         set_time_limit(300);
 
         try {
-            Artisan::call('migrate:fresh', ['--force' => true]);
-            Artisan::call('db:seed', ['--force' => true]);
+            $migrateExitCode = Artisan::call('migrate:fresh', ['--force' => true]);
+            if ($migrateExitCode !== 0) {
+                throw new Exception('Migration failed: ' . Artisan::output());
+            }
+
+            $seedExitCode = Artisan::call('db:seed', ['--force' => true]);
+            if ($seedExitCode !== 0) {
+                throw new Exception('Database seeding failed: ' . Artisan::output());
+            }
+
             $this->last_output = Artisan::output();
             $this->step = 'admin';
             session()->flash('status', __('Database initialized successfully.'));

@@ -44,6 +44,9 @@ class AppServiceProvider extends ServiceProvider
 
         $this->configureDefaults();
 
+        // Fix 1071 Specified key was too long error on shared hosting (older MySQL/MariaDB)
+        \Illuminate\Support\Facades\Schema::defaultStringLength(191);
+
         // Super Admin bypass
         Gate::before(function (User $user, string $ability) {
             if ($user->hasRole('Super Admin')) {

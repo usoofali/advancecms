@@ -252,6 +252,32 @@ new #[Title('System Configuration')] class extends Component
         }
     }
 
+    public function createStorageLink(): void
+    {
+        try {
+            Artisan::call('storage:link');
+            $this->last_output = Artisan::output();
+            $this->refreshStats();
+            $this->dispatch('notify', message: __('Storage link created successfully.'), variant: 'success');
+        } catch (Exception $e) {
+            $this->last_output = $e->getMessage();
+            $this->dispatch('notify', message: __('Failed to create storage link: ').$e->getMessage(), variant: 'danger');
+        }
+    }
+
+    public function runMigrations(): void
+    {
+        try {
+            Artisan::call('migrate', ['--force' => true]);
+            $this->last_output = Artisan::output();
+            $this->refreshStats();
+            $this->dispatch('notify', message: __('Database migrations executed successfully.'), variant: 'success');
+        } catch (Exception $e) {
+            $this->last_output = $e->getMessage();
+            $this->dispatch('notify', message: __('Migration failed: ').$e->getMessage(), variant: 'danger');
+        }
+    }
+
     public function migrateFresh(): void
     {
         try {

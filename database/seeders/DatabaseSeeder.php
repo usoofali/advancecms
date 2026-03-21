@@ -13,12 +13,6 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-
-        User::factory()->create([
-            'name' => 'Aliyu Yusuf',
-            'email' => 'usoofali@gmail.com',
-        ]);
-
         $this->call([
             RbacSeeder::class,
         ]);

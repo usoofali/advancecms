@@ -25,6 +25,23 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Fallback session and cache drivers for setup wizard if database isn't ready
+        if (request()->is('setup') || request()->is('*livewire*')) {
+            try {
+                if (! \Illuminate\Support\Facades\Schema::hasTable('sessions')) {
+                    config(['session.driver' => 'file']);
+                }
+                if (! \Illuminate\Support\Facades\Schema::hasTable('cache')) {
+                    config(['cache.default' => 'file']);
+                }
+            } catch (\Exception $e) {
+                config([
+                    'session.driver' => 'file',
+                    'cache.default' => 'file',
+                ]);
+            }
+        }
+
         $this->configureDefaults();
 
         // Super Admin bypass

@@ -109,7 +109,8 @@ new #[Title('System Setup')] #[Layout('layouts.auth')] class extends Component {
         set_time_limit(300);
 
         try {
-            $migrateExitCode = Artisan::call('migrate:fresh', ['--force' => true]);
+            // Use 'migrate' instead of 'migrate:fresh' to avoid production destructive command restrictions
+            $migrateExitCode = Artisan::call('migrate', ['--force' => true]);
             if ($migrateExitCode !== 0) {
                 throw new Exception('Migration failed: ' . Artisan::output());
             }

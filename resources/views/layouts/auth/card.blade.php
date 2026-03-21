@@ -13,7 +13,7 @@
                     <x-app-logo-icon class="h-22 w-auto max-w-[280px] fill-current text-black dark:text-white" />
                 </span>
 
-                <span class="sr-only">{{ config('app.name', 'Laravel') }}</span>
+                <span class="text-xl font-semibold text-center dark:text-white">{{ config('app.name', 'Laravel') }}</span>
             </a>
 
             <div class="flex flex-col gap-6">

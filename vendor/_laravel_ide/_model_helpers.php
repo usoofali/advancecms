@@ -8642,6 +8642,16 @@ namespace App\Models {
 	/**
 	 * App\Models\SystemSetting
 	 *
+	 * @property \Illuminate\Support\Carbon|null $updated_at
+	 * @property \Illuminate\Support\Carbon|null $created_at
+	 * @property string|null $value
+	 * @property string $key
+	 * @property int $id
+	 * @method static \Illuminate\Database\Eloquent\Builder<SystemSetting>|SystemSetting whereId($value)
+	 * @method static \Illuminate\Database\Eloquent\Builder<SystemSetting>|SystemSetting whereKey($value)
+	 * @method static \Illuminate\Database\Eloquent\Builder<SystemSetting>|SystemSetting whereValue($value)
+	 * @method static \Illuminate\Database\Eloquent\Builder<SystemSetting>|SystemSetting whereCreatedAt($value)
+	 * @method static \Illuminate\Database\Eloquent\Builder<SystemSetting>|SystemSetting whereUpdatedAt($value)
 	 * @method static \Illuminate\Database\Eloquent\Builder<SystemSetting>|SystemSetting newModelQuery()
 	 * @method static \Illuminate\Database\Eloquent\Builder<SystemSetting>|SystemSetting newQuery()
 	 * @method static \Illuminate\Database\Eloquent\Builder<SystemSetting>|SystemSetting query()

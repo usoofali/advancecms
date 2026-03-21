@@ -1,0 +1,4 @@
+course_code,title,credit_unit,level,semester,course_type,status,program_acronym
+CSC101,Introduction to Computer Science,3,100,1,compulsory,active,CSC
+MTH101,General Mathematics I,2,100,1,compulsory,active,CSC
+ENG201,Technical Writing,2,200,2,elective,active,PTH

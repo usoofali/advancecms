@@ -21,6 +21,9 @@ new #[Layout('layouts.app')] #[Title('Attendance History')] class extends Compon
     #[Url]
     public string $year = '';
 
+    #[Url]
+    public ?int $institution_id = null;
+
     public function mount(): void
     {
         Gate::authorize('view_attendance_history');
@@ -31,6 +34,16 @@ new #[Layout('layouts.app')] #[Title('Attendance History')] class extends Compon
         if (! $this->year) {
             $this->year = date('Y');
         }
+
+        // Default to user's institution if they are not Super Admin
+        if (! auth()->user()->hasRole('Super Admin')) {
+            $this->institution_id = auth()->user()->institution_id;
+        }
+    }
+
+    public function getInstitutionsProperty()
+    {
+        return Institution::orderBy('name')->get();
     }
 
     public function getStaffProperty()
@@ -42,7 +55,7 @@ new #[Layout('layouts.app')] #[Title('Attendance History')] class extends Compon
     {
         $staff = $this->staff;
         if (! $staff) {
-            return ['contacts' => 0, 'amount' => 0];
+            return ['contacts' => 0, 'amount' => 0, 'rate' => 0];
         }
 
         $query = Attendance::whereMonth('date', $this->month)
@@ -50,30 +63,39 @@ new #[Layout('layouts.app')] #[Title('Attendance History')] class extends Compon
             ->where('status', 'submitted')
             ->where('is_combined_child', false);
 
-        // Filter by permissions
+        // Filter by permissions and selected institution
         if (! auth()->user()->hasRole('Institutional Admin') && ! auth()->user()->hasRole('Super Admin')) {
             $query->whereHas('courseAllocation', function ($q) {
                 $q->where('user_id', auth()->user()->id);
             });
-        } elseif (auth()->user()->institution_id) {
-            $query->where('institution_id', auth()->user()->institution_id);
+        } elseif ($this->institution_id) {
+            $query->where('institution_id', $this->institution_id);
         }
 
         $contacts = $query->count();
 
-        // Calculate amount based on centralized staff allowance
-        $allowance = $staff->attendance_allowance ?? 0;
+        // Calculate total estimated amount using joins for accuracy and performance
+        $totalAmount = (clone $query)
+            ->join('course_allocations', 'attendances.course_allocation_id', '=', 'course_allocations.id')
+            ->join('users', 'course_allocations.user_id', '=', 'users.id')
+            ->join('staff', 'users.email', '=', 'staff.email')
+            ->sum('staff.attendance_allowance');
 
         return [
             'contacts' => $contacts,
-            'amount' => $contacts * $allowance,
-            'rate' => $allowance,
+            'amount' => $totalAmount,
+            'rate' => $staff->attendance_allowance ?? 0,
         ];
     }
 
     public function getHistoryProperty()
     {
-        $query = Attendance::with(['courseAllocation.course', 'courseAllocation.academicSession', 'courseAllocation.semester'])
+        $query = Attendance::with([
+            'courseAllocation.course', 
+            'courseAllocation.academicSession', 
+            'courseAllocation.semester',
+            'courseAllocation.user.staff'
+        ])
             ->whereMonth('date', $this->month)
             ->whereYear('date', $this->year)
             ->latest('date');
@@ -82,8 +104,8 @@ new #[Layout('layouts.app')] #[Title('Attendance History')] class extends Compon
             $query->whereHas('courseAllocation', function ($q) {
                 $q->where('user_id', auth()->user()->id);
             });
-        } elseif (auth()->user()->institution_id) {
-            $query->where('institution_id', auth()->user()->institution_id);
+        } elseif ($this->institution_id) {
+            $query->where('institution_id', $this->institution_id);
         }
 
         return $query->paginate(10);
@@ -111,7 +133,15 @@ new #[Layout('layouts.app')] #[Title('Attendance History')] class extends Compon
             <flux:subheading>{{ __('Review your lecture sessions and monthly contact tallies') }}</flux:subheading>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-3">
+            @if(auth()->user()->hasRole('Super Admin'))
+                <flux:select wire:model.live="institution_id" class="w-64" :placeholder="__('All Institutions')">
+                    <flux:select.option value="">{{ __('All Institutions') }}</flux:select.option>
+                    @foreach ($this->institutions as $inst)
+                        <flux:select.option :value="$inst->id">{{ $inst->name }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+            @endif
             <flux:select wire:model.live="month" class="w-36">
                 @foreach ($months as $num => $name)
                     <flux:select.option :value="$num">{{ __($name) }}</flux:select.option>
@@ -206,11 +236,14 @@ new #[Layout('layouts.app')] #[Title('Attendance History')] class extends Compon
                                 </div>
                             </td>
                             <td class="px-4 py-3 text-right">
+                                @php
+                                    $itemRate = $item->courseAllocation->user->staff->attendance_allowance ?? 0;
+                                @endphp
                                 @if($item->is_combined_child)
                                     <div class="font-bold text-zinc-400 dark:text-zinc-600">₦0.00</div>
                                     <div class="text-[10px] text-zinc-500 uppercase">{{ __('Combined') }}</div>
                                 @else
-                                    <div class="font-bold text-zinc-900 dark:text-white">₦{{ number_format($stats['rate'], 2) }}</div>
+                                    <div class="font-bold text-zinc-900 dark:text-white">₦{{ number_format($itemRate, 2) }}</div>
                                     <div class="text-[10px] text-zinc-500 uppercase">{{ __('Per Contact') }}</div>
                                 @endif
                             </td>
@@ -237,3 +270,4 @@ new #[Layout('layouts.app')] #[Title('Attendance History')] class extends Compon
         </div>
     </flux:card>
 </div>
+

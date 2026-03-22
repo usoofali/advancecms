@@ -278,16 +278,16 @@ new #[Title('System Configuration')] class extends Component
         }
     }
 
-    public function migrateFresh(): void
+    public function forceMigrate(): void
     {
         try {
-            Artisan::call('migrate:fresh', ['--force' => true]);
+            Artisan::call('migrate', ['--force' => true]);
             $this->last_output = Artisan::output();
             $this->refreshStats();
-            $this->dispatch('notify', message: __('Database wiped and fresh migrations executed.'), variant: 'success');
+            $this->dispatch('notify', message: __('Forced database migrations executed.'), variant: 'success');
         } catch (Exception $e) {
             $this->last_output = $e->getMessage();
-            $this->dispatch('notify', message: __('Fresh migration failed: ').$e->getMessage(), variant: 'danger');
+            $this->dispatch('notify', message: __('Forced migration failed: ').$e->getMessage(), variant: 'danger');
         }
     }
 
@@ -557,36 +557,38 @@ new #[Title('System Configuration')] class extends Component
             <div class="space-y-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
                 <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-red-500">{{ __('Danger Zone') }}</flux:heading>
                 
-                <flux:card class="p-4 bg-red-50/50 dark:bg-red-950/10 border-red-100 dark:border-red-900/50 space-y-4">
+                <flux:card class="p-4 bg-orange-50/50 dark:bg-orange-950/10 border-orange-100 dark:border-orange-900/50 space-y-4">
                     <div class="flex items-start gap-4">
-                        <div class="p-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-500">
-                            <flux:icon.fire class="size-6" />
+                        <div class="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-500">
+                            <flux:icon.exclamation-triangle class="size-6" />
                         </div>
                         <div class="flex-1">
-                            <flux:heading size="sm" class="text-red-900 dark:text-red-400">{{ __('Fresh Reinstall') }}</flux:heading>
-                            <flux:text size="xs" class="text-red-700 dark:text-red-500/80">
-                                {{ __('This will drop all tables and re-run all migrations. ALL DATA WILL BE LOST PERMANENTLY. Use with extreme caution.') }}
+                            <flux:heading size="sm" class="text-orange-900 dark:text-orange-400">{{ __('Full Migration Run') }}</flux:heading>
+                            <flux:text size="xs" class="text-orange-700 dark:text-orange-500/80">
+                                {{ __('This will run all pending migrations with the --force flag. Although it does not drop tables, you should still back up your data before proceeding.') }}
                             </flux:text>
                         </div>
-                        <flux:modal.trigger name="confirm-migrate-fresh">
-                            <flux:button variant="danger" size="sm" icon="exclamation-triangle">
-                                {{ __('Migrate Fresh') }}
+                        <flux:modal.trigger name="confirm-force-migrate">
+                            <flux:button variant="primary" size="sm" icon="play">
+                                {{ __('Force Migrate') }}
                             </flux:button>
                         </flux:modal.trigger>
                     </div>
-
-                    <flux:modal name="confirm-migrate-fresh" class="min-w-[22rem] space-y-6">
+    
+                    <flux:modal name="confirm-force-migrate" class="min-w-[22rem] space-y-6">
                         <div class="space-y-2">
-                            <flux:heading size="lg">{{ __('Confirm Fresh Migration') }}</flux:heading>
-                            <flux:subheading>{{ __('Are you absolutely sure? This will permanently delete all data in the database. This action cannot be undone.') }}</flux:subheading>
+                            <flux:heading size="lg">{{ __('Confirm Forced Migration') }}</flux:heading>
+                            <flux:subheading>{{ __('Are you sure? This will execute all pending database migrations in a production environment. Please ensure you have a fresh backup.') }}</flux:subheading>
                         </div>
-
+    
                         <div class="flex gap-2">
                             <flux:spacer />
                             <flux:modal.close>
                                 <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                             </flux:modal.close>
-                            <flux:button wire:click="migrateFresh" variant="danger">{{ __('Yes, Delete Everything') }}</flux:button>
+                            <flux:modal.close>
+                                <flux:button wire:click="forceMigrate" variant="primary">{{ __('Yes, Run Migrations') }}</flux:button>
+                            </flux:modal.close>
                         </div>
                     </flux:modal>
                 </flux:card>

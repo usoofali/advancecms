@@ -88,23 +88,23 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
 }; ?>
 
 <div class="flex h-full w-full flex-1 flex-col gap-4">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
                 <flux:heading size="xl">{{ __('Courses') }}</flux:heading>
                 <flux:subheading>{{ __('Manage course offerings') }}</flux:subheading>
             </div>
-            <div class="flex items-center gap-2">
-                <flux:button icon="arrow-down-tray" wire:click="export">{{ __('Export CSV') }}</flux:button>
-                <flux:button icon="arrow-up-tray" x-on:click="$flux.modal('import-courses').show()">
+            <div class="flex flex-wrap items-center gap-2">
+                <flux:button icon="arrow-down-tray" wire:click="export" class="flex-1 sm:flex-none">{{ __('Export CSV') }}</flux:button>
+                <flux:button icon="arrow-up-tray" x-on:click="$flux.modal('import-courses').show()" class="flex-1 sm:flex-none">
                     {{ __('Import CSV') }}
                 </flux:button>
-                <flux:button icon="plus" variant="primary" :href="route('cms.courses.create')" wire:navigate>
+                <flux:button icon="plus" variant="primary" :href="route('cms.courses.create')" wire:navigate class="w-full sm:w-auto">
                     {{ __('Add Course') }}
                 </flux:button>
             </div>
         </div>
 
-        <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search courses by title or code...')" class="max-w-md" />
+        <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search courses by title or code...')" class="w-full sm:max-w-md" />
 
         <div class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
             <table class="w-full text-left border-collapse">
@@ -112,9 +112,9 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
                     <tr>
                         <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Code') }}</th>
                         <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Title') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Units') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Level/Semester') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Department') }}</th>
+                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 hidden sm:table-cell">{{ __('Units') }}</th>
+                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 hidden md:table-cell">{{ __('Level/Semester') }}</th>
+                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 hidden lg:table-cell">{{ __('Department') }}</th>
                         <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-right">{{ __('Actions') }}</th>
                     </tr>
                 </thead>
@@ -127,13 +127,13 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
                             <td class="px-4 py-4 text-sm text-zinc-900 dark:text-zinc-100">
                                 {{ $course->title }}
                             </td>
-                            <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400">
+                             <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400 hidden sm:table-cell">
                                 {{ $course->credit_unit }}
                             </td>
-                            <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400">
+                            <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400 hidden md:table-cell">
                                 {{ $course->level }}L / {{ $course->semester == 1 ? '1st' : '2nd' }} Sem
                             </td>
-                            <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400">
+                            <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400 hidden lg:table-cell">
                                 <div class="text-sm font-medium">{{ $course->department->name }}</div>
                                 <div class="text-xs text-zinc-500 mt-0.5">{{ $course->department->institution->acronym }}</div>
                             </td>

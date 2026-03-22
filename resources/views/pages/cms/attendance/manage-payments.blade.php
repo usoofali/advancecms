@@ -50,7 +50,7 @@ new #[Layout('layouts.app')] #[Title('Manage Lecturer Payments')] class extends 
         $institutionId = $this->selected_institution_id ?? auth()->user()->institution_id;
 
         if (!$institutionId) {
-            return [];
+            return new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10);
         }
 
         return Staff::where('institution_id', $institutionId)
@@ -191,9 +191,9 @@ new #[Layout('layouts.app')] #[Title('Manage Lecturer Payments')] class extends 
             <flux:subheading>{{ __('Manage and process monthly payments based on lecture contacts') }}</flux:subheading>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
             @if(auth()->user()->hasRole('Super Admin'))
-                <flux:select wire:model.live="selected_institution_id" class="w-64"
+                <flux:select wire:model.live="selected_institution_id" class="w-full md:w-64"
                     :placeholder="__('Select Institution...')">
                     @foreach ($institutions as $inst)
                         <flux:select.option :value="$inst->id">{{ $inst->name }}</flux:select.option>
@@ -201,12 +201,12 @@ new #[Layout('layouts.app')] #[Title('Manage Lecturer Payments')] class extends 
                 </flux:select>
             @endif
 
-            <flux:select wire:model.live="month" class="w-36">
+            <flux:select wire:model.live="month" class="w-full sm:w-36">
                 @foreach ($months as $num => $name)
                     <flux:select.option :value="$num">{{ __($name) }}</flux:select.option>
                 @endforeach
             </flux:select>
-            <flux:select wire:model.live="year" class="w-28">
+            <flux:select wire:model.live="year" class="w-full sm:w-28">
                 @foreach ($years as $y)
                     <flux:select.option :value="$y">{{ $y }}</flux:select.option>
                 @endforeach
@@ -220,7 +220,7 @@ new #[Layout('layouts.app')] #[Title('Manage Lecturer Payments')] class extends 
                 <thead>
                     <tr class="border-b border-zinc-200 dark:border-zinc-700">
                         <th class="px-4 py-3 font-semibold text-zinc-900 dark:text-white">{{ __('Staff Member') }}</th>
-                        <th class="px-4 py-3 font-semibold text-zinc-900 dark:text-white">{{ __('Bank Details') }}</th>
+                        <th class="px-4 py-3 font-semibold text-zinc-900 dark:text-white hidden sm:table-cell">{{ __('Bank Details') }}</th>
                         <th class="px-4 py-3 font-semibold text-center text-zinc-900 dark:text-white">
                             {{ __('Contacts') }}</th>
                         <th class="px-4 py-3 font-semibold text-right text-zinc-900 dark:text-white">
@@ -242,7 +242,7 @@ new #[Layout('layouts.app')] #[Title('Manage Lecturer Payments')] class extends 
                                 </div>
                                 <div class="text-[10px] text-zinc-400 italic">{{ $item['staff']->staff_number }}</div>
                             </td>
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3 hidden sm:table-cell">
                                 @if($item['staff']->bank_name && $item['staff']->account_number)
                                     <div class="text-xs font-medium text-zinc-900 dark:text-white">
                                         {{ $item['staff']->bank_name }}</div>

@@ -22,12 +22,12 @@ new #[Layout('layouts.app')] #[Title('Roles & Permissions')] class extends Compo
         </div>
     </div>
 
-    <flux:card>
-        <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
+    <flux:card class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
             <thead>
-                <tr class="bg-zinc-50 dark:bg-zinc-800/50">
+                <tr class="bg-zinc-50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-700">
                     <th class="px-4 py-3 text-left text-sm font-semibold text-zinc-900 dark:text-zinc-100">Role</th>
-                    <th class="px-4 py-3 text-left text-sm font-semibold text-zinc-900 dark:text-zinc-100">Description</th>
+                    <th class="px-4 py-3 text-left text-sm font-semibold text-zinc-900 dark:text-zinc-100 hidden md:table-cell">Description</th>
                     <th class="px-4 py-3 text-center text-sm font-semibold text-zinc-900 dark:text-zinc-100">Permissions</th>
                     <th class="px-4 py-3 text-right text-sm font-semibold text-zinc-900 dark:text-zinc-100">Actions</th>
                 </tr>
@@ -38,7 +38,7 @@ new #[Layout('layouts.app')] #[Title('Roles & Permissions')] class extends Compo
                         <td class="px-4 py-4 text-sm font-medium text-zinc-900 dark:text-zinc-100">
                             {{ $role->role_name }}
                         </td>
-                        <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400">
+                        <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400 hidden md:table-cell">
                             {{ $role->description }}
                         </td>
                         <td class="px-4 py-4 text-center">

@@ -62,6 +62,10 @@
                     :current="request()->routeIs('cms.staff.*')" wire:navigate>
                     {{ __('Staff') }}
                 </flux:sidebar.item>
+                <flux:sidebar.item icon="identification" :href="route('cms.id-cards.manage')"
+                    :current="request()->routeIs('cms.id-cards.manage')" wire:navigate>
+                    {{ __('ID Card Management') }}
+                </flux:sidebar.item>
                 @endcan
 
                 @can('manage_configurations')
@@ -156,6 +160,10 @@
                     {{ __('Attendance History') }}
                 </flux:sidebar.item>
                 @endcan
+                <flux:sidebar.item icon="identification" :href="route('cms.id-cards.request')"
+                    :current="request()->routeIs('cms.id-cards.request')" wire:navigate>
+                    {{ __('Request ID Card') }}
+                </flux:sidebar.item>
             </flux:sidebar.group>
 
             <flux:sidebar.group :heading="__('Results')" class="grid" expandable expanded="false">

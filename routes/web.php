@@ -143,6 +143,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('can:manage_attendance_payments')->group(function () {
         Route::livewire('finance/attendance-payments', 'pages::cms.attendance.manage-payments')->name('cms.attendance.payments');
     });
+    // ID Card Management
+    Route::group(['prefix' => 'id-cards', 'as' => 'cms.id-cards.'], function () {
+        Route::livewire('request', 'cms.id-cards.request-card')->name('request');
+        Route::livewire('manage', 'cms.id-cards.manage-id-cards')->name('manage')->middleware('can:manage_staff');
+        Route::livewire('print/{data}', 'cms.id-cards.print-id-cards')->name('print')->middleware('can:manage_staff');
+    });
 });
 
 require __DIR__.'/settings.php';

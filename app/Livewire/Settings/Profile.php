@@ -7,10 +7,15 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 #[Title('Profile Settings')]
 class Profile extends Component
 {
+    use WithFileUploads;
+
+    public $photo;
+
     public string $phone = '';
 
     public string $gender = '';
@@ -163,8 +168,13 @@ class Profile extends Component
 
         $this->validate($rules);
 
+        $photoPath = null;
+        if ($this->photo) {
+            $photoPath = $this->photo->store('profiles', 'public');
+        }
+
         if ($user->hasRole('Student')) {
-            $user->student->update([
+            $data = [
                 'phone' => $this->phone,
                 'gender' => $this->gender ?: null,
                 'date_of_birth' => $this->date_of_birth ?: null,
@@ -182,16 +192,28 @@ class Profile extends Component
                 'subject_biology' => $this->subject_biology ?: null,
                 'subject_chemistry' => $this->subject_chemistry ?: null,
                 'subject_physics' => $this->subject_physics ?: null,
-            ]);
+            ];
+
+            if ($photoPath) {
+                $data['photo_path'] = $photoPath;
+            }
+
+            $user->student->update($data);
         } elseif ($user->hasRole('Staff')) {
-            $user->staff->update([
+            $data = [
                 'phone' => $this->phone,
                 'gender' => $this->gender ?: null,
                 'date_of_birth' => $this->date_of_birth ?: null,
                 'bank_name' => $this->bank_name ?: null,
                 'account_number' => $this->account_number ?: null,
                 'account_name' => $this->account_name ?: null,
-            ]);
+            ];
+
+            if ($photoPath) {
+                $data['photo_path'] = $photoPath;
+            }
+
+            $user->staff->update($data);
         }
 
         $this->dispatch('profile-updated');

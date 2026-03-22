@@ -27,19 +27,46 @@ $profile = $this->profile;
             </div>
             @endif
 
-            <!-- Header Identity Section -->
-            <div
-                class="flex items-center gap-4 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200/50 dark:border-zinc-700/50">
-                <flux:avatar :name="$user->name" size="xl" class="rounded-xl shadow-sm" />
-                <div>
-                    <flux:heading size="lg">{{ $user->name }}</flux:heading>
-                    <flux:subheading>{{ $user->email }}</flux:subheading>
+            <!-- Header Identity Section with Photo Upload -->
+            <div class="flex flex-col md:flex-row items-center gap-6 p-6 bg-zinc-50 dark:bg-zinc-800/50 rounded-2xl border border-zinc-200/50 dark:border-zinc-700/50">
+                <div class="relative group">
+                    <div class="size-24 rounded-2xl overflow-hidden border-4 border-white dark:border-zinc-700 shadow-md bg-zinc-200 dark:bg-zinc-800">
+                        @if ($photo)
+                            <img src="{{ $photo->temporaryUrl() }}" class="w-full h-full object-cover">
+                        @elseif ($profile && $profile->photo_path)
+                            <img src="{{ asset('storage/' . $profile->photo_path) }}" class="w-full h-full object-cover">
+                        @else
+                            <div class="w-full h-full flex items-center justify-center bg-blue-600 text-white text-3xl font-bold">
+                                {{ substr($user->name, 0, 1) }}
+                            </div>
+                        @endif
+                        
+                        <div wire:loading wire:target="photo" class="absolute inset-0 bg-black/60 flex items-center justify-center rounded-2xl">
+                            <flux:icon.arrow-path class="size-8 text-white animate-spin" />
+                        </div>
+                    </div>
+                    
+                    <label class="absolute -bottom-2 -right-2 p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg cursor-pointer transition-transform hover:scale-110">
+                        <flux:icon.camera class="size-4" />
+                        <input type="file" wire:model="photo" class="hidden" accept="image/*" />
+                    </label>
                 </div>
-                <flux:spacer />
+
+                <div class="text-center md:text-left flex-1">
+                    <flux:heading size="xl" class="font-black">{{ $user->name }}</flux:heading>
+                    <flux:subheading class="flex items-center justify-center md:justify-start gap-2">
+                        <flux:icon.envelope class="size-3" />
+                        {{ $user->email }}
+                    </flux:subheading>
+                </div>
+
                 @if($profile)
-                <flux:badge variant="neutral" size="sm" class="px-3 py-1">
-                    {{ $profile->status ? ucfirst($profile->status) : 'Active' }}
-                </flux:badge>
+                <div class="flex flex-col items-center md:items-end gap-2">
+                    <flux:badge :color="$profile->status === 'active' ? 'green' : 'zinc'" size="sm" class="px-3 py-1">
+                        {{ $profile->status ? ucfirst($profile->status) : 'Active' }}
+                    </flux:badge>
+                    <flux:text size="xs" class="text-zinc-500 uppercase tracking-widest font-bold">{{ $user->hasRole('Student') ? __('Student Account') : __('Staff Account') }}</flux:text>
+                </div>
                 @endif
             </div>
 

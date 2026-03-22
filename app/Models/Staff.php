@@ -87,8 +87,14 @@ class Staff extends Model
         'account_name',
         'designation',
         'attendance_allowance',
+        'photo_path',
         'status',
     ];
+
+    public function getPhotoUrlAttribute(): ?string
+    {
+        return $this->photo_path ? asset('storage/'.$this->photo_path) : null;
+    }
 
     public function attendancePayments(): HasMany
     {

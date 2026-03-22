@@ -34,16 +34,16 @@ class PrintIdCards extends Component
 
         if ($this->mode === 'requests') {
             $this->items = IdCardRequest::whereIn('id', $this->selected_ids)
-                ->with(['user.student.program', 'user.staff', 'institution'])
+                ->with(['user.student.program.department', 'user.staff', 'institution'])
                 ->get();
         } else {
             if ($this->type === 'student') {
                 $this->items = Student::whereIn('id', $this->selected_ids)
-                    ->with(['program', 'institution'])
+                    ->with(['program.department.institution', 'user'])
                     ->get();
             } else {
                 $this->items = Staff::whereIn('id', $this->selected_ids)
-                    ->with(['institution'])
+                    ->with(['institution', 'user'])
                     ->get();
             }
         }

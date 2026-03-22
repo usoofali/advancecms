@@ -68,22 +68,22 @@
             @endif
         </div>
 
-        <div class="overflow-x-auto border border-zinc-200 dark:border-zinc-700/50 rounded-2xl bg-white dark:bg-zinc-800/30">
-            <table class="w-full text-left text-sm border-collapse">
-                <thead class="bg-zinc-50 dark:bg-zinc-800/80 border-b border-zinc-200 dark:border-zinc-700">
+        <div class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700">
                     <tr>
                         <th class="px-4 py-3 w-10">
                             {{-- We handle select all manually for now as flux checkbox inside row might conflict --}}
                         </th>
-                        <th class="px-4 py-3 font-bold text-zinc-900 dark:text-white uppercase tracking-wider text-[10px]">{{ __('ID / Name') }}</th>
+                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('ID / Name') }}</th>
                         @if($view_mode === 'requests')
-                            <th class="px-4 py-3 font-bold text-zinc-900 dark:text-white uppercase tracking-wider text-[10px]">{{ __('Reason') }}</th>
-                            <th class="px-4 py-3 font-bold text-zinc-900 dark:text-white uppercase tracking-wider text-[10px]">{{ __('Invoice Status') }}</th>
+                            <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Reason') }}</th>
+                            <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Invoice Status') }}</th>
                         @else
-                            <th class="px-4 py-3 font-bold text-zinc-900 dark:text-white uppercase tracking-wider text-[10px]">{{ $type === 'student' ? __('Program') : __('Designation') }}</th>
+                            <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ $type === 'student' ? __('Program') : __('Designation') }}</th>
                         @endif
-                        <th class="px-4 py-3 font-bold text-zinc-900 dark:text-white uppercase tracking-wider text-[10px]">{{ __('Photo Status') }}</th>
-                        <th class="px-4 py-3 text-right font-bold text-zinc-900 dark:text-white uppercase tracking-wider text-[10px]">{{ __('Actions') }}</th>
+                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Photo Status') }}</th>
+                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-right">{{ __('Actions') }}</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
@@ -101,21 +101,21 @@
                             $displayName = $user?->name ?? 'Unknown';
                             $displayId = $type === 'student' ? ($profile->matric_number ?? 'N/A') : ($profile->staff_number ?? 'N/A');
                         @endphp
-                        <tr class="hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50 transition-colors">
-                            <td class="px-4 py-3">
+                        <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors">
+                            <td class="px-4 py-4">
                                 <flux:checkbox wire:model="selected_ids" value="{{ $item->id }}" />
                             </td>
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-4">
                                 <div class="flex flex-col">
-                                    <span class="font-bold text-zinc-900 dark:text-white">{{ $displayName }}</span>
-                                    <span class="text-xs text-zinc-500 font-mono">{{ $displayId }}</span>
+                                    <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ $displayName }}</span>
+                                    <span class="text-xs text-zinc-500 dark:text-zinc-400 font-mono mt-0.5">{{ $displayId }}</span>
                                 </div>
                             </td>
                             @if($view_mode === 'requests')
-                                <td class="px-4 py-3">
+                                <td class="px-4 py-4">
                                     <flux:badge size="sm" color="zinc" variant="neutral">{{ ucfirst(str_replace('_', ' ', $item->reason)) }}</flux:badge>
                                 </td>
-                                <td class="px-4 py-3">
+                                <td class="px-4 py-4">
                                     @if($item->studentInvoice)
                                         <div class="flex items-center gap-1 text-green-600 font-bold text-xs">
                                             <flux:icon.check-circle class="size-3" />
@@ -130,13 +130,13 @@
                                     @endif
                                 </td>
                             @else
-                                <td class="px-4 py-3">
+                                <td class="px-4 py-4">
                                     <span class="text-xs text-zinc-600 dark:text-zinc-400">
                                         {{ $type === 'student' ? ($profile->program?->name ?? 'N/A') : ($profile->designation ?? 'N/A') }}
                                     </span>
                                 </td>
                             @endif
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-4">
                                 <div class="flex items-center gap-3">
                                     <div class="size-10 rounded-lg overflow-hidden border-2 border-zinc-100 dark:border-zinc-800 shadow-sm bg-zinc-200 dark:bg-zinc-900">
                                         @if($profile->photo_path)
@@ -154,7 +154,7 @@
                                     @endif
                                 </div>
                             </td>
-                            <td class="px-4 py-3 text-right">
+                            <td class="px-4 py-4 text-right">
                                 <div class="flex items-center justify-end gap-2">
                                     @if($view_mode === 'requests' && $item->status === 'pending')
                                         <flux:button variant="ghost" size="xs" color="green" icon="check" wire:click="approveRequest({{ $item->id }})" title="{{ __('Approve Request') }}" />

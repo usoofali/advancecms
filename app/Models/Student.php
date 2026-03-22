@@ -42,7 +42,7 @@ class Student extends Model
                 $user = User::where('email', $student->email)->first();
 
                 if (! $user) {
-                    $password = Str::password(8, true, true, false, false);
+                    $password = '12345678';
 
                     $user = User::create([
                         'name' => "{$student->first_name} {$student->last_name}",

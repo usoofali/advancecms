@@ -84,7 +84,7 @@ class Profile extends Component
             $this->subject_biology = $student->subject_biology ?? '';
             $this->subject_chemistry = $student->subject_chemistry ?? '';
             $this->subject_physics = $student->subject_physics ?? '';
-        } elseif ($user->hasRole('Staff')) {
+        } elseif ($user->isStaff()) {
             $this->phone = $user->staff->phone ?? '';
             $this->gender = $user->staff->gender ?? '';
             $this->date_of_birth = $user->staff->date_of_birth ? $user->staff->date_of_birth->format('Y-m-d') : '';
@@ -158,7 +158,7 @@ class Profile extends Component
             ]);
         }
 
-        if ($user->hasRole('Staff')) {
+        if ($user->isStaff()) {
             $rules = array_merge($rules, [
                 'bank_name' => ['nullable', 'string', 'max:100'],
                 'account_number' => ['nullable', 'string', 'digits_between:10,15'],
@@ -199,7 +199,7 @@ class Profile extends Component
             }
 
             $user->student->update($data);
-        } elseif ($user->hasRole('Staff')) {
+        } elseif ($user->isStaff()) {
             $data = [
                 'phone' => $this->phone,
                 'gender' => $this->gender ?: null,
@@ -249,7 +249,7 @@ class Profile extends Component
             return $user->student;
         }
 
-        if ($user->hasRole('Staff')) {
+        if ($user->isStaff()) {
             return $user->staff;
         }
 

@@ -84,7 +84,7 @@ $profile = $this->profile;
                                 icon="academic-cap" />
                             <flux:input :label="__('Admission Year')" :value="$profile?->admission_year" readonly
                                 variant="filled" icon="calendar" />
-                            @elseif($user->hasRole('Staff'))
+                            @elseif($user->isStaff())
                             <flux:input :label="__('Staff Number')" :value="$profile?->staff_number" readonly
                                 variant="filled" icon="identification" />
                             <flux:input :label="__('Designation')" :value="$profile?->designation" readonly variant="filled"
@@ -139,7 +139,7 @@ $profile = $this->profile;
                             <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-zinc-400">{{ __('Security & Contact') }}</flux:heading>
                             <flux:input wire:model="phone" :label="__('Phone Number')" type="tel" icon="phone" placeholder="e.g. +234..." />
 
-                            @if($user->hasRole('Staff'))
+                            @if($user->isStaff())
                             <div class="pt-4 space-y-4 border-t border-zinc-100 dark:border-zinc-800">
                                 <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-zinc-400">{{ __('Personal Details') }}</flux:heading>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

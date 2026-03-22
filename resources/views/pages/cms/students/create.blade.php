@@ -160,7 +160,7 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component
                 <flux:select wire:model="program_id" :label="__('Program')" required :disabled="!$department_id">
                     <flux:select.option value="null">{{ __('Select program...') }}</flux:select.option>
                     @if ($department_id)
-                        @foreach (Program::query()->where('department_id', $this->department_id)->where('status', 'active')->orderBy('name')->get() as $program)
+                        @foreach (\App\Models\Program::query()->where('department_id', $this->department_id)->where('status', 'active')->orderBy('name')->get() as $program)
                         <flux:select.option :value="$program->id">
                             {{ $program->name }}
                         </flux:select.option>

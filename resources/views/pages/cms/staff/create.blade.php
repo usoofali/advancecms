@@ -32,7 +32,7 @@ new #[Layout('layouts.app')] #[Title('Add Staff')] class extends Component {
             'role_id'        => ['required', 'exists:roles,role_id'],
             'first_name'     => ['required', 'string', 'max:255'],
             'last_name'      => ['required', 'string', 'max:255'],
-            'email'          => ['required', 'email', 'max:255', 'unique:staff,email'],
+            'email'          => ['required', 'email', 'max:255', 'unique:staff,email', 'unique:users,email'],
             'phone'          => ['nullable', 'string', 'max:30'],
             'designation'    => ['required', 'string', 'max:255'],
             'status'         => ['required', 'in:active,inactive,suspended,retired'],

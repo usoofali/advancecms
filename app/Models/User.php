@@ -108,6 +108,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Check if the user is a staff member.
+     */
+    public function isStaff(): bool
+    {
+        return $this->staff()->exists();
+    }
+
+    /**
      * Check if the user's account is active based on their linked profile.
      */
     public function getStatus(): string
@@ -116,7 +124,7 @@ class User extends Authenticatable
             return $this->student?->status ?? 'inactive';
         }
 
-        if ($this->hasRole('Staff')) {
+        if ($this->isStaff()) {
             return $this->staff?->status ?? 'inactive';
         }
 

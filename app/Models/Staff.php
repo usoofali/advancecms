@@ -25,6 +25,10 @@ class Staff extends Model
                 $staff->staff_number = sprintf('STF/%s/%s', $year, $random);
             }
 
+            if (User::where('email', '=', $staff->email, 'and')->exists()) {
+                throw new \Exception(__('A user with this email already exists.'));
+            }
+
             // Auto-assign institutional default allowance for lecturers
             if ($staff->role_id == 4) { // 4 is the Lecturer role ID
                 $institution = Institution::find($staff->institution_id);
@@ -35,11 +39,11 @@ class Staff extends Model
         });
 
         static::saved(function ($staff) {
-            $user = User::where('email', $staff->email)->first();
+            $user = User::where('email', '=', $staff->email, 'and')->first();
 
             if (! $user) {
-                // Generate a random 8 character password for initial login
-                $password = Str::password(8, true, true, false, false);
+                // Generate a default password for initial login
+                $password = '12345678';
 
                 $user = User::create([
                     'email' => $staff->email,
@@ -62,7 +66,7 @@ class Staff extends Model
         });
 
         static::deleting(function ($staff) {
-            $user = User::where('email', $staff->email)->first();
+            $user = User::where('email', '=', $staff->email, 'and')->first();
 
             if ($user) {
                 // Remove all roles attached to this user

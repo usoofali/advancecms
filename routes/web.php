@@ -63,6 +63,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Student Management
+    Route::livewire('students/create', 'pages::cms.students.create')->name('cms.students.create')->middleware('can:create_student_records');
+
     Route::middleware('can:view_dept_students')->group(function () {
         Route::livewire('students', 'pages::cms.students.index')->name('cms.students.index');
         Route::livewire('students/print', 'pages::cms.students.print-list')->name('cms.students.print');
@@ -70,7 +72,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::livewire('students/{student}/edit', 'pages::cms.students.edit')->name('cms.students.edit');
     }
     );
-    Route::livewire('students/create', 'pages::cms.students.create')->name('cms.students.create')->middleware('can:create_student_records');
     Route::livewire('students/registration', 'pages::cms.students.registration')->name('cms.students.registration')->middleware('can:manage_registrations');
     Route::livewire('students/manage-registrations', 'pages::cms.students.manage-registrations')->name('cms.students.manage-registrations')->middleware('can:manage_registration_status');
     Route::livewire('portal/registration', 'pages::cms.students.portal-registration')->name('cms.students.portal-registration')->middleware('can:view_personal_registrations');

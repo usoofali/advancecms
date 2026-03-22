@@ -15,12 +15,12 @@
         </div>
     </div>
 
-    <div class="space-y-12 shrink-0">
+    <div class="space-y-6 shrink-0 pb-12">
         @foreach($items as $item)
             @php
                 if ($mode === 'requests') {
                     $user = $item->user;
-                    $profile = $type === 'student' ? $user->student : $user->staff;
+                    $profile = ($type === 'student') ? $user?->student : $user?->staff;
                     $institution = $item->institution;
                 } else {
                     $profile = $item;
@@ -28,121 +28,106 @@
                     $institution = $item->institution;
                 }
                 
-                $name = $user->name;
-                $idNumber = $type === 'student' ? ($profile->matric_number ?? 'N/A') : ($profile->staff_number ?? 'N/A');
-                $photo = $profile->photo_path ? asset('storage/'.$profile->photo_path) : null;
-                $phone = $profile->phone ?? 'N/A';
-                $email = ($type === 'staff') ? ($profile->email ?? $user->email) : ($user->email ?? 'N/A');
-                $dept = $type === 'student' ? ($profile->program?->department?->name ?? 'N/A') : ($profile->designation ?? 'N/A');
-                $secondaryInfo = $type === 'student' ? ($profile->program?->name ?? 'N/A') : ($profile->institution?->name ?? 'N/A');
+                $name = $user?->name ?? ($profile?->first_name . ' ' . $profile?->last_name);
+                $idNumber = ($type === 'student') ? ($profile?->matric_number ?? 'N/A') : ($profile?->staff_number ?? 'N/A');
+                $photo = ($profile?->photo_path) ? asset('storage/'.$profile->photo_path) : null;
+                $phone = $profile?->phone ?? 'N/A';
+                $email = ($type === 'staff') ? ($profile?->email ?? $user?->email) : ($user?->email ?? 'N/A');
+                $dept = ($type === 'student') ? ($profile?->program?->department?->name ?? 'N/A') : ($profile?->designation ?? 'N/A');
                 $qrData = route('home', ['verify_id' => $idNumber]);
             @endphp
 
-            <div class="flex flex-col md:flex-row items-center justify-center gap-8 print:gap-4 print:mb-12 break-inside-avoid">
-                <!-- FRONT SIDE (Personal Info) -->
-                <div class="id-card-side relative overflow-hidden bg-white shadow-2xl print:shadow-none print:border print:border-zinc-300" style="width: 85.6mm; height: 53.98mm; border-radius: 4mm; font-family: 'Inter', sans-serif;">
-                    <!-- Aesthetic Ribbon -->
-                    <div class="absolute top-0 right-0 w-24 h-24 -mt-12 -mr-12 {{ $type === 'student' ? 'bg-blue-600' : 'bg-slate-900' }} rotate-45 opacity-10"></div>
-                    
-                    <div class="flex h-full p-4 gap-4">
-                        <!-- Photo Column -->
-                        <div class="flex flex-col items-center gap-2 shrink-0">
-                            <div class="size-28 rounded-2xl overflow-hidden border-[3px] border-white shadow-xl bg-zinc-100 relative z-10 ring-1 ring-zinc-200">
-                                @if($photo)
-                                    <img src="{{ $photo }}" class="w-full h-full object-cover">
-                                @else
-                                    <div class="w-full h-full flex items-center justify-center bg-zinc-50">
-                                        <flux:icon.user class="size-12 text-zinc-200" />
-                                    </div>
-                                @endif
-                            </div>
-                            <div class="{{ $type === 'student' ? 'bg-blue-600' : 'bg-slate-900' }} text-white px-3 py-0.5 rounded-full shadow-sm relative z-20 -mt-3">
-                                <span class="text-[8pt] font-black uppercase tracking-[0.1em]">{{ $type }}</span>
-                            </div>
+            <div class="flex flex-col md:flex-row items-center justify-center gap-4 print:gap-2 print:mb-8 break-inside-avoid">
+                <!-- FRONT SIDE -->
+                <div class="id-card-side relative overflow-hidden bg-white shadow-xl print:shadow-none print:border print:border-zinc-300" style="width: 85.6mm; height: 53.98mm; border-radius: 3mm; font-family: 'Inter', sans-serif;">
+                    <!-- Minimalist Header -->
+                    <div class="relative z-10 flex items-center px-4 py-2 gap-2 bg-white/60 backdrop-blur-sm border-b border-zinc-100">
+                        <div class="size-10 bg-white rounded-lg p-1 shadow-sm border border-zinc-50 flex items-center justify-center shrink-0">
+                            @if($institution->logo_url)
+                                <img src="{{ $institution->logo_url }}" class="w-full h-full object-contain">
+                            @else
+                                <flux:icon.building-library class="size-6 text-blue-600" />
+                            @endif
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h2 class="text-[8pt] font-black text-zinc-900 uppercase leading-none break-words pr-2">{{ $institution->name }}</h2>
+                            <p class="text-[6pt] font-black {{ $type === 'student' ? 'text-blue-600' : 'text-zinc-600' }} uppercase mt-0.5 tracking-wider">{{ $type === 'student' ? __('Student ID Card') : __('Staff Identity Card') }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Main Content -->
+                    <div class="relative z-10 flex px-4 py-3 gap-4 items-center">
+                        <div class="size-24 rounded-xl overflow-hidden border-2 border-white shadow-md bg-zinc-50 shrink-0">
+                            @if($photo)
+                                <img src="{{ $photo }}" class="w-full h-full object-cover">
+                            @else
+                                <div class="w-full h-full flex items-center justify-center">
+                                    <flux:icon.user class="size-10 text-zinc-200" />
+                                </div>
+                            @endif
                         </div>
 
-                        <!-- Data Column -->
-                        <div class="flex-1 flex flex-col justify-center gap-3">
-                            <div class="border-b-2 border-zinc-100 pb-2">
-                                <h3 class="text-[14pt] font-black text-zinc-900 leading-tight uppercase tracking-tight">{{ $name }}</h3>
-                            </div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="text-[12pt] font-black text-zinc-900 truncate leading-tight uppercase">{{ $name }}</h3>
+                            <p class="text-[9pt] font-bold text-blue-600 mb-2 truncate uppercase">{{ $dept }}</p>
                             
-                            <div class="grid grid-cols-1 gap-2">
+                            <div class="grid grid-cols-1 gap-1">
                                 <div class="flex flex-col">
-                                    <span class="text-[7pt] text-zinc-400 font-black uppercase tracking-widest">{{ $type === 'student' ? __('Matric Number') : __('Staff ID') }}</span>
-                                    <span class="text-[12pt] font-black text-zinc-800 tracking-wider font-mono">{{ $idNumber }}</span>
-                                </div>
-                                <div class="flex flex-col">
-                                    <span class="text-[7pt] text-zinc-400 font-black uppercase tracking-widest">{{ __('Department / Unit') }}</span>
-                                    <span class="text-[10pt] font-bold text-zinc-700 truncate w-48">{{ $dept }}</span>
+                                    <span class="text-[5.5pt] text-zinc-400 font-bold uppercase tracking-widest">{{ $type === 'student' ? __('Matric Number') : __('Staff Number') }}</span>
+                                    <span class="text-[11pt] font-black text-zinc-800 tracking-wider font-mono">{{ $idNumber }}</span>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Small Corner Institution Logo -->
-                    <div class="absolute bottom-4 left-4 opacity-20 size-8">
-                        @if($institution->logo_url)
-                            <img src="{{ $institution->logo_url }}" class="w-full h-full object-contain grayscale">
-                        @endif
-                    </div>
+
+                    <!-- Side Accent -->
+                    <div class="absolute right-0 top-0 h-full w-1 {{ $type === 'student' ? 'bg-blue-600' : 'bg-zinc-900' }}"></div>
                 </div>
 
-                <!-- BACK SIDE (Institution Info) -->
-                <div class="id-card-side relative overflow-hidden bg-white shadow-2xl print:shadow-none print:border print:border-zinc-300" style="width: 85.6mm; height: 53.98mm; border-radius: 4mm; font-family: 'Inter', sans-serif;">
-                     <!-- Header Accent -->
-                     <div class="absolute top-0 w-full h-12 {{ $type === 'student' ? 'bg-blue-600' : 'bg-slate-900' }} flex items-center px-6 gap-3 shadow-md">
-                         <div class="size-8 bg-white rounded-lg p-1 flex items-center justify-center shadow-sm">
-                             @if($institution->logo_url)
-                                 <img src="{{ $institution->logo_url }}" class="w-full h-full object-contain">
-                             @else
-                                 <flux:icon.building-library class="size-5 text-blue-600" />
-                             @endif
-                         </div>
-                         <h2 class="text-[10pt] font-black uppercase tracking-tight text-white truncate drop-shadow-sm">{{ $institution->name }}</h2>
-                     </div>
-
-                     <div class="mt-12 p-5 flex flex-col h-full overflow-hidden">
-                         <div class="flex justify-between items-start gap-4 mb-4">
-                             <!-- Contact Info -->
-                             <div class="space-y-3">
+                <!-- BACK SIDE -->
+                <div class="id-card-side relative overflow-hidden bg-white shadow-xl print:shadow-none print:border print:border-zinc-300" style="width: 85.6mm; height: 53.98mm; border-radius: 3mm; font-family: 'Inter', sans-serif;">
+                     <div class="p-4 flex flex-col h-full bg-zinc-50/30">
+                         <!-- Details Grid -->
+                         <div class="flex justify-between items-start mb-3">
+                             <div class="space-y-2">
                                  <div>
-                                     <h4 class="text-[8pt] font-black uppercase tracking-[0.1em] text-zinc-400 mb-1">{{ __('Emergency Contact') }}</h4>
-                                     <div class="flex items-center gap-2 text-zinc-700">
-                                         <flux:icon.phone class="size-3 opacity-50" />
-                                         <span class="text-[10pt] font-bold">{{ $phone }}</span>
+                                     <h4 class="text-[6pt] font-black text-zinc-400 uppercase tracking-widest mb-0.5">{{ __('Address') }}</h4>
+                                     <p class="text-[7pt] font-bold text-zinc-700 leading-tight w-40 italic">{{ $institution->address ?: __('No address set.') }}</p>
+                                 </div>
+                                 <div class="grid grid-cols-1 gap-1">
+                                     <div class="flex items-center gap-1.5 text-[7pt] font-bold text-zinc-800">
+                                         <flux:icon.phone class="size-2 text-zinc-400" />
+                                         <span>{{ $phone }}</span>
+                                     </div>
+                                     <div class="flex items-center gap-1.5 text-[7pt] font-bold text-zinc-800">
+                                         <flux:icon.envelope class="size-2 text-zinc-400" />
+                                         <span class="truncate w-32 lowercase">{{ $email }}</span>
                                      </div>
                                  </div>
-                                 <div class="flex items-center gap-2 text-zinc-700">
-                                     <flux:icon.envelope class="size-3 opacity-50" />
-                                     <span class="text-[9pt] font-bold truncate w-40">{{ $email }}</span>
-                                 </div>
                              </div>
-
-                             <!-- QR Code -->
-                             <div class="bg-zinc-50 p-1.5 rounded-xl border border-zinc-100 shadow-sm">
-                                 <img src="https://api.qrserver.com/v1/create-qr-code/?size=60x60&data={{ urlencode($qrData) }}" class="size-12">
+                             <div class="bg-white p-1 rounded-lg border border-zinc-100 shadow-sm">
+                                 <img src="https://api.qrserver.com/v1/create-qr-code/?size=60x60&data={{ urlencode($qrData) }}" class="size-10">
                              </div>
                          </div>
 
-                         <!-- Disclaimer & Signature -->
-                         <div class="flex-1 border-t border-zinc-100 pt-3 relative">
-                             <p class="text-[7pt] leading-[1.3] text-zinc-500 font-medium italic pr-24">
-                                 {{ __('This card is the property of :inst. If found, please return to any nearest police station or notify the institution official.', ['inst' => $institution->name]) }}
+                         <!-- Disclaimer -->
+                         <div class="border-t border-dashed border-zinc-200 pt-2 flex-1">
+                             <p class="text-[6pt] text-zinc-500 font-medium leading-normal italic">
+                                 {{ __('This card is the property of :inst. If found, please return to any nearest police station or notify the institution.', ['inst' => $institution->name]) }}
                              </p>
-                             
-                             <div class="absolute right-0 bottom-2 flex flex-col items-center">
-                                 <div class="h-6 w-20 border-b border-zinc-400 relative">
-                                     <span class="absolute top-0 w-full text-center text-[7pt] font-cursive italic text-zinc-300">Auth. Signature</span>
-                                 </div>
-                             </div>
                          </div>
 
-                         <!-- Barcode -->
-                         <div class="h-5 w-full bg-zinc-50 rounded border border-zinc-100 overflow-hidden flex items-end justify-center px-2 gap-0.5 mt-2">
-                             @foreach([1,3,1,1,2,1,4,1,2,2,1,3,1,1,2,1,1,4,1,3,1,1,2] as $w)
-                                 <div class="bg-zinc-900 h-full" style="width:{{ $w * 1.5 }}px"></div>
-                             @endforeach
+                         <!-- Footer -->
+                         <div class="flex items-end justify-between mt-2">
+                             <div class="h-4 w-32 bg-zinc-100 rounded-sm overflow-hidden flex items-end px-1 gap-px">
+                                 @foreach([1,3,1,2,1,1,4,1,2,1,2,1,3,1,1,2,1,4,1] as $w)
+                                     <div class="bg-zinc-800 h-full" style="width:{{ $w }}px"></div>
+                                 @endforeach
+                             </div>
+                             <div class="flex flex-col items-center">
+                                 <div class="h-4 w-20 border-b border-zinc-300"></div>
+                                 <span class="text-[5pt] font-bold text-zinc-400 uppercase mt-1">{{ __('Authorized Signature') }}</span>
+                             </div>
                          </div>
                      </div>
                 </div>

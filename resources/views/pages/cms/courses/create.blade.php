@@ -52,7 +52,7 @@ new #[Layout('layouts.app')] #[Title('Add Course')] class extends Component
     public function save(): void
     {
         $this->course_code = strtoupper(str_replace(' ', '', $this->course_code));
-        $this->title = Str::title($this->title);
+        $this->title = strtoupper($this->title);
 
         $validated = $this->validate([
             'institution_id' => ['required', 'exists:institutions,id'],

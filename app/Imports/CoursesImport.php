@@ -79,7 +79,7 @@ class CoursesImport
                     [
                         'program_id' => $program->id,
                         'department_id' => $program->department_id,
-                        'title' => Str::title(trim($row['title'])),
+                        'title' => strtoupper(trim($row['title'])),
                         'credit_unit' => (int) $row['credit_unit'],
                         'level' => (int) $row['level'],
                         'semester' => (int) $row['semester'],

@@ -151,7 +151,10 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
 
     public function with(): array
     {
+        $activeSession = \App\Models\AcademicSession::where('status', 'active')->first();
+
         return [
+            'activeSession' => $activeSession,
             'students' => Student::query()
                 ->with(['program.department.institution'])
                 ->when($this->filterInstitution ?: auth()->user()->institution_id, fn ($q, $id) => $q->where('institution_id', $id))
@@ -317,7 +320,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
                             }}</div>
                     </td>
                     <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400 font-mono">
-                        {{ $student->entry_level }}
+                        {{ $activeSession ? $student->currentLevel($activeSession) : $student->entry_level }}L
                     </td>
                     <td class="px-4 py-4 text-sm">
                         <flux:badge :color="match($student->status) {

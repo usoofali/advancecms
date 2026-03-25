@@ -2,6 +2,8 @@
 
 use App\Models\Course;
 use App\Models\Department;
+use App\Models\Institution;
+use App\Models\Program;
 use App\Exports\CoursesExport;
 use App\Imports\CoursesImport;
 use Livewire\Attributes\Layout;
@@ -14,13 +16,47 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
     use WithPagination, WithFileUploads;
 
     public string $search = '';
+    public ?int $institutionId = null;
+    public ?int $departmentId = null;
+    public ?int $programId = null;
+    public ?int $level = null;
+    public ?int $semester = null;
+
     public int|string|null $deletingId = null;
     public $importFile = null;
     /** @var array<int, string> */
     public array $importFailures = [];
     public int $importedCount = 0;
 
-    public function updatingSearch(): void
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedInstitutionId(): void
+    {
+        $this->departmentId = null;
+        $this->programId = null;
+        $this->resetPage();
+    }
+
+    public function updatedDepartmentId(): void
+    {
+        $this->programId = null;
+        $this->resetPage();
+    }
+
+    public function updatedProgramId(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedLevel(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSemester(): void
     {
         $this->resetPage();
     }
@@ -73,13 +109,31 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
 
     public function with(): array
     {
+        $user = auth()->user();
+        $institutionId = $user->institution_id ?: $this->institutionId;
+
         return [
+            'institutions' => $user->institution_id ? [] : Institution::all(),
+            'departments' => Department::when($institutionId, fn($q) => $q->where('institution_id', $institutionId))->get(),
+            'programs' => Program::when($this->departmentId, fn($q) => $q->where('department_id', $this->departmentId))->get(),
+            'levels' => Course::query()
+                ->when($institutionId, fn ($q) => $q->where('institution_id', $institutionId))
+                ->distinct()
+                ->orderBy('level')
+                ->pluck('level')
+                ->filter()
+                ->values(),
+            'semesters' => [1 => '1st Semester', 2 => '2nd Semester'],
             'courses' => Course::query()
                 ->with('department.institution')
-                ->when(auth()->user()->institution_id, fn ($q) => $q->where('institution_id', auth()->user()->institution_id))
+                ->when($institutionId, fn ($q) => $q->where('institution_id', $institutionId))
+                ->when($this->departmentId, fn ($q) => $q->where('department_id', $this->departmentId))
+                ->when($this->programId, fn ($q) => $q->where('program_id', $this->programId))
+                ->when($this->level, fn ($q) => $q->where('level', $this->level))
+                ->when($this->semester, fn ($q) => $q->where('semester', $this->semester))
                 ->when($this->search, function ($q) {
-                    $q->where('title', 'like', "%{$this->search}%")
-                      ->orWhere('course_code', 'like', "%{$this->search}%");
+                    $q->where(fn($sq) => $sq->where('title', 'like', "%{$this->search}%")
+                      ->orWhere('course_code', 'like', "%{$this->search}%"));
                 })
                 ->latest()
                 ->paginate(15),
@@ -104,7 +158,48 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
             </div>
         </div>
 
-        <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search courses by title or code...')" class="w-full sm:max-w-md" />
+        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+            <div class="md:col-span-2">
+                <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search courses by title or code...')" />
+            </div>
+
+            @if(!auth()->user()->institution_id)
+                <flux:select wire:model.live="institutionId" :label="__('Institution')">
+                    <option value="">{{ __('All Institutions') }}</option>
+                    @foreach($institutions as $institution)
+                        <option value="{{ $institution->id }}">{{ $institution->acronym }}</option>
+                    @endforeach
+                </flux:select>
+            @endif
+
+            <flux:select wire:model.live="departmentId" :label="__('Department')">
+                <option value="">{{ __('All Departments') }}</option>
+                @foreach($departments as $dept)
+                    <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                @endforeach
+            </flux:select>
+
+            <flux:select wire:model.live="programId" :label="__('Program')" :disabled="!$departmentId">
+                <option value="">{{ __('All Programs') }}</option>
+                @foreach($programs as $prog)
+                    <option value="{{ $prog->id }}">{{ $prog->name }}</option>
+                @endforeach
+            </flux:select>
+
+            <flux:select wire:model.live="level" :label="__('Level')">
+                <option value="">{{ __('All Levels') }}</option>
+                @foreach($levels as $lvl)
+                    <option value="{{ $lvl }}">{{ $lvl }}L</option>
+                @endforeach
+            </flux:select>
+
+            <flux:select wire:model.live="semester" :label="__('Semester')">
+                <option value="">{{ __('All Semesters') }}</option>
+                @foreach($semesters as $val => $label)
+                    <option value="{{ $val }}">{{ $label }}</option>
+                @endforeach
+            </flux:select>
+        </div>
 
         <div class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
             <table class="w-full text-left border-collapse">

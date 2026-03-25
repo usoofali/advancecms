@@ -7,6 +7,7 @@ use App\Models\Department;
 use App\Models\Institution;
 use App\Models\Program;
 use App\Models\Semester;
+use App\Models\Staff;
 use App\Models\User;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
@@ -31,10 +32,25 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
 
     public int|string|null $revokingId = null;
 
+    public bool $isHod = false;
+    public array $hodDepartmentIds = [];
+
     public function mount(): void
     {
-        if (auth()->user()->institution_id) {
-            $this->institution_id = auth()->user()->institution_id;
+        $user = auth()->user();
+        if ($user->institution_id) {
+            $this->institution_id = $user->institution_id;
+        }
+
+        $staff = Staff::where('email', $user->email)->first();
+        if ($staff) {
+            $this->hodDepartmentIds = Department::where('hod_id', $staff->id)->pluck('id')->toArray();
+            if (!empty($this->hodDepartmentIds)) {
+                $this->isHod = true;
+                if (count($this->hodDepartmentIds) === 1) {
+                    $this->department_id = $this->hodDepartmentIds[0];
+                }
+            }
         }
     }
 
@@ -147,6 +163,9 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
         if ($this->institution_id && $this->institution_id !== 'null') {
             $coursesQuery->where('institution_id', $this->institution_id);
         }
+        if ($this->isHod && (!$this->department_id || $this->department_id === 'null')) {
+            $coursesQuery->whereIn('department_id', $this->hodDepartmentIds);
+        }
         if ($this->department_id && $this->department_id !== 'null') {
             $coursesQuery->where('department_id', $this->department_id);
         }
@@ -156,6 +175,10 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
 
         $allocationsQuery = CourseAllocation::with(['user', 'course.department', 'course.program', 'academicSession', 'semester'])
             ->latest('course_allocations.created_at');
+
+        if ($this->isHod && (!$this->department_id || $this->department_id === 'null')) {
+            $allocationsQuery->whereHas('course', fn($q) => $q->whereIn('department_id', $this->hodDepartmentIds));
+        }
 
         if ($this->institution_id && $this->institution_id !== 'null') {
             $allocationsQuery->where('course_allocations.institution_id', $this->institution_id);
@@ -186,10 +209,16 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
         if ($this->institution_id && $this->institution_id !== 'null') {
             $departmentsQuery->where('institution_id', $this->institution_id);
         }
+        if ($this->isHod) {
+            $departmentsQuery->whereIn('id', $this->hodDepartmentIds);
+        }
 
         $programsQuery = Program::query();
         if ($this->institution_id && $this->institution_id !== 'null') {
             $programsQuery->where('institution_id', $this->institution_id);
+        }
+        if ($this->isHod && (!$this->department_id || $this->department_id === 'null')) {
+            $programsQuery->whereIn('department_id', $this->hodDepartmentIds);
         }
         if ($this->department_id && $this->department_id !== 'null') {
             $programsQuery->where('department_id', $this->department_id);
@@ -266,12 +295,14 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
                         @endforeach
                     </flux:select>
 
+                    @if (!$this->isHod || count($this->hodDepartmentIds) > 1)
                     <flux:select wire:model.live="department_id" :label="__('Department')">
-                        <flux:select.option value="null">{{ __('All Departments (Optional)...') }}</flux:select.option>
+                        <flux:select.option value="null">{{ $this->isHod ? __('All My Departments') : __('All Departments (Optional)...') }}</flux:select.option>
                         @foreach ($departments as $dept)
                         <flux:select.option :value="$dept->id">{{ $dept->name }}</flux:select.option>
                         @endforeach
                     </flux:select>
+                    @endif
 
                     <flux:select wire:model.live="program_id" :label="__('Program')"
                         :disabled="!$department_id || $department_id === 'null'">

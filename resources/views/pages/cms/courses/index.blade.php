@@ -4,6 +4,7 @@ use App\Models\Course;
 use App\Models\Department;
 use App\Models\Institution;
 use App\Models\Program;
+use App\Models\Staff;
 use App\Exports\CoursesExport;
 use App\Imports\CoursesImport;
 use Livewire\Attributes\Layout;
@@ -22,11 +23,31 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
     public ?int $level = null;
     public ?int $semester = null;
 
+    public bool $isHod = false;
+    public array $hodDepartmentIds = [];
+
     public int|string|null $deletingId = null;
     public $importFile = null;
     /** @var array<int, string> */
     public array $importFailures = [];
     public int $importedCount = 0;
+
+    public function mount(): void
+    {
+        $user = auth()->user();
+        $staff = Staff::where('email', $user->email)->first();
+        
+        if ($staff) {
+            $this->hodDepartmentIds = Department::where('hod_id', $staff->id)->pluck('id')->toArray();
+            if (!empty($this->hodDepartmentIds)) {
+                $this->isHod = true;
+                // If only one department, auto-select it
+                if (count($this->hodDepartmentIds) === 1) {
+                    $this->departmentId = $this->hodDepartmentIds[0];
+                }
+            }
+        }
+    }
 
     public function updatedSearch(): void
     {
@@ -112,12 +133,21 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
         $user = auth()->user();
         $institutionId = $user->institution_id ?: $this->institutionId;
 
+        $departmentsQuery = Department::query()->when($institutionId, fn($q) => $q->where('institution_id', $institutionId));
+        if ($this->isHod) {
+            $departmentsQuery->whereIn('id', $this->hodDepartmentIds);
+        }
+        $departments = $departmentsQuery->get();
+
         return [
             'institutions' => $user->institution_id ? [] : Institution::all(),
-            'departments' => Department::when($institutionId, fn($q) => $q->where('institution_id', $institutionId))->get(),
-            'programs' => Program::when($this->departmentId, fn($q) => $q->where('department_id', $this->departmentId))->get(),
+            'departments' => $departments,
+            'programs' => Program::when($this->departmentId, fn($q) => $q->where('department_id', $this->departmentId))
+                ->when($this->isHod && !$this->departmentId, fn($q) => $q->whereIn('department_id', $this->hodDepartmentIds))
+                ->get(),
             'levels' => Course::query()
                 ->when($institutionId, fn ($q) => $q->where('institution_id', $institutionId))
+                ->when($this->isHod, fn($q) => $q->whereIn('department_id', $this->hodDepartmentIds))
                 ->distinct()
                 ->orderBy('level')
                 ->pluck('level')
@@ -127,6 +157,7 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
             'courses' => Course::query()
                 ->with('department.institution')
                 ->when($institutionId, fn ($q) => $q->where('institution_id', $institutionId))
+                ->when($this->isHod && !$this->departmentId, fn($q) => $q->whereIn('department_id', $this->hodDepartmentIds))
                 ->when($this->departmentId, fn ($q) => $q->where('department_id', $this->departmentId))
                 ->when($this->programId, fn ($q) => $q->where('program_id', $this->programId))
                 ->when($this->level, fn ($q) => $q->where('level', $this->level))
@@ -172,12 +203,14 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
                 </flux:select>
             @endif
 
+            @if(!$this->isHod || count($this->hodDepartmentIds) > 1)
             <flux:select wire:model.live="departmentId" :label="__('Department')">
-                <option value="">{{ __('All Departments') }}</option>
+                <option value="">{{ $this->isHod ? __('All My Departments') : __('All Departments') }}</option>
                 @foreach($departments as $dept)
                     <option value="{{ $dept->id }}">{{ $dept->name }}</option>
                 @endforeach
             </flux:select>
+            @endif
 
             <flux:select wire:model.live="programId" :label="__('Program')" :disabled="!$departmentId">
                 <option value="">{{ __('All Programs') }}</option>

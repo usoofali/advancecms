@@ -15,6 +15,7 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
     public int|string $student_id = '';
     public int|string $session_id = '';
     public int|string $semester_id = '';
+    public string $student_search = '';
     public array $selected_courses = [];
     public array $courses_to_drop = [];
     public int|string $institution_id = '';
@@ -213,7 +214,15 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
                 : \App\Models\Institution::query()->where('status', 'active')->orderBy('name')->get(),
             'students'          => Student::query()
                 ->when($this->institution_id, fn($q) => $q->where('institution_id', $this->institution_id))
+                ->when($this->student_search, function($q) {
+                    $q->where(function($sq) {
+                        $sq->where('matric_number', 'like', "%{$this->student_search}%")
+                           ->orWhere('first_name', 'like', "%{$this->student_search}%")
+                           ->orWhere('last_name', 'like', "%{$this->student_search}%");
+                    });
+                })
                 ->orderBy('last_name')
+                ->limit(50)
                 ->get(),
             'sessions'          => AcademicSession::query()->where('status', 'active')->get(),
             'semesters'         => $this->session_id ? Semester::where('academic_session_id', $this->session_id)->get() : [],
@@ -256,13 +265,17 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
             </flux:select>
             @endif
 
-            <flux:select wire:model.live="student_id" :label="__('Student')" required :disabled="!$institution_id">
-                <flux:select.option value="null">{{ __('Select student...') }}</flux:select.option>
-                @foreach ($students as $stu)
-                <flux:select.option :value="$stu->id">{{ $stu->full_name }} ({{ $stu->matric_number }})
-                </flux:select.option>
-                @endforeach
-            </flux:select>
+            <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <flux:input wire:model.live.debounce.300ms="student_search" :label="__('Search Student')" :placeholder="__('Matric number or name...')" icon="magnifying-glass" />
+
+                <flux:select wire:model.live="student_id" :label="__('Select Student')" required :disabled="!$institution_id">
+                    <flux:select.option value="null">{{ __('Select student...') }}</flux:select.option>
+                    @foreach ($students as $stu)
+                    <flux:select.option :value="$stu->id">{{ $stu->full_name }} ({{ $stu->matric_number }})
+                    </flux:select.option>
+                    @endforeach
+                </flux:select>
+            </div>
 
             <flux:select wire:model.live="session_id" :label="__('Academic Session')" required>
                 <flux:select.option value="null">{{ __('Select session...') }}</flux:select.option>

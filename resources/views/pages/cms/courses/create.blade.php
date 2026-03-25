@@ -4,6 +4,7 @@ use App\Models\Course;
 use App\Models\Department;
 use App\Models\Institution;
 use App\Models\Program;
+use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -50,17 +51,23 @@ new #[Layout('layouts.app')] #[Title('Add Course')] class extends Component
 
     public function save(): void
     {
+        $this->course_code = strtoupper(str_replace(' ', '', $this->course_code));
+        $this->title = Str::title($this->title);
+
         $validated = $this->validate([
             'institution_id' => ['required', 'exists:institutions,id'],
             'program_id' => ['required', 'exists:programs,id'],
             'department_id' => ['required', 'exists:departments,id'],
-            'course_code' => ['required', 'string', 'max:20', 'unique:courses,course_code'],
+            'course_code' => ['required', 'string', 'size:6', 'regex:/^[A-Z]{3}[0-9]{3}$/', 'unique:courses,course_code'],
             'title' => ['required', 'string', 'max:255'],
             'credit_unit' => ['required', 'integer', 'min:1', 'max:6'],
             'course_type' => ['required', 'in:core,elective'],
             'level' => ['required', 'integer', 'multiple_of:100', 'min:100', 'max:600'],
             'semester' => ['required', 'in:1,2'],
             'status' => ['required', 'in:active,inactive'],
+        ], [
+            'course_code.regex' => 'The course code must be 3 letters followed by 3 digits (e.g. CSE101).',
+            'course_code.size' => 'The course code must be exactly 6 characters.',
         ]);
 
         Course::create($validated);

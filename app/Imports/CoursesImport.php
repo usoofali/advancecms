@@ -4,6 +4,7 @@ namespace App\Imports;
 
 use App\Models\Course;
 use App\Models\Program;
+use Illuminate\Support\Str;
 
 class CoursesImport
 {
@@ -73,12 +74,12 @@ class CoursesImport
                 Course::updateOrCreate(
                     [
                         'institution_id' => $this->institutionId,
-                        'course_code' => strtoupper(trim($row['course_code'])),
+                        'course_code' => strtoupper(str_replace(' ', '', $row['course_code'])),
                     ],
                     [
                         'program_id' => $program->id,
                         'department_id' => $program->department_id,
-                        'title' => trim($row['title']),
+                        'title' => Str::title(trim($row['title'])),
                         'credit_unit' => (int) $row['credit_unit'],
                         'level' => (int) $row['level'],
                         'semester' => (int) $row['semester'],

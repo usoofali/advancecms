@@ -207,9 +207,10 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
                     <tr>
                         <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Code') }}</th>
                         <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Title') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 hidden sm:table-cell">{{ __('Units') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 hidden md:table-cell">{{ __('Level/Semester') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 hidden lg:table-cell">{{ __('Department') }}</th>
+                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-center">{{ __('Units') }}</th>
+                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-center">{{ __('Level') }}</th>
+                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-center">{{ __('Semester') }}</th>
+                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 hidden lg:table-cell font-normal text-xs text-zinc-500">{{ __('Department') }}</th>
                         <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-right">{{ __('Actions') }}</th>
                     </tr>
                 </thead>
@@ -222,11 +223,14 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
                             <td class="px-4 py-4 text-sm text-zinc-900 dark:text-zinc-100">
                                 {{ $course->title }}
                             </td>
-                             <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400 hidden sm:table-cell">
+                            <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400 text-center font-mono">
                                 {{ $course->credit_unit }}
                             </td>
-                            <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400 hidden md:table-cell">
-                                {{ $course->level }}L / {{ $course->semester == 1 ? '1st' : '2nd' }} Sem
+                            <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400 text-center font-mono">
+                                {{ $course->level }}L
+                            </td>
+                            <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400 text-center">
+                                {{ $course->semester == 1 ? '1st' : '2nd' }}
                             </td>
                             <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400 hidden lg:table-cell">
                                 <div class="text-sm font-medium">{{ $course->department->name }}</div>

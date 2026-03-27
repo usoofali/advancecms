@@ -180,7 +180,7 @@ class Student extends Model
     public function currentLevel(AcademicSession $session): int
     {
         $sessionStartYear = (int) explode('/', $session->name)[0];
-        $yearsElapsed = max(0, $sessionStartYear - $this->admission_year);
+        $yearsElapsed = max(0, $sessionStartYear - (int) $this->admission_year);
 
         return $this->entry_level + ($yearsElapsed * 100);
     }

@@ -175,51 +175,59 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
         $carryoverCourses = collect();
         $currentLevel = null;
 
-        if ($student && $this->semester_id) {
+        // Fetch valid sessions since student's admission year
+        $sessions = $student 
+            ? AcademicSession::all()
+                ->filter(fn($s) => (int) explode('/', $s->name)[0] >= (int) ($student->admission_year ?? 0))
+                ->sortByDesc('name')
+            : collect();
+
+        // Detect level as soon as session is picked
+        if ($student && $this->session_id && $this->session_id !== 'null') {
             $session = AcademicSession::find($this->session_id);
-            $semester = Semester::find($this->semester_id);
+            if ($session) {
+                $currentLevel = $student->currentLevel($session);
+                
+                if ($this->semester_id && $this->semester_id !== 'null') {
+                    $semester = Semester::find($this->semester_id);
+                    if ($semester) {
+                        $allLevelCourses = Course::query()
+                            ->where('institution_id', $this->institution_id)
+                            ->where('program_id', $student->program_id)
+                            ->where('level', $currentLevel)
+                            ->where('semester', $semester->name === 'first' ? 1 : 2)
+                            ->get();
 
-            $currentLevel = $student->currentLevel($session);
+                        $registeredCourseIds = CourseRegistration::query()
+                            ->where('institution_id', $this->institution_id)
+                            ->where('student_id', $this->student_id)
+                            ->where('academic_session_id', $this->session_id)
+                            ->where('semester_id', $this->semester_id)
+                            ->pluck('course_id')
+                            ->toArray();
 
-            $allLevelCourses = Course::query()
-                ->where('institution_id', $this->institution_id)
-                ->where('program_id', $student->program_id)
-                ->where('level', $currentLevel)
-                ->where('semester', $semester->name === 'first' ? 1 : 2)
-                ->get();
+                        $carryoverCourses = app(GradingService::class)->getCarryoverCourses(
+                            $student,
+                            (int) $this->institution_id,
+                            (int) $this->session_id,
+                            (int) $this->semester_id
+                        );
 
-            $registeredCourseIds = CourseRegistration::query()
-                ->where('institution_id', $this->institution_id)
-                ->where('student_id', $this->student_id)
-                ->where('academic_session_id', $this->session_id)
-                ->where('semester_id', $this->semester_id)
-                ->pluck('course_id')
-                ->toArray();
+                        $carryoverIds = $carryoverCourses->pluck('id');
 
-            // Detect mandatory carryover courses not yet registered
-            $carryoverCourses = app(GradingService::class)->getCarryoverCourses(
-                $student,
-                (int) $this->institution_id,
-                (int) $this->session_id,
-                (int) $this->semester_id
-            );
+                        $availableCourses = $allLevelCourses
+                            ->whereNotIn('id', $registeredCourseIds)
+                            ->whereNotIn('id', $carryoverIds->all());
 
-            $carryoverIds = $carryoverCourses->pluck('id');
-
-            // Available = level courses excluding registered and carryovers
-            $availableCourses = $allLevelCourses
-                ->whereNotIn('id', $registeredCourseIds)
-                ->whereNotIn('id', $carryoverIds->all());
-
-            $registeredCourses = $allLevelCourses->whereIn('id', $registeredCourseIds);
+                        $registeredCourses = $allLevelCourses->whereIn('id', $registeredCourseIds);
+                    }
+                }
+            }
         }
 
         return view('pages.cms.students.portal-registration', [
-            'sessions'          => $student ? AcademicSession::query()
-                                    ->whereRaw("CAST(SUBSTRING_INDEX(name, '/', 1) AS UNSIGNED) >= ?", [$student->admission_year])
-                                    ->orderBy('name', 'desc')
-                                    ->get() : collect(),
-            'semesters'         => $this->session_id && $this->session_id !== 'null' ? Semester::where('academic_session_id', $this->session_id)->get() : [],
+            'sessions'          => $sessions,
+            'semesters'         => ($this->session_id && $this->session_id !== 'null') ? Semester::where('academic_session_id', $this->session_id)->get() : [],
             'carryoverCourses'  => $carryoverCourses,
             'availableCourses'  => $availableCourses,
             'registeredCourses' => $registeredCourses,

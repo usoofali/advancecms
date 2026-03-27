@@ -215,14 +215,17 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
         }
 
         return view('pages.cms.students.portal-registration', [
-            'sessions'          => AcademicSession::query()->where('status', 'active')->get(),
-            'semesters'         => $this->session_id ? Semester::where('academic_session_id', $this->session_id)->get() : [],
+            'sessions'          => $student ? AcademicSession::query()
+                                    ->whereRaw("CAST(SUBSTRING_INDEX(name, '/', 1) AS UNSIGNED) >= ?", [$student->admission_year])
+                                    ->orderBy('name', 'desc')
+                                    ->get() : collect(),
+            'semesters'         => $this->session_id && $this->session_id !== 'null' ? Semester::where('academic_session_id', $this->session_id)->get() : [],
             'carryoverCourses'  => $carryoverCourses,
             'availableCourses'  => $availableCourses,
             'registeredCourses' => $registeredCourses,
             'currentLevel'      => $currentLevel,
             'student'           => $student,
-            'isClosed'          => ($this->student_id && $this->session_id && $this->semester_id) 
+            'isClosed'          => ($this->student_id && $this->session_id && $this->session_id !== 'null' && $this->semester_id && $this->semester_id !== 'null') 
                                     ? RegistrationStatus::where('student_id', $this->student_id)
                                         ->where('academic_session_id', $this->session_id)
                                         ->where('semester_id', $this->semester_id)

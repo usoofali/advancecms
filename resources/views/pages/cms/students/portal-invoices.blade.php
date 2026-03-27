@@ -525,14 +525,14 @@ new #[Layout('layouts.app')] #[Title('My Invoices')] class extends Component
 
             <div class="grid grid-cols-1 gap-4">
                 @foreach ($available as $invoice)
-                <flux:card class="flex items-center justify-between gap-4 border-dashed">
-                    <div>
+                <flux:card class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-dashed">
+                    <div class="space-y-0.5">
                         <flux:text weight="medium">{{ $invoice->title }}</flux:text>
                         <flux:text size="sm" class="text-zinc-500">{{ $invoice->academicSession?->name }}</flux:text>
                     </div>
 
-                    <div class="flex items-center gap-6">
-                        <flux:text weight="semibold">₦{{ number_format($invoice->total_amount, 2) }}</flux:text>
+                    <div class="flex items-center gap-4 sm:gap-6 justify-between sm:justify-end">
+                        <flux:text weight="semibold" class="text-lg">₦{{ number_format($invoice->total_amount, 2) }}</flux:text>
                         <flux:button variant="subtle" size="sm" icon="plus"
                             wire:click="confirmGenerate({{ $invoice->id }})">
                             Generate Invoice

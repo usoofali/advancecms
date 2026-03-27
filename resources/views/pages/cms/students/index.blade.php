@@ -162,7 +162,15 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
                     $q->whereHas('program', fn ($pq) => $pq->where('department_id', $this->filterDepartment));
                 })
                 ->when($this->filterProgram, fn ($q) => $q->where('program_id', $this->filterProgram))
-                ->when($this->filterLevel, fn ($q) => $q->where('entry_level', $this->filterLevel)) // Assuming level maps to entry_level or we might need a currentLevel helper
+                ->when($this->filterLevel, function ($q) use ($activeSession) {
+                    if ($activeSession) {
+                        return $q->whereRaw("entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS UNSIGNED) - admission_year) * 100 = ?", [
+                            $activeSession->name,
+                            $this->filterLevel
+                        ]);
+                    }
+                    return $q->where('entry_level', $this->filterLevel);
+                })
                 ->when($this->filterStatus, fn ($q) => $q->where('status', $this->filterStatus))
                 ->when($this->search, function ($q) {
                     $q->where(function ($sq) {
@@ -178,7 +186,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
 }; ?>
 
 <div class="flex h-full w-full flex-1 flex-col gap-4">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
             <flux:heading size="xl">{{ __('Students') }}</flux:heading>
             <flux:subheading>
@@ -194,7 +202,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
                 {{ $filterText }}
             </flux:subheading>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
             <flux:button icon="printer" variant="ghost" x-on:click="window.open('{{ route('cms.students.print', [
                     'institution_id' => $filterInstitution,
                     'department_id' => $filterDepartment,

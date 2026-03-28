@@ -19,6 +19,8 @@ use App\Services\GradingService;
     public int|string $semester_id = '';
     public int|string $course_id = '';
     public int|string $institution_id = '';
+    public int|string $filter_program = '';
+    public int|string $filter_level = '';
     public $importFile;
     public array $importFailures = [];
     public int $importedCount = 0;
@@ -160,13 +162,39 @@ use App\Services\GradingService;
         }
     }
 
+    public function updatedFilterProgram(): void
+    {
+        $this->course_id = '';
+        $this->loadScores();
+    }
+
+    public function updatedFilterLevel(): void
+    {
+        $this->course_id = '';
+        $this->loadScores();
+    }
+
     public function with(): array
     {
-        $students = [];
+        $activeSession = \App\Models\AcademicSession::where('status', 'active')->first();
+        $students = collect();
+
         if ($this->course_id && $this->semester_id) {
-            $students = CourseRegistration::with('student')
+            $students = CourseRegistration::with('student.program')
                 ->where('course_id', $this->course_id)
                 ->where('semester_id', $this->semester_id)
+                ->whereHas('student', function ($query) use ($activeSession) {
+                    $query->when($this->filter_program, fn($q) => $q->where('program_id', $this->filter_program))
+                        ->when($this->filter_level, function ($q) use ($activeSession) {
+                            if ($activeSession) {
+                                return $q->whereRaw("entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS UNSIGNED) - admission_year) * 100 = ?", [
+                                    $activeSession->name,
+                                    $this->filter_level
+                                ]);
+                            }
+                            return $q->where('entry_level', $this->filter_level);
+                        });
+                })
                 ->get()
                 ->map(fn($reg) => $reg->student);
         }
@@ -177,8 +205,26 @@ use App\Services\GradingService;
             'institutions' => auth()->user()->institution_id 
                 ? [] 
                 : \App\Models\Institution::query()->where('status', 'active')->orderBy('name')->get(),
+            'programs' => \App\Models\Program::query()
+                ->when($this->institution_id ?: auth()->user()->institution_id, function($q, $id) {
+                    $q->whereHas('department', fn($dq) => $dq->where('institution_id', $id));
+                })
+                ->orderBy('name')
+                ->get(),
             'courses' => Course::query()
                 ->when($this->institution_id, fn($q) => $q->where('institution_id', $this->institution_id))
+                ->when($this->filter_program, function ($q) {
+                    $q->where(function ($sq) {
+                        $sq->where('program_id', $this->filter_program)
+                           ->orWhereHas('programs', fn($pq) => $pq->where('programs.id', $this->filter_program));
+                    });
+                })
+                ->when($this->filter_level, function ($q) {
+                    $q->where(function ($sq) {
+                        $sq->where('level', $this->filter_level)
+                           ->orWhereHas('programs', fn($pq) => $pq->where('program_courses.level', $this->filter_level));
+                    });
+                })
                 ->when(!auth()->user()->hasAnyRole(['Super Admin', 'Institutional Admin']), function ($q) {
                     $user = auth()->user();
                     $q->whereHas('allocations', function ($query) use ($user) {
@@ -219,7 +265,7 @@ use App\Services\GradingService;
     </div>
 
     <flux:card class="mb-8">
-        <div class="grid grid-cols-1 gap-6 md:grid-cols-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
             @if (!auth()->user()->institution_id)
             <flux:select wire:model.live="institution_id" :label="__('Institution')" required>
                 <flux:select.option value="null">{{ __('Select institution...') }}</flux:select.option>
@@ -234,6 +280,20 @@ use App\Services\GradingService;
                 <flux:select.option value="null">{{ __('Select session...') }}</flux:select.option>
                 @foreach ($sessions as $session)
                 <flux:select.option :value="$session->id">{{ $session->name }}</flux:select.option>
+                @endforeach
+            </flux:select>
+
+            <flux:select wire:model.live="filter_program" :label="__('Program')" :disabled="!$session_id">
+                <flux:select.option value="">{{ __('All Programs') }}</flux:select.option>
+                @foreach ($programs as $prog)
+                <flux:select.option :value="$prog->id">{{ $prog->name }}</flux:select.option>
+                @endforeach
+            </flux:select>
+
+            <flux:select wire:model.live="filter_level" :label="__('Level')" :disabled="!$session_id">
+                <flux:select.option value="">{{ __('All Levels') }}</flux:select.option>
+                @foreach ([100, 200, 300, 400, 500, 600] as $lvl)
+                <flux:select.option :value="$lvl">{{ $lvl }}</flux:select.option>
                 @endforeach
             </flux:select>
 

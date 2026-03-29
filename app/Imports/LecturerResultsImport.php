@@ -112,8 +112,16 @@ class LecturerResultsImport
                     continue;
                 }
 
+                $existingResult = Result::where('student_id', $student->id)
+                    ->where('course_id', $this->courseId)
+                    ->where('semester_id', $this->semesterId)
+                    ->first();
+
+                $finalCa = $caScore !== null ? $caScore : ($existingResult ? $existingResult->ca_score : 0);
+                $finalExam = $examScore !== null ? $examScore : ($existingResult ? $existingResult->exam_score : 0);
+
                 // Calculate grades
-                $grading = GradingService::calculateGrades($caScore ?? 0, $examScore ?? 0);
+                $grading = GradingService::calculateGrades($finalCa, $finalExam);
 
                 // Create or Update Result
                 Result::updateOrCreate(
@@ -124,8 +132,8 @@ class LecturerResultsImport
                     ],
                     [
                         'academic_session_id' => $this->sessionId,
-                        'ca_score' => $caScore,
-                        'exam_score' => $examScore,
+                        'ca_score' => $finalCa,
+                        'exam_score' => $finalExam,
                         'total_score' => $grading['total'],
                         'grade' => $grading['grade'],
                         'grade_point' => $grading['grade_point'],

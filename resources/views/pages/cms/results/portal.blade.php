@@ -33,27 +33,6 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
         $this->filterSemester = '';
     }
 
-    public function generateResultInvoice(App\Services\StudentInvoiceService $service, $sessionId, $semesterId): void
-    {
-        if (!$this->student) {
-            return;
-        }
-
-        $template = App\Models\Invoice::where('category', App\Models\Invoice::CATEGORY_RESULT)
-            ->where('academic_session_id', $sessionId)
-            ->where(function ($q) use ($semesterId) {
-                $q->whereNull('semester_id')->orWhere('semester_id', $semesterId);
-            })
-            ->where('status', 'published')
-            ->get()
-            ->first(fn($i) => $service->isEligible($this->student, $i));
-
-        if ($template) {
-            $service->materializeInvoice($this->student, $template);
-            $this->dispatch('notify', ['type' => 'success', 'message' => 'Result Fee invoice generated. Please proceed to payment.']);
-        }
-    }
-
     public function with(App\Services\PaymentAccessService $accessService, App\Services\StudentInvoiceService $invoiceService): array
     {
         if (! $this->student) {
@@ -81,28 +60,24 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
 
         // Access Map for grouped results
         $accessMap = [];
-        $missingInvoicesMap = [];
         
         $groups = $results->groupBy(fn($r) => $r->academic_session_id . '-' . $r->semester_id);
         
         foreach ($groups as $key => $groupResults) {
             $first = $groupResults->first();
-            $canAccess = $accessService->canAccessResults($this->student, $first->academicSession, $first->semester);
-            $accessMap[$key] = $canAccess;
+            $missingTemplates = $accessService->getMissingInvoicesForResults($this->student, $first->academicSession, $first->semester);
             
-            if (!$canAccess) {
-                $template = App\Models\Invoice::where('category', App\Models\Invoice::CATEGORY_RESULT)
-                    ->where('academic_session_id', $first->academic_session_id)
-                    ->where(function ($q) use ($first) {
-                        $q->whereNull('semester_id')->orWhere('semester_id', $first->semester_id);
-                    })
-                    ->where('status', 'published')
-                    ->get()
-                    ->first(fn($i) => $invoiceService->isEligible($this->student, $i));
-
-                if ($template) {
-                    $accessMap[$key . '-invoice'] = $invoiceService->materializeInvoice($this->student, $template);
+            if ($missingTemplates->isEmpty()) {
+                $accessMap[$key] = ['canAccess' => true, 'invoices' => collect()];
+            } else {
+                $materialized = collect();
+                foreach ($missingTemplates as $template) {
+                    $inv = $invoiceService->materializeInvoice($this->student, $template);
+                    if ($inv) {
+                        $materialized->push($inv);
+                    }
                 }
+                $accessMap[$key] = ['canAccess' => false, 'invoices' => $materialized];
             }
         }
 
@@ -203,7 +178,8 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
         @php
         $first = $groupResults->first();
         $accessKey = $first->academic_session_id . '-' . $first->semester_id;
-        $hasAccess = $accessMap[$accessKey] ?? true;
+        $accessData = $accessMap[$accessKey] ?? ['canAccess' => true, 'invoices' => collect()];
+        $hasAccess = $accessData['canAccess'];
         @endphp
         <flux:card>
             <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 justify-between">
@@ -316,27 +292,29 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
                     class="size-12 bg-white dark:bg-zinc-800 rounded-full shadow-sm flex items-center justify-center mx-auto mb-4">
                     <flux:icon.lock-closed class="size-6 text-zinc-400" />
                 </div>
-                <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-6 max-w-xs mx-auto">
-                    {{ __('These results are locked. Please pay the required Result Checking Fee to view your
-                    performance.') }}
+                <p class="text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-2 max-w-sm mx-auto">
+                    {{ __('Outstanding Fees Required') }}
+                </p>
+                <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-6 max-w-sm mx-auto">
+                    {{ __('These results are locked. Please pay the following required invoices to view your performance for this semester.') }}
                 </p>
 
-                @php $missingInv = $accessMap[$accessKey . '-invoice'] ?? null; @endphp
+                @php $missingInvoices = $accessData['invoices'] ?? collect(); @endphp
 
-                @if ($missingInv)
-                <div class="inline-flex flex-col items-center">
-                    <span class="text-lg font-black mb-3">₦{{ number_format($missingInv->total_amount, 2) }}</span>
-                    <flux:button href="{{ route('cms.students.portal-invoices') }}" variant="primary" size="sm"
-                        icon="credit-card">
-                        {{ __('Pay to Unlock Results') }}
-                    </flux:button>
+                @if ($missingInvoices->isNotEmpty())
+                <div class="space-y-3 max-w-sm mx-auto text-left">
+                    @foreach ($missingInvoices as $inv)
+                    <div class="flex items-center justify-between p-3 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-sm">
+                        <div class="pr-4">
+                            <div class="text-sm font-semibold text-zinc-900 dark:text- zinc-100">{{ $inv->invoice->title }}</div>
+                            <div class="text-xs text-zinc-500 font-mono tracking-wider">₦{{ number_format($inv->balance, 2) }}</div>
+                        </div>
+                        <flux:button href="{{ route('cms.students.portal-invoices') }}" variant="primary" size="sm" icon="credit-card" class="shrink-0">
+                            {{ __('View') }}
+                        </flux:button>
+                    </div>
+                    @endforeach
                 </div>
-                @else
-                <flux:button
-                    wire:click="generateResultInvoice({{ $first->academic_session_id }}, {{ $first->semester_id }})"
-                    variant="primary" size="sm">
-                    {{ __('Generate Invoice & Unlock') }}
-                </flux:button>
                 @endif
             </div>
             @endif

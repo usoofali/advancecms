@@ -21,6 +21,9 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
     public $program_id;
     public string $level = '';
     
+    public bool $is_required_for_results = false;
+    public bool $is_required_for_exams = false;
+
     public string $account_name = '';
     public string $account_number = '';
     public string $bank_name = '';
@@ -37,6 +40,8 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
             $this->department_id = $invoice->department_id;
             $this->program_id = $invoice->program_id;
             $this->level = $invoice->level ?? '';
+            $this->is_required_for_results = (bool) $invoice->is_required_for_results;
+            $this->is_required_for_exams = (bool) $invoice->is_required_for_exams;
             $this->category = $invoice->category ?? Invoice::CATEGORY_GENERAL;
             $this->semester_id = $invoice->semester_id;
             $this->account_name = $invoice->account_name ?? '';
@@ -72,6 +77,8 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
             'department_id' => 'required|exists:departments,id',
             'program_id' => 'nullable|exists:programs,id',
             'category' => 'required|string',
+            'is_required_for_results' => 'boolean',
+            'is_required_for_exams' => 'boolean',
             'semester_id' => 'required_if:category,'.Invoice::CATEGORY_EXAM.','.Invoice::CATEGORY_RESULT.'|nullable|exists:semesters,id',
             'account_name' => 'nullable|string|max:255',
             'account_number' => 'nullable|string|max:20',
@@ -117,10 +124,12 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
             'due_date' => $this->due_date,
             'target_type' => $targetType,
             'department_id' => $this->department_id,
-            'program_id' => $this->program_id,
-            'level' => $this->level,
+            'program_id' => $this->program_id ?: null,
+            'level' => $this->level ?: null,
+            'is_required_for_results' => $this->is_required_for_results,
+            'is_required_for_exams' => $this->is_required_for_exams,
             'category' => $this->category,
-            'semester_id' => $this->semester_id,
+            'semester_id' => $this->semester_id ?: null,
             'account_name' => $this->account_name,
             'account_number' => $this->account_number,
             'bank_name' => $this->bank_name,
@@ -189,6 +198,14 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
                         <flux:select.option value="{{ Invoice::CATEGORY_ADMISSION }}">Admission Fee</flux:select.option>
                         <flux:select.option value="{{ Invoice::CATEGORY_EXAM }}">Examination Fee (Locks Exam Card)</flux:select.option>
                         <flux:select.option value="{{ Invoice::CATEGORY_RESULT }}">Result Checking Fee (Locks Results)</flux:select.option>
+                        <flux:select.option value="{{ Invoice::CATEGORY_REGISTRATION }}">Registration Fee</flux:select.option>
+                        <flux:select.option value="{{ Invoice::CATEGORY_INDEXING }}">Indexing Fee</flux:select.option>
+                        <flux:select.option value="{{ Invoice::CATEGORY_PRACTICAL }}">Practical Fee</flux:select.option>
+                        <flux:select.option value="{{ Invoice::CATEGORY_PROJECT }}">Project Fee</flux:select.option>
+                        <flux:select.option value="{{ Invoice::CATEGORY_REFRESHMENT }}">Refreshment Fee</flux:select.option>
+                        <flux:select.option value="{{ Invoice::CATEGORY_NATIONAL }}">National Fee</flux:select.option>
+                        <flux:select.option value="{{ Invoice::CATEGORY_INDUCTION }}">Induction Fee</flux:select.option>
+                        <flux:select.option value="{{ Invoice::CATEGORY_CERTIFICATE }}">Certificate Fee</flux:select.option>
                     </flux:select>
                     <flux:error name="category" />
                 </flux:field>
@@ -205,6 +222,12 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
                     </flux:select>
                     <flux:error name="semester_id" />
                 </flux:field>
+            </div>
+
+            <!-- Restriction Flags -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                <flux:switch wire:model="is_required_for_results" label="{{ __('Required for Result Checking') }}" description="{{ __('Students must pay this invoice before viewing their results.') }}" />
+                <flux:switch wire:model="is_required_for_exams" label="{{ __('Required for Exam Card') }}" description="{{ __('Students must pay this invoice before downloading their exam card.') }}" />
             </div>
 
             <!-- Bank Details -->

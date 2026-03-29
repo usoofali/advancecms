@@ -8,44 +8,46 @@ use App\Models\Semester;
 use App\Models\Student;
 use App\Models\StudentInvoice;
 
+use Illuminate\Support\Collection;
+
 class PaymentAccessService
 {
     /**
-     * Determine if a student can access their exam card for a specific session/semester.
+     * Get missing required invoices for accessing exam card.
+     * Returns an empty collection if access is granted.
      */
-    public function canAccessExamCard(Student $student, AcademicSession $session, Semester $semester): bool
+    public function getMissingInvoicesForExamCard(Student $student, AcademicSession $session, Semester $semester): Collection
     {
-        return $this->canAccessByCategory(
+        return $this->getMissingRequiredInvoices(
             $student,
             $session,
             $semester,
-            Invoice::CATEGORY_EXAM
+            'is_required_for_exams'
         );
     }
 
     /**
-     * Determine if a student can access their results for a specific session/semester.
+     * Get missing required invoices for accessing results.
+     * Returns an empty collection if access is granted.
      */
-    public function canAccessResults(Student $student, AcademicSession $session, Semester $semester): bool
+    public function getMissingInvoicesForResults(Student $student, AcademicSession $session, Semester $semester): Collection
     {
-        return $this->canAccessByCategory(
+        return $this->getMissingRequiredInvoices(
             $student,
             $session,
             $semester,
-            Invoice::CATEGORY_RESULT
+            'is_required_for_results'
         );
     }
 
     /**
-     * Generic logic to check access based on invoice category.
-     * Access is ALWAYS granted if no invoice template exists for this context.
-     * If a template exists, the student must have a corresponding "paid" student invoice.
+     * Generic logic to retrieve missing required invoices based on a boolean flag.
      */
-    protected function canAccessByCategory(Student $student, AcademicSession $session, Semester $semester, string $category): bool
+    protected function getMissingRequiredInvoices(Student $student, AcademicSession $session, Semester $semester, string $flagColumn): Collection
     {
-        // 1. Check if there are ANY invoice templates for this category/session/semester
+        // 1. Check if there are ANY invoice templates flagged for this context/session/semester
         // that apply to this student (matching program/level etc.)
-        $applicableInvoices = Invoice::where('category', $category)
+        $applicableInvoices = Invoice::where($flagColumn, true)
             ->where('academic_session_id', $session->id)
             ->where(function ($q) use ($semester) {
                 $q->whereNull('semester_id')->orWhere('semester_id', $semester->id);
@@ -69,10 +71,12 @@ class PaymentAccessService
             })
             ->get();
 
-        // If no templates exist, access is granted (opt-in behavior)
+        // If no templates exist, none are missing (access is granted)
         if ($applicableInvoices->isEmpty()) {
-            return true;
+            return collect();
         }
+
+        $missingInvoices = collect();
 
         // 2. If templates exist, student MUST have a PAID student invoice for EACH applicable template
         foreach ($applicableInvoices as $invoice) {
@@ -82,10 +86,10 @@ class PaymentAccessService
                 ->exists();
 
             if (! $isPaid) {
-                return false;
+                $missingInvoices->push($invoice);
             }
         }
 
-        return true;
+        return $missingInvoices;
     }
 }

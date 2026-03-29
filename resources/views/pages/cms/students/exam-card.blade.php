@@ -57,7 +57,8 @@ new #[Layout('layouts.app')] #[Title('Examination Card')] class extends Componen
             $semester = Semester::find($this->semester_id);
             
             // Check Payment Access
-            $canAccess = $accessService->canAccessExamCard($this->student, $session, $semester);
+            $missingTemplates = $accessService->getMissingInvoicesForExamCard($this->student, $session, $semester);
+            $canAccess = $missingTemplates->isEmpty();
 
             if ($canAccess) {
                 $allRegistrations = CourseRegistration::with('course')
@@ -74,19 +75,13 @@ new #[Layout('layouts.app')] #[Title('Examination Card')] class extends Componen
                     ->where('semester_id', $this->semester_id)
                     ->first();
             } else {
+                $missingInvoices = collect();
                 // Find what invoice is blocking so the UI can show its details
-                $template = App\Models\Invoice::where('category', App\Models\Invoice::CATEGORY_EXAM)
-                    ->where('academic_session_id', $this->session_id)
-                    ->where(function ($q) {
-                        $q->whereNull('semester_id')->orWhere('semester_id', $this->semester_id);
-                    })
-                    ->where('status', 'published')
-                    ->get()
-                    ->first(fn($i) => $invoiceService->isEligible($this->student, $i));
-
-                if ($template) {
-                    // Try to find if it exists, or just materialize it (materialize handles existence check)
-                    $missingInvoice = $invoiceService->materializeInvoice($this->student, $template);
+                foreach ($missingTemplates as $template) {
+                    $inv = $invoiceService->materializeInvoice($this->student, $template);
+                    if ($inv) {
+                        $missingInvoices->push($inv);
+                    }
                 }
             }
         }
@@ -403,33 +398,19 @@ new #[Layout('layouts.app')] #[Title('Examination Card')] class extends Componen
             </flux:subheading>
 
             <div class="flex flex-col items-center gap-4">
-                @if ($missingInvoice)
-                <div
-                    class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-6 shadow-sm w-full max-w-sm">
-                    <div class="flex justify-between items-center mb-4">
-                        <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">{{ __('Invoice Number')
-                            }}</span>
-                        <span class="font-mono text-sm">#INV-{{ $missingInvoice->id }}</span>
+                @if (isset($missingInvoices) && $missingInvoices->isNotEmpty())
+                <div class="space-y-4 w-full max-w-sm mx-auto text-left">
+                    @foreach ($missingInvoices as $inv)
+                    <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm flex items-center justify-between">
+                        <div>
+                            <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $inv->invoice->title }}</div>
+                            <div class="text-xs text-zinc-500 font-mono tracking-wider mt-1">₦{{ number_format($inv->balance, 2) }}</div>
+                        </div>
+                        <flux:button href="{{ route('cms.students.portal-invoices', $inv->id) }}" variant="primary" size="sm" icon="credit-card" class="shrink-0">
+                            {{ __('Pay') }}
+                        </flux:button>
                     </div>
-                    <div class="flex justify-between items-center mb-6">
-                        <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">{{ __('Amount Due')
-                            }}</span>
-                        <span class="text-2xl font-black text-zinc-900 dark:text-white">₦{{
-                            number_format($missingInvoice->total_amount, 2) }}</span>
-                    </div>
-
-                    <flux:button href="{{ route('cms.students.portal-invoices', $missingInvoice->id) }}"
-                        variant="primary" icon="arrow-right-end-on-rectangle" class="w-full">
-                        {{ __('Proceed to Payment') }}
-                    </flux:button>
-                </div>
-                @else
-                <div class="space-y-4">
-                    <p class="text-sm text-zinc-500 italic">{{ __('An invoice has not been generated for you yet.') }}
-                    </p>
-                    <flux:button wire:click="generateInvoice" variant="primary">
-                        {{ __('Generate Invoice & Pay Now') }}
-                    </flux:button>
+                    @endforeach
                 </div>
                 @endif
             </div>

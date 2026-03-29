@@ -76,13 +76,13 @@ use App\Services\GradingService;
         foreach ($this->scores as $studentId => $values) {
             $result = Result::updateOrCreate(
                 [
-                    'institution_id'      => $this->institution_id,
                     'student_id'          => $studentId,
                     'course_id'           => $this->course_id,
-                    'academic_session_id' => $this->session_id,
                     'semester_id'         => $this->semester_id,
                 ],
                 [
+                    'institution_id'      => $this->institution_id ?: null,
+                    'academic_session_id' => $this->session_id,
                     'ca_score'   => $values['ca'],
                     'exam_score' => $values['exam'],
                 ]

@@ -120,10 +120,10 @@ class LecturerResultsImport
                     [
                         'student_id' => $student->id,
                         'course_id' => $this->courseId,
-                        'academic_session_id' => $this->sessionId,
                         'semester_id' => $this->semesterId,
                     ],
                     [
+                        'academic_session_id' => $this->sessionId,
                         'ca_score' => $caScore,
                         'exam_score' => $examScore,
                         'total_score' => $grading['total'],

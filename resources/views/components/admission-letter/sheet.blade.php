@@ -1,6 +1,8 @@
 @props([
     /** @var array<string, mixed> $letter */
     'letter' => [],
+    /** When set, used as document.title before print so “Save as PDF” defaults to this name. */
+    'printFilename' => null,
 ])
 
 @php
@@ -8,7 +10,7 @@
 @endphp
 
 {{-- Screen wrapper (not printed) --}}
-<div class="min-h-screen print:min-h-0 print:h-auto bg-zinc-100 py-8 px-4 print:bg-white print:p-0">
+<div class="min-h-screen print:min-h-0 print:h-auto bg-zinc-100 py-8 px-4 print:bg-white print:p-0 max-w-full overflow-x-auto print:overflow-visible">
 
     {{-- A4 sheet --}}
     <div id="letter" class="a4-page mx-auto bg-white text-[#1a1a1a] shadow-xl print:shadow-none
@@ -156,9 +158,22 @@
         <div class="h-2 w-full" style="background: linear-gradient(to right, #1a3c6b, #2563eb, #1a3c6b);"></div>
     </div>
 
-    <div class="print:hidden max-w-[794px] mx-auto mt-6 flex gap-3 justify-center">
-        <button type="button" onclick="window.print()"
-            class="px-6 py-2 bg-[#1a3c6b] text-white font-semibold rounded-lg shadow hover:bg-blue-800 transition-colors">
+    <div class="print:hidden w-full max-w-[794px] mx-auto mt-6 flex gap-3 justify-center px-2">
+        <button type="button"
+            class="px-6 py-2 bg-[#1a3c6b] text-white font-semibold rounded-lg shadow hover:bg-blue-800 transition-colors"
+            onclick="(function (t) {
+                var p = document.title;
+                if (t !== null && t !== '') {
+                    document.title = t;
+                }
+                var r = function () {
+                    document.title = p;
+                    window.removeEventListener('afterprint', r);
+                };
+                window.addEventListener('afterprint', r);
+                window.print();
+                setTimeout(r, 2500);
+            })({{ \Illuminate\Support\Js::from($printFilename) }});">
             {{ __('Print / Save PDF') }}
         </button>
         <a href="{{ $l['back_url'] }}"
@@ -171,7 +186,8 @@
 
 <style>
     .a4-page {
-        width: 794px;
+        width: 100%;
+        max-width: 794px;
         height: auto;
         box-sizing: border-box;
     }
@@ -179,7 +195,7 @@
     @media print {
         @page {
             size: A4 portrait;
-            margin: 0;
+            margin: 12mm 10mm 14mm 10mm;
             orphans: 0;
             widows: 0;
         }
@@ -189,28 +205,34 @@
             background: white !important;
             margin: 0 !important;
             padding: 0 !important;
-            height: 297mm !important;
-            overflow: hidden !important;
+            min-height: 0 !important;
+            height: auto !important;
+            overflow: visible !important;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
 
         .min-h-screen {
             min-height: 0 !important;
-            height: 297mm !important;
+            height: auto !important;
             padding: 0 !important;
             margin: 0 !important;
+            max-width: none !important;
+            overflow: visible !important;
         }
 
         .a4-page {
-            width: 210mm;
-            height: 295mm;
-            overflow: hidden;
+            width: 100%;
+            max-width: 100%;
+            height: auto !important;
+            min-height: 0;
+            overflow: visible;
             page-break-inside: avoid;
             page-break-after: avoid;
             box-shadow: none !important;
             margin: 0 auto !important;
             border: none !important;
+            box-sizing: border-box;
         }
 
         .print\:hidden {

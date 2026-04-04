@@ -204,7 +204,15 @@ new #[Title('Issue admission notification')] #[Layout('layouts.app')] class exte
             <flux:button variant="primary" wire:click="resetLetter" icon="arrow-path">{{ __('New letter') }}</flux:button>
         </div>
 
-        <x-admission-letter.sheet :letter="$letter" />
+        @php
+            $letterPrintFilename = \Illuminate\Support\Str::slug((string) ($letter['addressee_full_name'] ?? ''));
+            if ($letterPrintFilename === '') {
+                $letterPrintFilename = null;
+            }
+        @endphp
+        <div class="w-full min-w-0 flex justify-center print:block">
+            <x-admission-letter.sheet :letter="$letter" :print-filename="$letterPrintFilename" />
+        </div>
     @else
         <div>
             <flux:heading size="xl">{{ __('Issue admission notification') }}</flux:heading>

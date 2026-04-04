@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\ExportFilteredResultsController;
 use App\Http\Controllers\OPayController;
 use App\Livewire\Pages\Admissions\ApplicantPortal;
 use App\Livewire\Pages\Admissions\Apply;
@@ -71,6 +72,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::livewire('students', 'pages::cms.students.index')->name('cms.students.index');
         Route::livewire('students/print', 'pages::cms.students.print-list')->name('cms.students.print');
         Route::livewire('students/{student}', 'pages::cms.students.show')->name('cms.students.show');
+        Route::livewire('students/{student}/admission-letter', 'pages::cms.students.print-admission-letter')->name('cms.students.admission-letter');
         Route::livewire('students/{student}/edit', 'pages::cms.students.edit')->name('cms.students.edit');
     });
 
@@ -122,6 +124,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Results
     Route::livewire('results', 'pages::cms.results.index')->name('cms.results.index')->middleware('can:view_dept_results');
+    Route::get('results/export/csv', ExportFilteredResultsController::class)
+        ->name('cms.results.export.csv')
+        ->middleware('can:view_dept_results');
     Route::livewire('results/export', 'pages::cms.results.export')->name('cms.results.export')->middleware('can:view_dept_results');
     Route::livewire('results/entry', 'pages::cms.results.entry')->name('cms.results.entry')->middleware('can:enter_results');
     Route::livewire('results/portal', 'pages::cms.results.portal')->name('cms.results.portal')->middleware('can:view_personal_results');

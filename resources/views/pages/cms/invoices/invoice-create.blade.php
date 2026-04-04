@@ -2,8 +2,10 @@
 
 use App\Models\AcademicSession;
 use App\Models\Department;
+use App\Models\Institution;
 use App\Models\Invoice;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -11,6 +13,9 @@ use Livewire\Component;
 new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
 {
     public ?Invoice $invoice = null;
+
+    /** @var int|string|null */
+    public $institution_id = null;
 
     public string $title = '';
     public $academic_session_id;
@@ -30,10 +35,11 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
 
     public array $items = [['item_name' => '', 'amount' => '']];
 
-    public function mount(?Invoice $invoice = null)
+    public function mount(?Invoice $invoice = null): void
     {
         if ($invoice && $invoice->exists) {
             $this->invoice = $invoice;
+            $this->institution_id = (int) $invoice->institution_id;
             $this->title = $invoice->title;
             $this->academic_session_id = $invoice->academic_session_id;
             $this->due_date = $invoice->due_date->format('Y-m-d');
@@ -57,6 +63,34 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
         }
     }
 
+    public function effectiveInstitutionId(): ?int
+    {
+        if ($this->invoice?->exists) {
+            return (int) $this->invoice->institution_id;
+        }
+
+        $user = Auth::user();
+
+        if ($user->hasRole('Super Admin')) {
+            return $this->institution_id !== null && $this->institution_id !== ''
+                ? (int) $this->institution_id
+                : null;
+        }
+
+        return $user->institution_id ? (int) $user->institution_id : null;
+    }
+
+    public function updatedInstitutionId(): void
+    {
+        if (! Auth::user()->hasRole('Super Admin') || $this->invoice?->exists) {
+            return;
+        }
+
+        $this->department_id = null;
+        $this->program_id = null;
+        $this->semester_id = null;
+    }
+
     public function addItem()
     {
         $this->items[] = ['item_name' => '', 'amount' => ''];
@@ -70,12 +104,38 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
 
     public function save($status = 'draft')
     {
+        $user = Auth::user();
+        $isSuperAdmin = $user->hasRole('Super Admin');
+        $isEditing = (bool) $this->invoice?->exists;
+
+        if ($isSuperAdmin && ! $isEditing) {
+            $this->validate([
+                'institution_id' => ['required', 'integer', 'exists:institutions,id'],
+            ]);
+        }
+
+        $effectiveInstitutionId = $isEditing
+            ? (int) $this->invoice->institution_id
+            : ($isSuperAdmin
+                ? (int) $this->institution_id
+                : ($user->institution_id !== null ? (int) $user->institution_id : null));
+
         $this->validate([
             'title' => 'required|string|max:255',
             'academic_session_id' => 'required|exists:academic_sessions,id',
             'due_date' => 'required|date',
-            'department_id' => 'required|exists:departments,id',
-            'program_id' => 'nullable|exists:programs,id',
+            'department_id' => [
+                'required',
+                Rule::exists('departments', 'id')->where(
+                    fn ($q) => $q->where('institution_id', $effectiveInstitutionId)
+                ),
+            ],
+            'program_id' => [
+                'nullable',
+                Rule::exists('programs', 'id')->where(
+                    fn ($q) => $q->where('department_id', $this->department_id)
+                ),
+            ],
             'category' => 'required|string',
             'is_required_for_results' => 'boolean',
             'is_required_for_exams' => 'boolean',
@@ -100,6 +160,7 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
 
         if ($status === 'published' && $this->category !== Invoice::CATEGORY_GENERAL) {
             $conflictQuery = Invoice::where('category', $this->category)
+                ->where('institution_id', $effectiveInstitutionId)
                 ->where('academic_session_id', $this->academic_session_id)
                 ->where('semester_id', $this->semester_id)
                 ->where('target_type', $targetType)
@@ -118,7 +179,7 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
         }
 
         $data = [
-            'institution_id' => Auth::user()->institution_id ?: Department::find($this->department_id)?->institution_id,
+            'institution_id' => $effectiveInstitutionId,
             'title' => $this->title,
             'academic_session_id' => $this->academic_session_id,
             'due_date' => $this->due_date,
@@ -167,6 +228,26 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
 
     <form class="space-y-8">
         <flux:card class="space-y-6">
+            @if(auth()->user()->hasRole('Super Admin'))
+                @if($invoice)
+                    <flux:field>
+                        <flux:label>{{ __('Institution') }}</flux:label>
+                        <flux:text class="text-zinc-900 dark:text-zinc-100">{{ $invoice->institution?->name ?? '—' }}</flux:text>
+                    </flux:field>
+                @else
+                    <flux:field>
+                        <flux:label>{{ __('Institution') }}</flux:label>
+                        <flux:select wire:model.live="institution_id" :placeholder="__('Select Institution')" required>
+                            <flux:select.option value="">{{ __('Select Institution') }}</flux:select.option>
+                            @foreach(Institution::query()->where('status', 'active')->orderBy('name')->get() as $institution)
+                                <flux:select.option :value="$institution->id">{{ $institution->name }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                        <flux:error name="institution_id" />
+                    </flux:field>
+                @endif
+            @endif
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Basic Info -->
                 <flux:field>
@@ -252,11 +333,18 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
             </div>
 
             <!-- Targeting Hierarchy -->
+            @php
+                $effectiveInstitutionId = $this->effectiveInstitutionId();
+                $departmentSelectDisabled = auth()->user()->hasRole('Super Admin') && ! $invoice && ! $effectiveInstitutionId;
+                $departmentsForInstitution = $effectiveInstitutionId
+                    ? Department::query()->where('institution_id', $effectiveInstitutionId)->orderBy('name')->get()
+                    : collect();
+            @endphp
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-zinc-100 dark:border-zinc-800">
                 <flux:field>
                     <flux:label>Department</flux:label>
-                    <flux:select wire:model.live="department_id" :placeholder="__('Select Department')" required>
-                        @foreach(\App\Models\Department::all() as $dept)
+                    <flux:select wire:model.live="department_id" :placeholder="__('Select Department')" :disabled="$departmentSelectDisabled" required>
+                        @foreach($departmentsForInstitution as $dept)
                         <flux:select.option :value="$dept->id">{{ $dept->name }}</flux:select.option>
                         @endforeach
                     </flux:select>

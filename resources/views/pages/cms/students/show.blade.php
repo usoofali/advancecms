@@ -94,7 +94,9 @@ new #[Layout('layouts.app')] #[Title('Student Profile')] class extends Component
             </div>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+            <flux:button icon="document-text" variant="ghost" :href="route('cms.students.admission-letter', $student)"
+                target="_blank">{{ __('Admission letter') }}</flux:button>
             <flux:button icon="pencil-square" variant="ghost" :href="route('cms.students.edit', $student)" wire:navigate>{{ __('Edit Profile') }}</flux:button>
             <flux:button icon="arrows-right-left" variant="primary" x-on:click="$flux.modal('change-status').show()">{{ __('Change Status') }}</flux:button>
         </div>

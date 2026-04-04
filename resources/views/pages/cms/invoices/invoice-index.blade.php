@@ -35,12 +35,23 @@ new #[Layout('layouts.app')] #[Title('Invoices')] class extends Component
             ->paginate(10);
     }
 
-    public function getStats()
+    public function getStats(): array
     {
+        $user = auth()->user();
+        $isSuperAdmin = $user->hasRole('Super Admin');
+
+        $query = StudentInvoice::query()
+            ->when($isSuperAdmin && $this->institutionFilter, fn ($q) => $q->where('institution_id', $this->institutionFilter))
+            ->when(! $isSuperAdmin, fn ($q) => $q->where('institution_id', $user->institution_id))
+            ->when($this->departmentFilter, fn ($q) => $q->whereHas('invoice', fn ($iq) => $iq->where('department_id', $this->departmentFilter)));
+
+        $totalInvoiced = (float) (clone $query)->sum('total_amount');
+        $totalPaid = (float) (clone $query)->sum('amount_paid');
+
         return [
-            'total_invoiced' => StudentInvoice::sum('total_amount'),
-            'total_paid' => StudentInvoice::sum('amount_paid'),
-            'outstanding' => StudentInvoice::sum('total_amount') - StudentInvoice::sum('amount_paid'),
+            'total_invoiced' => $totalInvoiced,
+            'total_paid' => $totalPaid,
+            'outstanding' => $totalInvoiced - $totalPaid,
         ];
     }
 

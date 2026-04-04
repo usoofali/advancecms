@@ -20,7 +20,11 @@ class ProgramFactory extends Factory
     {
         return [
             'department_id' => Department::factory(),
+            'institution_id' => fn (array $attributes): int => Department::query()
+                ->findOrFail($attributes['department_id'])
+                ->institution_id,
             'name' => $this->faker->name().' Program',
+            'acronym' => strtoupper($this->faker->unique()->lexify('????')),
             'duration_years' => $this->faker->numberBetween(2, 4),
             'award_type' => $this->faker->randomElement(['diploma', 'degree', 'certificate']),
             'status' => 'active',

@@ -1,7 +1,8 @@
 <?php
 
-use App\Models\Program;
 use App\Models\Department;
+use App\Models\Program;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -39,7 +40,16 @@ new #[Layout('layouts.app')] #[Title('Edit Program')] class extends Component {
             'institution_id' => ['required', 'exists:institutions,id'],
             'department_id'  => ['required', 'exists:departments,id'],
             'name'           => ['required', 'string', 'max:255'],
-            'acronym'        => ['required', 'string', 'max:10', 'unique:programs,acronym,' . $this->program->id],
+            'acronym'        => [
+                'required',
+                'string',
+                'max:10',
+                Rule::unique('programs', 'acronym')
+                    ->ignore($this->program->id)
+                    ->where(
+                        fn ($query) => $query->where('institution_id', $this->institution_id),
+                    ),
+            ],
             'duration_years' => ['required', 'integer', 'min:1', 'max:10'],
             'award_type'    => ['required', 'in:certificate,diploma,degree'],
             'status'         => ['required', 'in:active,inactive'],

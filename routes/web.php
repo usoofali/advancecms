@@ -53,6 +53,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Admissions (Staff & Admins)
     Route::middleware('can:view_applications')->group(function () {
         Route::livewire('admissions/applications', 'pages::cms.admissions.application-index')->name('cms.admissions.index');
+        Route::livewire('admissions/issue-notification', 'pages::cms.admissions.issue-admission-notification')->name('cms.admissions.issue-notification');
         Route::livewire('admissions/applications/{applicant}', 'pages::cms.admissions.application-show')->name('cms.admissions.show');
 
         // Application Form Management

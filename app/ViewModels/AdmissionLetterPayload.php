@@ -6,6 +6,7 @@ use App\Models\Applicant;
 use App\Models\Institution;
 use App\Models\Student;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Str;
 
 /**
  * Normalized props for the admission letter print sheet (applicant portal or CMS student profile).
@@ -104,6 +105,76 @@ final class AdmissionLetterPayload
     }
 
     /**
+     * Walk-in / physical assessment letter — no application record in the system.
+     *
+     * @param  array{
+     *     addressee_full_name: string,
+     *     academic_session_label: string,
+     *     program_name: string,
+     *     entry_level: int,
+     *     award_type: string,
+     *     admission_year?: int|null,
+     *     email?: string|null,
+     *     phone?: string|null,
+     * }  $details
+     * @return LetterArray
+     */
+    public static function forImpromptuNotification(Institution $institution, array $details): array
+    {
+        $institution->loadMissing([]);
+
+        $letterTitle = 'NOTIFICATION OF PROVISIONAL ADMISSION';
+        $ref = 'IMPROMPTU/'.now()->format('Ymd').'-'.strtoupper(Str::random(8));
+
+        $entryLevel = (int) $details['entry_level'];
+        $awardLabel = self::awardLabelFromType((string) $details['award_type']);
+        $programMetaLine = 'Entry Level: '.$entryLevel.'L &nbsp;|&nbsp; Mode: Full-time &nbsp;|&nbsp; Award: '.$awardLabel;
+
+        $sessionLabel = (string) $details['academic_session_label'];
+        $programName = (string) $details['program_name'];
+        $name = (string) $details['addressee_full_name'];
+
+        $qrLines = [
+            $letterTitle,
+            'Ref: '.$ref,
+            'Candidate: '.$name,
+            'Program: '.$programName,
+            'Session: '.$sessionLabel,
+            'Institution: '.$institution->name,
+            'Date: '.now()->format('d/m/Y'),
+        ];
+
+        if (! empty($details['admission_year'])) {
+            $qrLines[] = 'Admission year: '.(int) $details['admission_year'];
+        }
+
+        $qrData = implode("\n", array_filter($qrLines));
+
+        return self::build(
+            institution: $institution,
+            letterTitle: $letterTitle,
+            ref: $ref,
+            letterDate: now(),
+            addresseeFullName: $name,
+            academicSessionLabel: $sessionLabel,
+            programName: $programName,
+            programMetaLine: $programMetaLine,
+            isEnrolled: false,
+            matricNumber: null,
+            showFeeParagraph: true,
+            detailsNameLabel: __('Candidate Name'),
+            detailsNameValue: strtoupper($name),
+            applicationNumber: null,
+            email: isset($details['email']) && $details['email'] !== '' ? (string) $details['email'] : null,
+            phone: isset($details['phone']) && $details['phone'] !== '' ? (string) $details['phone'] : null,
+            sessionRowValue: $sessionLabel,
+            qrData: $qrData,
+            backUrl: route('cms.admissions.issue-notification'),
+            backLabel: '← '.__('Back to form'),
+        );
+    }
+
+    /**
      * @return LetterArray
      */
     public static function fromStudent(Student $student): array
@@ -156,6 +227,16 @@ final class AdmissionLetterPayload
             backUrl: route('cms.students.show', $student),
             backLabel: '← '.__('Back to student profile'),
         );
+    }
+
+    private static function awardLabelFromType(string $awardType): string
+    {
+        return match ($awardType) {
+            'degree' => 'Degree',
+            'diploma' => 'Diploma',
+            'certificate' => 'Certificate',
+            default => 'Certificate',
+        };
     }
 
     /**

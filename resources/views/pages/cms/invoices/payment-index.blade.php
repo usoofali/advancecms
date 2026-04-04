@@ -17,17 +17,48 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
 
     public string $statusFilter = 'pending';
 
+    public ?int $institutionFilter = null;
+
     public ?int $approvingPaymentId = null;
 
     public ?int $rejectingPaymentId = null;
 
+    /**
+     * Payments the current user may list and act on (institution scope).
+     */
+    private function paymentQueryForCurrentUser(): \Illuminate\Database\Eloquent\Builder
+    {
+        $user = auth()->user();
+        $query = Payment::query();
+
+        if ($user->hasRole('Super Admin')) {
+            if ($this->institutionFilter) {
+                $query->where('institution_id', $this->institutionFilter);
+            }
+        } else {
+            $query->where('institution_id', $user->institution_id);
+        }
+
+        return $query;
+    }
+
     public function payments()
     {
-        return Payment::query()
+        return $this->paymentQueryForCurrentUser()
             ->when($this->statusFilter !== 'all', fn ($q) => $q->where('status', $this->statusFilter))
             ->with(['studentInvoice.student', 'studentInvoice.invoice', 'receipt'])
             ->latest()
             ->paginate(20);
+    }
+
+    public function updatedInstitutionFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedStatusFilter(): void
+    {
+        $this->resetPage();
     }
 
     public function confirmApprove($id)
@@ -38,8 +69,12 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
 
     public function approve()
     {
-        $payment = Payment::find($this->approvingPaymentId);
-        if (! $payment || $payment->status !== 'pending') {
+        $payment = $this->paymentQueryForCurrentUser()
+            ->whereKey($this->approvingPaymentId)
+            ->where('status', 'pending')
+            ->first();
+
+        if (! $payment) {
             return;
         }
 
@@ -92,8 +127,12 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
 
     public function reject()
     {
-        $payment = Payment::find($this->rejectingPaymentId);
-        if (! $payment || $payment->status !== 'pending') {
+        $payment = $this->paymentQueryForCurrentUser()
+            ->whereKey($this->rejectingPaymentId)
+            ->where('status', 'pending')
+            ->first();
+
+        if (! $payment) {
             return;
         }
 
@@ -125,12 +164,26 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
             <flux:subheading>Approve or reject manual payment records from students.</flux:subheading>
         </div>
 
-        <flux:select wire:model.live="statusFilter" :label="__('Verification Status')" class="max-w-xs">
-            <flux:select.option value="all">All Payments</flux:select.option>
-            <flux:select.option value="pending">Pending Verification</flux:select.option>
-            <flux:select.option value="success">Success / Completed</flux:select.option>
-            <flux:select.option value="failed">Rejected / Failed</flux:select.option>
-        </flux:select>
+        <div class="flex flex-wrap items-end gap-4 justify-end">
+            @if(auth()->user()->hasRole('Super Admin'))
+                <div class="w-full sm:w-64">
+                    <flux:select wire:model.live="institutionFilter" :label="__('Institution')">
+                        <flux:select.option value="">{{ __('All Institutions') }}</flux:select.option>
+                        @foreach(\App\Models\Institution::query()->where('status', 'active')->orderBy('name')->get() as $institution)
+                            <flux:select.option value="{{ $institution->id }}">{{ $institution->name }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+                </div>
+            @endif
+            <div class="w-full sm:max-w-xs">
+                <flux:select wire:model.live="statusFilter" :label="__('Verification Status')">
+                    <flux:select.option value="all">All Payments</flux:select.option>
+                    <flux:select.option value="pending">Pending Verification</flux:select.option>
+                    <flux:select.option value="success">Success / Completed</flux:select.option>
+                    <flux:select.option value="failed">Rejected / Failed</flux:select.option>
+                </flux:select>
+            </div>
+        </div>
     </div>
 
     <div class="overflow-x-auto">

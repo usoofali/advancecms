@@ -92,7 +92,9 @@ new #[Title('Manage Applications')] #[Layout('layouts.app')] class extends Compo
             <flux:subheading>{{ __('Review and process admission applications.') }}</flux:subheading>
         </div>
         <div class="flex items-center gap-2">
-            <!-- Add any global actions here like export -->
+            <flux:button variant="outline" icon="document-text" :href="route('cms.admissions.issue-notification')" wire:navigate>
+                {{ __('Issue admission notification') }}
+            </flux:button>
         </div>
     </div>
 

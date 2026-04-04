@@ -48,6 +48,10 @@
                     :current="request()->routeIs('cms.admissions.index') || request()->routeIs('cms.admissions.show')" wire:navigate>
                     {{ __('Applications') }}
                 </flux:sidebar.item>
+                <flux:sidebar.item icon="document-text" :href="route('cms.admissions.issue-notification')"
+                    :current="request()->routeIs('cms.admissions.issue-notification')" wire:navigate>
+                    {{ __('Issue notification') }}
+                </flux:sidebar.item>
                 @endcan
 
                 @can('manage_application_forms')

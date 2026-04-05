@@ -142,8 +142,10 @@ new #[Layout('layouts.app')] #[Title('My Invoices')] class extends Component
 
     public function submitPayment()
     {
+        $maxAmount = $this->selectedInvoice ? $this->selectedInvoice->balance : 0;
+
         $this->validate([
-            'paymentAmount' => 'required|numeric|min:1',
+            'paymentAmount' => ['required', 'numeric', 'min:1', 'max:' . $maxAmount],
             'paymentReference' => 'required|string|max:255',
             'paymentMethod' => 'required|string',
         ]);
@@ -568,7 +570,7 @@ new #[Layout('layouts.app')] #[Title('My Invoices')] class extends Component
             <form wire:submit="submitPayment" class="space-y-6">
                 <flux:field>
                     <flux:label>Amount to Pay</flux:label>
-                    <flux:input type="number" wire:model="paymentAmount" prefix="₦" step="0.01" />
+                    <flux:input type="number" wire:model="paymentAmount" prefix="₦" step="0.01" max="{{ $selectedInvoice ? $selectedInvoice->balance : '' }}" />
                     <flux:error name="paymentAmount" />
                 </flux:field>
 

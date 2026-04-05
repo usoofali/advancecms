@@ -20,6 +20,7 @@ new #[Layout('layouts.app')] #[Title('Manage Registrations')] class extends Comp
     public string $institution_id = '';
     public string $department_id = '';
     public string $program_id = '';
+    public string $level = '';
     public string $search = '';
 
     public function mount(): void
@@ -40,38 +41,69 @@ new #[Layout('layouts.app')] #[Title('Manage Registrations')] class extends Comp
         $this->department_id = '';
         $this->program_id = '';
         $this->resetPage();
+        $this->clearSelection();
     }
 
     public function updatedDepartmentId(): void
     {
         $this->program_id = '';
         $this->resetPage();
+        $this->clearSelection();
     }
 
     public function updatedProgramId(): void
     {
         $this->resetPage();
+        $this->clearSelection();
     }
 
     public function updatedSessionId(): void
     {
         $this->semester_id = '';
         $this->resetPage();
+        $this->clearSelection();
     }
 
     public function updatedSemesterId(): void
     {
         $this->resetPage();
+        $this->clearSelection();
+    }
+
+    public function updatedLevel(): void
+    {
+        $this->resetPage();
+        $this->clearSelection();
     }
 
     public function updatedSearch(): void
     {
         $this->resetPage();
+        $this->clearSelection();
+    }
+
+    private function clearSelection(): void
+    {
+        $this->selectedStudents = [];
+        $this->selectAll = false;
     }
 
     public ?int $actionStudentId = null;
     public string $actionStudentName = '';
     public bool $isUnlocking = false;
+
+    public array $selectedStudents = [];
+    public bool $selectAll = false;
+    public string $bulkAction = '';
+
+    public function updatedSelectAll($value): void
+    {
+        if ($value) {
+            $this->selectedStudents = collect($this->getStudentsQuery()->pluck('id'))->map(fn($id) => (string)$id)->toArray();
+        } else {
+            $this->selectedStudents = [];
+        }
+    }
 
     public function confirmToggle(int $studentId, string $studentName, bool $isUnlocking): void
     {
@@ -132,32 +164,100 @@ new #[Layout('layouts.app')] #[Title('Manage Registrations')] class extends Comp
         $this->js('$flux.modal("confirm-toggle").close()');
     }
 
+    public function confirmBulkToggle(string $action): void
+    {
+        $this->bulkAction = $action;
+        $this->js('$flux.modal("confirm-bulk-toggle").show()');
+    }
+
+    public function executeBulkToggle(): void
+    {
+        if (empty($this->selectedStudents) || !auth()->user()->can('manage_registration_status')) {
+            return;
+        }
+
+        $session_id = $this->session_id;
+        $semester_id = $this->semester_id;
+        $userId = auth()->user()->id;
+
+        $targetStatus = $this->bulkAction === 'close' ? 'closed' : 'open';
+
+        foreach ($this->selectedStudents as $studentId) {
+            $student = clone Student::find($studentId);
+            if (!$student) continue;
+
+            $institutionId = auth()->user()->institution_id ?? $student->institution_id;
+
+            $status = RegistrationStatus::updateOrCreate(
+                [
+                    'institution_id' => $institutionId,
+                    'student_id' => $studentId,
+                    'academic_session_id' => $session_id,
+                    'semester_id' => $semester_id,
+                ]
+            );
+
+            if ($targetStatus === 'closed') {
+                $status->update([
+                    'status' => 'closed',
+                    'closed_by' => $userId,
+                    'closed_at' => now(),
+                ]);
+            } else {
+                $status->update([
+                    'status' => 'open',
+                    'closed_by' => null,
+                    'closed_at' => null,
+                ]);
+            }
+        }
+
+        $this->dispatch('notify', ['type' => 'success', 'message' => "Successfully {$targetStatus} registrations for " . count($this->selectedStudents) . " students."]);
+        $this->selectedStudents = [];
+        $this->selectAll = false;
+        $this->js('$flux.modal("confirm-bulk-toggle").close()');
+    }
+
+    private function getStudentsQuery()
+    {
+        return Student::query()
+            ->when($this->institution_id, function ($q) {
+                $q->where('institution_id', $this->institution_id);
+            })
+            ->when(!$this->institution_id, function ($q) {
+                $q->where('institution_id', auth()->user()->institution_id);
+            })
+            ->when($this->department_id, function ($q) {
+                $q->whereHas('program', function ($pq) {
+                    $pq->where('department_id', $this->department_id);
+                });
+            })
+            ->when($this->program_id, function ($q) {
+                $q->where('program_id', $this->program_id);
+            })
+            ->when($this->level && $this->session_id, function ($q) {
+                $session = \App\Models\AcademicSession::find($this->session_id);
+                if ($session) {
+                    $sessionStartYear = (int) explode('/', $session->name)[0];
+                    $targetLevel = (int) $this->level;
+                    // Logic: entry_level + (GREATEST(0, sessionStartYear - admission_year) * 100) = targetLevel
+                    $q->whereRaw('(entry_level + (GREATEST(0, ? - admission_year) * 100)) = ?', [$sessionStartYear, $targetLevel]);
+                }
+            })
+            ->when($this->search, function ($query) {
+                $query->where(function ($q) {
+                    $q->where('first_name', 'like', "%{$this->search}%")
+                        ->orWhere('last_name', 'like', "%{$this->search}%")
+                        ->orWhere('matric_number', 'like', "%{$this->search}%");
+                });
+            });
+    }
+
     public function with(): array
     {
         $students = collect();
         if ($this->session_id && $this->semester_id) {
-            $students = Student::query()
-                ->when($this->institution_id, function ($q) {
-                    $q->where('institution_id', $this->institution_id);
-                })
-                ->when(!$this->institution_id, function ($q) {
-                    $q->where('institution_id', auth()->user()->institution_id);
-                })
-                ->when($this->department_id, function ($q) {
-                    $q->whereHas('program', function ($pq) {
-                        $pq->where('department_id', $this->department_id);
-                    });
-                })
-                ->when($this->program_id, function ($q) {
-                    $q->where('program_id', $this->program_id);
-                })
-                ->when($this->search, function ($query) {
-                    $query->where(function ($q) {
-                        $q->where('first_name', 'like', "%{$this->search}%")
-                            ->orWhere('last_name', 'like', "%{$this->search}%")
-                            ->orWhere('matric_number', 'like', "%{$this->search}%");
-                    });
-                })
+            $students = $this->getStudentsQuery()
                 ->with(['courseRegistrations' => function ($query) {
                     $query->where('academic_session_id', $this->session_id)
                         ->where('semester_id', $this->semester_id);
@@ -236,6 +336,16 @@ new #[Layout('layouts.app')] #[Title('Manage Registrations')] class extends Comp
                 @endforeach
             </flux:select>
 
+            <flux:select wire:model.live="level" :label="__('Level')" class="lg:col-span-2">
+                <option value="">{{ __('All Levels') }}</option>
+                <option value="100">100 Level</option>
+                <option value="200">200 Level</option>
+                <option value="300">300 Level</option>
+                <option value="400">400 Level</option>
+                <option value="500">500 Level</option>
+                <option value="600">600 Level</option>
+            </flux:select>
+
             <flux:select wire:model.live="semester_id" :label="__('Semester')" :disabled="!$session_id" class="lg:col-span-2">
                 <option value="">{{ __('Select Semester') }}</option>
                 @foreach ($semesters as $semester)
@@ -248,10 +358,22 @@ new #[Layout('layouts.app')] #[Title('Manage Registrations')] class extends Comp
         </div>
 
         @if ($session_id && $semester_id)
+        @if(count($selectedStudents) > 0)
+        <div class="mb-4 flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-zinc-200 dark:border-zinc-700">
+            <span class="text-sm font-medium text-zinc-600 dark:text-zinc-300 ml-2"><strong>{{ count($selectedStudents) }}</strong> students selected</span>
+            <div class="flex gap-2">
+                <flux:button size="sm" variant="primary" icon="lock-open" wire:click="confirmBulkToggle('open')">{{ __('Unlock Selected') }}</flux:button>
+                <flux:button size="sm" variant="danger" icon="lock-closed" wire:click="confirmBulkToggle('close')">{{ __('Close Selected') }}</flux:button>
+            </div>
+        </div>
+        @endif
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="border-b border-zinc-200 dark:border-zinc-800">
+                        <th class="py-3 px-4 w-12 text-center">
+                            <flux:checkbox wire:model.live="selectAll" />
+                        </th>
                         <th class="py-3 px-4 text-left font-bold uppercase text-[10px] tracking-widest text-zinc-500">{{
                             __('Student') }}</th>
                         <th class="py-3 px-4 text-center font-bold uppercase text-[10px] tracking-widest text-zinc-500">
@@ -268,7 +390,10 @@ new #[Layout('layouts.app')] #[Title('Manage Registrations')] class extends Comp
                     $units = $student->courseRegistrations->sum(fn($r) => $r->course->credit_unit ?? 0);
                     $isClosed = $student->reg_status && $student->reg_status->status === 'closed';
                     @endphp
-                    <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
+                    <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors {{ in_array((string)$student->id, $selectedStudents) ? 'bg-zinc-50 dark:bg-zinc-900/40' : '' }}">
+                        <td class="py-4 px-4 text-center border-r border-zinc-100 dark:border-zinc-800/50">
+                            <flux:checkbox wire:model.live="selectedStudents" value="{{ $student->id }}" />
+                        </td>
                         <td class="py-4 px-4">
                             <div class="flex items-center gap-3">
                                 <div
@@ -308,7 +433,7 @@ new #[Layout('layouts.app')] #[Title('Manage Registrations')] class extends Comp
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="4" class="p-12 text-center text-zinc-400">
+                        <td colspan="5" class="p-12 text-center text-zinc-400">
                             {{ __('No students found for this selection.') }}
                         </td>
                     </tr>
@@ -348,6 +473,25 @@ new #[Layout('layouts.app')] #[Title('Manage Registrations')] class extends Comp
                 </flux:modal.close>
                 <flux:button type="submit" :variant="$isUnlocking ? 'danger' : 'primary'">
                     {{ $isUnlocking ? __('Confirm Unlock') : __('Confirm Close') }}
+                </flux:button>
+            </div>
+        </form>
+    </flux:modal>
+    <flux:modal name="confirm-bulk-toggle" class="min-w-[400px]">
+        <form wire:submit="executeBulkToggle" class="space-y-6">
+            <div>
+                <flux:heading size="lg">{{ $bulkAction === 'open' ? __('Unlock Selected?') : __('Close Selected?') }}</flux:heading>
+                <flux:subheading>
+                    {{ __('Are you sure you want to ') }} {{ $bulkAction === 'open' ? __('unlock') : __('close') }} {{ __('registration for') }} <strong>{{ count($selectedStudents) }}</strong> {{ __('students?') }}
+                </flux:subheading>
+            </div>
+
+            <div class="flex items-center justify-end gap-3">
+                <flux:modal.close>
+                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                </flux:modal.close>
+                <flux:button type="submit" :variant="$bulkAction === 'open' ? 'primary' : 'danger'">
+                    {{ $bulkAction === 'open' ? __('Confirm Unlock') : __('Confirm Close') }}
                 </flux:button>
             </div>
         </form>

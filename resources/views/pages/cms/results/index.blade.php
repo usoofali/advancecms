@@ -521,28 +521,77 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
     </div>
 
     {{-- Printed report: filter context (screen-hidden, visible when printing) --}}
-    <div
-        class="results-print-header hidden print:block border-b border-zinc-300 pb-4 mb-4 text-black">
-        <h1 class="text-xl font-bold tracking-tight">{{ __('Academic Results') }}</h1>
-        @if (!empty($printSummary))
-        <dl class="mt-3 space-y-1 text-sm">
-            @foreach ($printSummary as $line)
-            <div class="flex flex-wrap gap-x-2 gap-y-0.5">
-                <dt class="font-semibold shrink-0">{{ $line['label'] }}:</dt>
-                <dd class="min-w-0">{{ $line['value'] }}</dd>
-            </div>
-            @endforeach
-        </dl>
-        @endif
-        @if ($resultsReady ?? false)
-        <p class="mt-2 text-sm font-medium text-zinc-700 print:text-black">
-            @if (($viewMode ?? '') === 'course')
-            {{ __('Single course breakdown') }}
+    <div class="results-print-header hidden print:block border-b-2 border-black pb-4 mb-4 text-black">
+        @php
+            $printInstId = auth()->user()->institution_id ?: ($institution_id ?: null);
+            $printInst = $printInstId ? \App\Models\Institution::find($printInstId) : null;
+        @endphp
+        
+        <div class="flex items-center gap-4 mb-4">
+            @if ($printInst && $printInst->logo_path)
+            <img src="{{ asset('storage/'.$printInst->logo_path) }}" class="h-16 w-16 object-contain" alt="Logo">
             @else
-            {{ __('Semester overview (matrix by course)') }}
+            <div class="h-16 w-16 bg-zinc-100 border border-zinc-300 flex items-center justify-center">
+                <span class="text-[10px] uppercase font-bold text-zinc-400">LOGO</span>
+            </div>
             @endif
-        </p>
-        @endif
+            <div>
+                <h1 class="text-2xl font-black uppercase tracking-tight text-black leading-tight">
+                    {{ $printInst?->name ?? __('Academic Results') }}
+                </h1>
+                <p class="text-[10px] font-bold uppercase text-zinc-600 tracking-widest mt-0.5">
+                    {{ $printInst?->address ?? __('Official Academic Records') }}
+                </p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                @if (!empty($printSummary))
+                <dl class="space-y-0.5 text-[11px]">
+                    @foreach ($printSummary as $line)
+                    <div class="flex flex-wrap gap-x-2">
+                        <dt class="font-bold uppercase text-zinc-600 tracking-wide">{{ $line['label'] }}:</dt>
+                        <dd class="font-medium font-serif">{{ $line['value'] }}</dd>
+                    </div>
+                    @endforeach
+                </dl>
+                @endif
+                @if ($resultsReady ?? false)
+                <div class="font-bold uppercase tracking-widest text-[9px] mt-2 inline-block px-2 py-0.5 bg-black text-white">
+                    @if (($viewMode ?? '') === 'course')
+                    {{ __('Single Course Breakdown') }}
+                    @else
+                    {{ __('Semester Overview (Matrix)') }}
+                    @endif
+                </div>
+                @endif
+            </div>
+
+            @if (($viewMode ?? '') === 'matrix' && !empty($matrixPrintPassFailSummary))
+            <div class="flex justify-end items-end pb-1">
+                <div class="border-2 border-black p-2 inline-block text-left min-w-[200px]">
+                    <div class="text-[9px] font-black uppercase tracking-widest border-b border-black pb-1 mb-1">{{ __('Overall Summary') }}</div>
+                    <div class="flex justify-between text-[11px] font-bold text-zinc-800">
+                        <span>{{ __('Total Students:') }}</span>
+                        <span>{{ $metrics['students'] ?? 0 }}</span>
+                    </div>
+                    <div class="flex justify-between text-[11px] font-bold text-zinc-800 mb-1 border-b border-zinc-200 pb-1">
+                        <span>{{ __('Total Courses:') }}</span>
+                        <span>{{ $metrics['courses'] ?? 0 }}</span>
+                    </div>
+                    <div class="flex justify-between text-[11px] font-bold text-green-800 mt-1">
+                        <span>{{ __('Passes:') }}</span>
+                        <span>{{ $matrixPrintPassFailSummary['total_passes'] }} ({{ $matrixPrintPassFailSummary['pass_percentage'] }}%)</span>
+                    </div>
+                    <div class="flex justify-between text-[11px] font-bold text-red-800">
+                        <span>{{ __('Fails:') }}</span>
+                        <span>{{ $matrixPrintPassFailSummary['total_fails'] }} ({{ $matrixPrintPassFailSummary['fail_percentage'] }}%)</span>
+                    </div>
+                </div>
+            </div>
+            @endif
+        </div>
     </div>
 
     @if(!$resultsReady)
@@ -550,17 +599,17 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
         {{ __('Choose session, level, and semester to load results. Optionally pick one course for a detailed CA / exam breakdown.') }}
     </flux:callout>
     @elseif($metrics['mode'] === 'matrix' && ($metrics['students'] ?? 0) > 0)
-    <flux:card class="mt-2 print:border-none print:shadow-none print:mb-6">
+    <flux:card class="mt-2 print:hidden mb-4">
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-y-6 gap-x-4">
             <div
-                class="col-span-2 sm:col-span-1 text-center md:text-left flex flex-col justify-center border-b sm:border-b-0 sm:border-r border-zinc-100 dark:border-zinc-800 pb-4 sm:pb-0 sm:pr-4 print:border-none">
+                class="col-span-2 sm:col-span-1 text-center md:text-left flex flex-col justify-center border-b sm:border-b-0 sm:border-r border-zinc-100 dark:border-zinc-800 pb-4 sm:pb-0 sm:pr-4">
                 <div class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('Students') }}</div>
                 <div class="mt-1">
                     <span class="text-3xl font-semibold text-zinc-900 dark:text-white">{{ $metrics['students']
                         }}</span>
                 </div>
             </div>
-            <div class="text-center sm:border-r border-zinc-100 dark:border-zinc-800 sm:pr-4 print:border-none">
+            <div class="text-center sm:border-r border-zinc-100 dark:border-zinc-800 sm:pr-4">
                 <div class="text-sm font-medium text-zinc-500 dark:text-zinc-400">{{ __('Courses (columns)') }}</div>
                 <div class="mt-1 text-3xl font-semibold text-zinc-900 dark:text-white">{{ $metrics['courses'] }}
                 </div>
@@ -568,7 +617,7 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
         </div>
     </flux:card>
     @elseif($metrics['mode'] === 'course' && ($metrics['total'] ?? 0) > 0)
-    <flux:card class="mt-2 print:border-none print:shadow-none print:mb-6">
+    <flux:card class="mt-2 print:hidden mb-4">
         <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-y-6 gap-x-4">
             <div
                 class="col-span-2 sm:col-span-3 md:col-span-1 text-center md:text-left flex flex-col justify-center border-b md:border-b-0 md:border-r border-zinc-100 dark:border-zinc-800 pb-4 md:pb-0 md:pr-4 print:border-none">
@@ -705,26 +754,7 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
                 </tr>
                 @endforelse
             </tbody>
-            @if ($matrixRowsForPrint->isNotEmpty())
-            <tfoot class="border-t-2 border-zinc-300 bg-zinc-100 dark:bg-zinc-900/80 print:bg-zinc-100">
-                <tr>
-                    <td colspan="{{ 1 + $catalogCourses->count() }}"
-                        class="px-3 py-3 text-sm font-semibold text-zinc-900 dark:text-zinc-100 print:text-black">
-                        {{ __('Summary (all students, graded course outcomes)') }}
-                    </td>
-                    <td
-                        class="px-3 py-3 text-center text-sm font-semibold text-green-700 dark:text-green-400 print:text-green-800">
-                        {{ $matrixPrintPassFailSummary['total_passes'] }}
-                        ({{ $matrixPrintPassFailSummary['pass_percentage'] }}%)
-                    </td>
-                    <td
-                        class="px-3 py-3 text-center text-sm font-semibold text-red-700 dark:text-red-400 print:text-red-800">
-                        {{ $matrixPrintPassFailSummary['total_fails'] }}
-                        ({{ $matrixPrintPassFailSummary['fail_percentage'] }}%)
-                    </td>
-                </tr>
-            </tfoot>
-            @endif
+
         </table>
     </div>
 

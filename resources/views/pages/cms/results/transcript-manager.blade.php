@@ -101,7 +101,7 @@ new #[Layout('layouts.app')] #[Title('Transcript Manager')] class extends Compon
 }; ?>
 
 <div class="mx-auto max-w-5xl">
-    <div class="mb-8 flex items-center justify-between">
+    <div class="mb-8 flex items-center justify-between print:hidden">
         <div>
             <flux:heading size="xl">{{ __('Transcript Manager') }}</flux:heading>
             <flux:subheading>{{ __('Search for a student to view and print their comprehensive academic record.') }}</flux:subheading>
@@ -157,8 +157,8 @@ new #[Layout('layouts.app')] #[Title('Transcript Manager')] class extends Compon
     @if ($selectedStudent)
     <div class="space-y-6 print:space-y-4">
         {{-- Official Header --}}
-        <div class="flex flex-col md:flex-row items-center md:items-start justify-between border-b-2 border-zinc-900 dark:border-white pb-6 pt-2 gap-6 text-center md:text-left">
-            <div class="flex flex-col md:flex-row items-center gap-6">
+        <div class="flex flex-col md:flex-row items-center md:items-start justify-center text-center md:text-left border-b-2 border-zinc-900 dark:border-white pb-3 pt-0 gap-4">
+            <div class="flex flex-col md:flex-row items-center gap-4 mx-auto">
                 @php $institution = $selectedStudent->program?->department?->institution; @endphp
                 @if ($institution?->logo_url)
                 <img src="{{ $institution->logo_url }}" alt="Logo" class="size-20 object-contain" />
@@ -171,65 +171,20 @@ new #[Layout('layouts.app')] #[Title('Transcript Manager')] class extends Compon
                 <div class="space-y-1">
                     <h1 class="text-2xl font-black uppercase tracking-tight text-zinc-900 dark:text-white leading-none">{{ $institution?->name ?? __('Institution Name') }}</h1>
                     <div class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{{ $institution?->address ?? __('Institution Address') }}</div>
-                    <div class="flex flex-col md:flex-row md:gap-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                    <div class="flex flex-col md:flex-row md:items-center justify-center text-[10px] font-bold text-zinc-500 uppercase tracking-widest md:gap-4">
                         <span>TEL: {{ $institution?->phone ?? '—' }}</span>
                         <span>EMAIL: {{ $institution?->email ?? '—' }}</span>
                     </div>
-                    <div class="inline-block px-3 py-1 mt-2 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[11px] font-black tracking-[0.2em] uppercase">
+                    <div class="inline-block px-3 py-1 mt-1 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 text-[11px] font-black tracking-[0.2em] uppercase">
                         {{ __('Official Academic Transcript') }}
                     </div>
                 </div>
             </div>
-
-            <div class="text-center md:text-right flex flex-col items-center md:items-end gap-2">
-                <div class="size-20 border border-zinc-200 dark:border-zinc-800 p-2 flex items-center justify-center bg-white shadow-sm ring-4 ring-zinc-50 dark:ring-zinc-900/50">
-                    {{-- Verification QR Placeholder - More Intricate Style --}}
-                    <svg viewBox="0 0 100 100" class="size-full text-zinc-900">
-                        <!-- Background grid dots -->
-                        @for ($i = 0; $i < 10; $i++)
-                            @for ($j = 0; $j < 10; $j++)
-                                <rect x="{{ $i * 10 + 4 }}" y="{{ $j * 10 + 4 }}" width="2" height="2" fill="currentColor" opacity="0.1" />
-                            @endfor
-                        @endfor
-                        
-                        <!-- Finder Patterns (The large squares) -->
-                        <path d="M5,5 h25 v25 h-25 z M10,10 h15 v15 h-15 z M13,13 h9 v9 h-9 z" fill="currentColor" />
-                        <path d="M70,5 h25 v25 h-25 z M75,10 h15 v15 h-15 z M78,13 h9 v9 h-9 z" fill="currentColor" />
-                        <path d="M5,70 h25 v25 h-25 z M10,75 h15 v15 h-15 z M13,78 h9 v9 h-9 z" fill="currentColor" />
-                        
-                        <!-- Small Alignment Pattern -->
-                        <path d="M72,72 h12 v12 h-12 z M75,75 h6 v6 h-6 z" fill="currentColor" />
-                        
-                        <!-- Random "Data" Pixels -->
-                        <rect x="40" y="5" width="5" height="5" fill="currentColor" />
-                        <rect x="50" y="10" width="5" height="5" fill="currentColor" />
-                        <rect x="40" y="20" width="10" height="5" fill="currentColor" />
-                        <rect x="55" y="5" width="5" height="10" fill="currentColor" />
-                        
-                        <rect x="5" y="40" width="5" height="5" fill="currentColor" />
-                        <rect x="15" y="45" width="5" height="10" fill="currentColor" />
-                        <rect x="25" y="40" width="5" height="5" fill="currentColor" />
-                        
-                        <rect x="40" y="40" width="20" height="5" fill="currentColor" />
-                        <rect x="40" y="50" width="5" height="20" fill="currentColor" />
-                        <rect x="55" y="45" width="5" height="5" fill="currentColor" />
-                        <rect x="65" y="40" width="10" height="5" fill="currentColor" />
-                        
-                        <rect x="70" y="40" width="5" height="5" fill="currentColor" />
-                        <rect x="85" y="45" width="5" height="15" fill="currentColor" />
-                        
-                        <rect x="45" y="75" width="10" height="5" fill="currentColor" />
-                        <rect x="40" y="85" width="15" height="5" fill="currentColor" />
-                        <rect x="60" y="80" width="5" height="5" fill="currentColor" />
-                    </svg>
-                </div>
-                <div class="text-[8px] font-bold text-zinc-400 uppercase tracking-widest">{{ __('Scan to Verify') }}</div>
-            </div>
         </div>
 
         {{-- Profile Section --}}
-        <div class="print:border-b-2 print:border-zinc-900 pb-6">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-start border-b border-zinc-100 dark:border-zinc-800 pb-6 print:hidden">
+        <div class="print:border-b-2 print:border-zinc-900 pb-3">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-start border-b border-zinc-100 dark:border-zinc-800 pb-4 print:hidden">
                 <div class="md:col-span-2">
                     <div class="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">{{ __('Student Full Name') }}</div>
                     <div class="text-2xl font-black text-zinc-900 dark:text-white uppercase leading-tight">{{ $selectedStudent->full_name }}</div>
@@ -358,12 +313,46 @@ new #[Layout('layouts.app')] #[Title('Transcript Manager')] class extends Compon
         </div>
 
         {{-- Verification Section --}}
-        <div class="mt-12 flex justify-between items-end print:mt-12">
+        <div class="mt-8 flex justify-between items-end print:mt-8">
             <div class="space-y-4">
                 <div class="text-xs font-bold uppercase tracking-widest text-zinc-400 print:text-[8px]">{{ __('Authorized Signature') }}</div>
                 <div class="w-64 border-b-2 border-zinc-900 dark:border-white h-8"></div>
                 <div class="text-[10px] font-bold text-zinc-500 print:text-[8px]">{{ __('Academic Secretary / Registrar') }}</div>
             </div>
+
+            <div class="text-center flex flex-col items-center gap-1 -mb-1">
+                <div class="size-16 border border-zinc-200 dark:border-zinc-800 p-1 flex items-center justify-center bg-white shadow-sm ring-4 ring-zinc-50 dark:ring-zinc-900/50">
+                    <svg viewBox="0 0 100 100" class="size-full text-zinc-900">
+                        @for ($i = 0; $i < 10; $i++)
+                            @for ($j = 0; $j < 10; $j++)
+                                <rect x="{{ $i * 10 + 4 }}" y="{{ $j * 10 + 4 }}" width="2" height="2" fill="currentColor" opacity="0.1" />
+                            @endfor
+                        @endfor
+                        <path d="M5,5 h25 v25 h-25 z M10,10 h15 v15 h-15 z M13,13 h9 v9 h-9 z" fill="currentColor" />
+                        <path d="M70,5 h25 v25 h-25 z M75,10 h15 v15 h-15 z M78,13 h9 v9 h-9 z" fill="currentColor" />
+                        <path d="M5,70 h25 v25 h-25 z M10,75 h15 v15 h-15 z M13,78 h9 v9 h-9 z" fill="currentColor" />
+                        <path d="M72,72 h12 v12 h-12 z M75,75 h6 v6 h-6 z" fill="currentColor" />
+                        <rect x="40" y="5" width="5" height="5" fill="currentColor" />
+                        <rect x="50" y="10" width="5" height="5" fill="currentColor" />
+                        <rect x="40" y="20" width="10" height="5" fill="currentColor" />
+                        <rect x="55" y="5" width="5" height="10" fill="currentColor" />
+                        <rect x="5" y="40" width="5" height="5" fill="currentColor" />
+                        <rect x="15" y="45" width="5" height="10" fill="currentColor" />
+                        <rect x="25" y="40" width="5" height="5" fill="currentColor" />
+                        <rect x="40" y="40" width="20" height="5" fill="currentColor" />
+                        <rect x="40" y="50" width="5" height="20" fill="currentColor" />
+                        <rect x="55" y="45" width="5" height="5" fill="currentColor" />
+                        <rect x="65" y="40" width="10" height="5" fill="currentColor" />
+                        <rect x="70" y="40" width="5" height="5" fill="currentColor" />
+                        <rect x="85" y="45" width="5" height="15" fill="currentColor" />
+                        <rect x="45" y="75" width="10" height="5" fill="currentColor" />
+                        <rect x="40" y="85" width="15" height="5" fill="currentColor" />
+                        <rect x="60" y="80" width="5" height="5" fill="currentColor" />
+                    </svg>
+                </div>
+                <div class="text-[7px] font-bold text-zinc-400 uppercase tracking-widest">{{ __('Scan to Verify') }}</div>
+            </div>
+
             <div class="text-right space-y-2">
                 <div class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest print:text-[7px]">{{ __('Date of Issue') }}</div>
                 <div class="text-sm font-black print:text-[10px]">{{ now()->format('D, M j, Y') }}</div>
@@ -393,7 +382,7 @@ new #[Layout('layouts.app')] #[Title('Transcript Manager')] class extends Compon
                 padding: 0;
             }
             @page {
-                margin: 0.8cm;
+                margin: 0.5cm;
                 size: portrait;
             }
             flux-card {

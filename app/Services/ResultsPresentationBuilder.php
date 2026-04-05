@@ -75,43 +75,37 @@ class ResultsPresentationBuilder
     }
 
     /**
-     * @param  array<string, mixed>  $filters
-     * @return LengthAwarePaginator<int, array{student: Student, cells: array<int, string>, passes: int, fails: int}>
+     * Matrix rows for an ordered list of student IDs (same shape as paginator items).
+     *
+     * @param  array<int, int>  $orderedStudentIds
+     * @return Collection<int, array{student: Student, cells: array<int, string>, passes: int, fails: int}>
      */
-    public static function paginatedMatrixRows(
+    public static function matrixRowsForStudentIds(
         array $filters,
         EloquentCollection $catalogCourses,
-        int $perPage = 20,
-    ): LengthAwarePaginator {
-        $studentIds = self::studentIdsInMatrixScope($filters);
-        $total = $studentIds->count();
-        $page = max(1, (int) LengthAwarePaginator::resolveCurrentPage());
-        $slice = $studentIds->slice(($page - 1) * $perPage, $perPage)->values()->all();
-
-        if ($slice === []) {
-            return new LengthAwarePaginator([], $total, $perPage, $page, [
-                'path' => LengthAwarePaginator::resolveCurrentPath(),
-                'pageName' => 'page',
-            ]);
+        array $orderedStudentIds,
+    ): Collection {
+        if ($orderedStudentIds === []) {
+            return collect();
         }
 
         $students = Student::query()
-            ->whereIn('id', $slice)
+            ->whereIn('id', $orderedStudentIds)
             ->orderBy('matric_number')
             ->get()
             ->keyBy('id');
 
-        $orderedStudents = collect($slice)->map(fn (int $id) => $students->get($id))->filter();
+        $orderedStudents = collect($orderedStudentIds)->map(fn (int $id) => $students->get($id))->filter();
 
         $courseIds = $catalogCourses->pluck('id')->all();
 
         $results = ResultsFilterService::newFilteredQuery(self::matrixFilters($filters))
-            ->whereIn('student_id', $slice)
+            ->whereIn('student_id', $orderedStudentIds)
             ->whereIn('course_id', $courseIds)
             ->get()
             ->groupBy('student_id');
 
-        $rows = $orderedStudents->map(function (Student $student) use ($catalogCourses, $results) {
+        return $orderedStudents->map(function (Student $student) use ($catalogCourses, $results) {
             $byCourse = $results->get($student->id, collect())->keyBy('course_id');
             $cells = [];
             $passes = 0;
@@ -138,7 +132,63 @@ class ResultsPresentationBuilder
                 'passes' => $passes,
                 'fails' => $fails,
             ];
-        })->values()->all();
+        })->values();
+    }
+
+    /**
+     * All matrix rows for print / export (no pagination).
+     *
+     * @return Collection<int, array{student: Student, cells: array<int, string>, passes: int, fails: int}>
+     */
+    public static function allMatrixRows(array $filters, EloquentCollection $catalogCourses): Collection
+    {
+        $ids = self::studentIdsInMatrixScope($filters)->all();
+
+        return self::matrixRowsForStudentIds($filters, $catalogCourses, $ids);
+    }
+
+    /**
+     * Aggregate pass/fail counts and percentages across matrix rows (per course outcome with a pass/fail remark).
+     *
+     * @param  Collection<int, array{student: Student, cells: array<int, string>, passes: int, fails: int}>  $matrixRows
+     * @return array{total_passes: int, total_fails: int, pass_percentage: float, fail_percentage: float}
+     */
+    public static function matrixRowsPassFailSummary(Collection $matrixRows): array
+    {
+        $totalPasses = (int) $matrixRows->sum('passes');
+        $totalFails = (int) $matrixRows->sum('fails');
+        $denominator = $totalPasses + $totalFails;
+
+        return [
+            'total_passes' => $totalPasses,
+            'total_fails' => $totalFails,
+            'pass_percentage' => $denominator > 0 ? round(($totalPasses / $denominator) * 100, 1) : 0.0,
+            'fail_percentage' => $denominator > 0 ? round(($totalFails / $denominator) * 100, 1) : 0.0,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return LengthAwarePaginator<int, array{student: Student, cells: array<int, string>, passes: int, fails: int}>
+     */
+    public static function paginatedMatrixRows(
+        array $filters,
+        EloquentCollection $catalogCourses,
+        int $perPage = 20,
+    ): LengthAwarePaginator {
+        $studentIds = self::studentIdsInMatrixScope($filters);
+        $total = $studentIds->count();
+        $page = max(1, (int) LengthAwarePaginator::resolveCurrentPage());
+        $slice = $studentIds->slice(($page - 1) * $perPage, $perPage)->values()->all();
+
+        if ($slice === []) {
+            return new LengthAwarePaginator([], $total, $perPage, $page, [
+                'path' => LengthAwarePaginator::resolveCurrentPath(),
+                'pageName' => 'page',
+            ]);
+        }
+
+        $rows = self::matrixRowsForStudentIds($filters, $catalogCourses, $slice)->all();
 
         return new LengthAwarePaginator($rows, $total, $perPage, $page, [
             'path' => LengthAwarePaginator::resolveCurrentPath(),

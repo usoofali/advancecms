@@ -337,6 +337,14 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
                 'matrixPaginator' => null,
                 'catalogCourses' => collect(),
                 'courseResults' => Result::query()->whereRaw('1 = 0')->paginate(20),
+                'courseResultsForPrint' => collect(),
+                'matrixRowsForPrint' => collect(),
+                'matrixPrintPassFailSummary' => [
+                    'total_passes' => 0,
+                    'total_fails' => 0,
+                    'pass_percentage' => 0.0,
+                    'fail_percentage' => 0.0,
+                ],
                 'metrics' => [
                     'mode' => 'none',
                     'total' => 0,
@@ -364,6 +372,8 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
                 ->with(['student', 'course', 'academicSession', 'semester']);
 
             $courseResults = (clone $baseQuery)->latest()->paginate(20);
+            // Full course list for print (same filters as paginated list).
+            $courseResultsForPrint = (clone $baseQuery)->latest()->get();
             $allForMetrics = (clone $baseQuery)->select(['grade', 'remark'])->get();
             $metrics = ResultsPresentationBuilder::courseModeMetrics($allForMetrics);
 
@@ -374,6 +384,14 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
                 'matrixPaginator' => null,
                 'catalogCourses' => $courses,
                 'courseResults' => $courseResults,
+                'courseResultsForPrint' => $courseResultsForPrint,
+                'matrixRowsForPrint' => collect(),
+                'matrixPrintPassFailSummary' => [
+                    'total_passes' => 0,
+                    'total_fails' => 0,
+                    'pass_percentage' => 0.0,
+                    'fail_percentage' => 0.0,
+                ],
                 'metrics' => $metrics,
                 'cascade' => $cascade,
                 'departments' => $departments,
@@ -387,7 +405,10 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
         }
 
         $catalogCourses = $courses;
+        // Full matrix for print loads all rows in the Livewire payload (see hidden print:block table).
         $matrixPaginator = ResultsPresentationBuilder::paginatedMatrixRows($filters, $catalogCourses, 20);
+        $matrixRowsForPrint = ResultsPresentationBuilder::allMatrixRows($filters, $catalogCourses);
+        $matrixPrintPassFailSummary = ResultsPresentationBuilder::matrixRowsPassFailSummary($matrixRowsForPrint);
         $metrics = ResultsPresentationBuilder::matrixModeMetrics($filters, $catalogCourses);
 
         return [
@@ -397,6 +418,9 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
             'matrixPaginator' => $matrixPaginator,
             'catalogCourses' => $catalogCourses,
             'courseResults' => Result::query()->whereRaw('1 = 0')->paginate(20),
+            'courseResultsForPrint' => collect(),
+            'matrixRowsForPrint' => $matrixRowsForPrint,
+            'matrixPrintPassFailSummary' => $matrixPrintPassFailSummary,
             'metrics' => $metrics,
             'cascade' => $cascade,
             'departments' => $departments,
@@ -577,8 +601,63 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
     @endif
 
     @if($resultsReady && $viewMode === 'matrix')
+    {{-- Paginated table (screen); full matrix is loaded again for browser print (hidden on screen). --}}
+    <div class="print:hidden">
+        <div
+            class="results-print-table overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
+            <table class="w-full text-left border-collapse text-sm">
+                <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700">
+                    <tr>
+                        <th
+                            class="sticky left-0 z-10 bg-zinc-50 dark:bg-zinc-900/50 px-3 py-3 font-semibold text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
+                            {{ __('Student') }}</th>
+                        @foreach ($catalogCourses as $colCourse)
+                        <th class="px-2 py-3 font-semibold text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
+                            <span class="font-mono uppercase">{{ $colCourse->course_code }}</span>
+                        </th>
+                        @endforeach
+                        <th class="px-3 py-3 font-semibold text-green-700 dark:text-green-400 whitespace-nowrap">{{
+                            __('Passes') }}</th>
+                        <th class="px-3 py-3 font-semibold text-red-700 dark:text-red-400 whitespace-nowrap">{{ __('Fails')
+                            }}</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
+                    @forelse ($matrixPaginator as $row)
+                    <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors"
+                        wire:key="m-{{ $row['student']->id }}">
+                        <td
+                            class="sticky left-0 z-10 bg-white dark:bg-zinc-800 px-3 py-3 border-r border-zinc-100 dark:border-zinc-700">
+                            <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $row['student']->full_name }}
+                            </div>
+                            <div class="text-xs text-zinc-500 dark:text-zinc-400 font-mono">{{ $row['student']->matric_number
+                                }}</div>
+                        </td>
+                        @foreach ($catalogCourses as $colCourse)
+                        <td class="px-2 py-3 text-center text-zinc-800 dark:text-zinc-200 whitespace-nowrap">
+                            {{ $row['cells'][$colCourse->id] ?? '' }}
+                        </td>
+                        @endforeach
+                        <td class="px-3 py-3 text-center font-semibold text-green-700 dark:text-green-400">{{ $row['passes']
+                            }}</td>
+                        <td class="px-3 py-3 text-center font-semibold text-red-700 dark:text-red-400">{{ $row['fails'] }}
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="{{ 3 + $catalogCourses->count() }}"
+                            class="px-4 py-12 text-center text-zinc-500 dark:text-zinc-400">
+                            {{ __('No students with results for this selection.') }}
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-4 no-print">{{ $matrixPaginator->links() }}</div>
+    </div>
     <div
-        class="results-print-table overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
+        class="hidden print:block results-print-table overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
         <table class="w-full text-left border-collapse text-sm">
             <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700">
                 <tr>
@@ -597,9 +676,9 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
                 </tr>
             </thead>
             <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                @forelse ($matrixPaginator as $row)
+                @forelse ($matrixRowsForPrint as $row)
                 <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors"
-                    wire:key="m-{{ $row['student']->id }}">
+                    wire:key="m-print-{{ $row['student']->id }}">
                     <td
                         class="sticky left-0 z-10 bg-white dark:bg-zinc-800 px-3 py-3 border-r border-zinc-100 dark:border-zinc-700">
                         <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $row['student']->full_name }}
@@ -626,13 +705,82 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
                 </tr>
                 @endforelse
             </tbody>
+            @if ($matrixRowsForPrint->isNotEmpty())
+            <tfoot class="border-t-2 border-zinc-300 bg-zinc-100 dark:bg-zinc-900/80 print:bg-zinc-100">
+                <tr>
+                    <td colspan="{{ 1 + $catalogCourses->count() }}"
+                        class="px-3 py-3 text-sm font-semibold text-zinc-900 dark:text-zinc-100 print:text-black">
+                        {{ __('Summary (all students, graded course outcomes)') }}
+                    </td>
+                    <td
+                        class="px-3 py-3 text-center text-sm font-semibold text-green-700 dark:text-green-400 print:text-green-800">
+                        {{ $matrixPrintPassFailSummary['total_passes'] }}
+                        ({{ $matrixPrintPassFailSummary['pass_percentage'] }}%)
+                    </td>
+                    <td
+                        class="px-3 py-3 text-center text-sm font-semibold text-red-700 dark:text-red-400 print:text-red-800">
+                        {{ $matrixPrintPassFailSummary['total_fails'] }}
+                        ({{ $matrixPrintPassFailSummary['fail_percentage'] }}%)
+                    </td>
+                </tr>
+            </tfoot>
+            @endif
         </table>
     </div>
-    <div class="mt-4">{{ $matrixPaginator->links() }}</div>
 
     @elseif($resultsReady && $viewMode === 'course')
+    <div class="print:hidden">
+        <div
+            class="results-print-table overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700">
+                    <tr>
+                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Student') }}
+                        </th>
+                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('CA') }}</th>
+                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Exam') }}</th>
+                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Total') }}</th>
+                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Grade') }}</th>
+                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Remark') }}</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
+                    @forelse ($courseResults as $res)
+                    <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors" wire:key="{{ $res->id }}">
+                        <td class="px-4 py-4">
+                            <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $res->student->full_name }}</div>
+                            <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{{ $res->student->matric_number }}
+                            </div>
+                        </td>
+                        <td class="px-4 py-4 text-sm text-zinc-900 dark:text-zinc-100">{{ (float) $res->ca_score }}</td>
+                        <td class="px-4 py-4 text-sm text-zinc-900 dark:text-zinc-100">{{ (float) $res->exam_score }}</td>
+                        <td class="px-4 py-4 font-bold text-sm text-zinc-900 dark:text-zinc-100">{{ (float) $res->total_score
+                            }}</td>
+                        <td class="px-4 py-4 text-sm">
+                            <flux:badge variant="outline" size="sm" color="zinc">{{ $res->grade }}</flux:badge>
+                        </td>
+                        <td class="px-4 py-4 text-sm">
+                            <flux:badge
+                                :color="$res->remark === 'pass' ? 'green' : ($res->remark === 'fail' ? 'red' : 'zinc')"
+                                size="sm">
+                                {{ $res->remark ? ucfirst($res->remark) : '—' }}
+                            </flux:badge>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="6" class="px-4 py-12 text-center text-zinc-500 dark:text-zinc-400">
+                            {{ __('No results found.') }}
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-4 no-print">{{ $courseResults->links() }}</div>
+    </div>
     <div
-        class="results-print-table overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
+        class="hidden print:block results-print-table overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
         <table class="w-full text-left border-collapse">
             <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700">
                 <tr>
@@ -646,8 +794,8 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
                 </tr>
             </thead>
             <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                @forelse ($courseResults as $res)
-                <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors" wire:key="{{ $res->id }}">
+                @forelse ($courseResultsForPrint as $res)
+                <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors" wire:key="c-print-{{ $res->id }}">
                     <td class="px-4 py-4">
                         <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $res->student->full_name }}</div>
                         <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{{ $res->student->matric_number }}
@@ -678,7 +826,6 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
             </tbody>
         </table>
     </div>
-    <div class="mt-4">{{ $courseResults->links() }}</div>
     @endif
 
     {{-- Import Modal --}}

@@ -77,6 +77,156 @@ function seedResultsFixture(): array
     ];
 }
 
+/**
+ * @return array{
+ *     institution: Institution,
+ *     department: Department,
+ *     program: Program,
+ *     session: AcademicSession,
+ *     semester: Semester,
+ *     courseA: Course,
+ *     courseB: Course,
+ *     lastMatric: string,
+ * }
+ */
+function seedMatrixPrintFixture(int $studentCount): array
+{
+    $institution = Institution::factory()->create();
+    $department = Department::factory()->for($institution)->create();
+    $program = Program::factory()->create([
+        'department_id' => $department->id,
+        'institution_id' => $institution->id,
+    ]);
+    $session = AcademicSession::factory()->create();
+    $semester = Semester::factory()->create([
+        'academic_session_id' => $session->id,
+        'name' => 'first',
+    ]);
+    $courseA = Course::factory()->create([
+        'institution_id' => $institution->id,
+        'department_id' => $department->id,
+        'program_id' => $program->id,
+        'level' => 100,
+        'semester' => 1,
+        'course_code' => 'CSC101',
+    ]);
+    $courseB = Course::factory()->create([
+        'institution_id' => $institution->id,
+        'department_id' => $department->id,
+        'program_id' => $program->id,
+        'level' => 100,
+        'semester' => 1,
+        'course_code' => 'MTH101',
+    ]);
+
+    $lastMatric = '';
+    for ($i = 1; $i <= $studentCount; $i++) {
+        $matric = sprintf('ZZZ/PMAT/%03d', $i);
+        $student = Student::factory()->create([
+            'institution_id' => $institution->id,
+            'program_id' => $program->id,
+            'matric_number' => $matric,
+            'email' => null,
+        ]);
+        $lastMatric = $matric;
+
+        Result::query()->create([
+            'institution_id' => $institution->id,
+            'student_id' => $student->id,
+            'course_id' => $courseA->id,
+            'academic_session_id' => $session->id,
+            'semester_id' => $semester->id,
+            'ca_score' => 20,
+            'exam_score' => 55,
+            'total_score' => 75,
+            'grade' => 'B',
+            'grade_point' => 3.0,
+            'remark' => 'pass',
+        ]);
+    }
+
+    return [
+        'institution' => $institution,
+        'department' => $department,
+        'program' => $program,
+        'session' => $session,
+        'semester' => $semester,
+        'courseA' => $courseA,
+        'courseB' => $courseB,
+        'lastMatric' => $lastMatric,
+    ];
+}
+
+/**
+ * @return array{
+ *     institution: Institution,
+ *     department: Department,
+ *     program: Program,
+ *     session: AcademicSession,
+ *     semester: Semester,
+ *     courseA: Course,
+ *     lastMatric: string,
+ * }
+ */
+function seedCoursePrintFixture(int $studentCount): array
+{
+    $institution = Institution::factory()->create();
+    $department = Department::factory()->for($institution)->create();
+    $program = Program::factory()->create([
+        'department_id' => $department->id,
+        'institution_id' => $institution->id,
+    ]);
+    $session = AcademicSession::factory()->create();
+    $semester = Semester::factory()->create([
+        'academic_session_id' => $session->id,
+        'name' => 'first',
+    ]);
+    $courseA = Course::factory()->create([
+        'institution_id' => $institution->id,
+        'department_id' => $department->id,
+        'program_id' => $program->id,
+        'level' => 100,
+        'semester' => 1,
+        'course_code' => 'CSC101',
+    ]);
+
+    $lastMatric = '';
+    for ($i = 1; $i <= $studentCount; $i++) {
+        $matric = sprintf('ZZZ/CRSE/%03d', $i);
+        $student = Student::factory()->create([
+            'institution_id' => $institution->id,
+            'program_id' => $program->id,
+            'matric_number' => $matric,
+            'email' => null,
+        ]);
+        $lastMatric = $matric;
+
+        Result::query()->create([
+            'institution_id' => $institution->id,
+            'student_id' => $student->id,
+            'course_id' => $courseA->id,
+            'academic_session_id' => $session->id,
+            'semester_id' => $semester->id,
+            'ca_score' => 20,
+            'exam_score' => 50,
+            'total_score' => 70,
+            'grade' => 'B',
+            'grade_point' => 3.0,
+            'remark' => 'pass',
+        ]);
+    }
+
+    return [
+        'institution' => $institution,
+        'department' => $department,
+        'program' => $program,
+        'session' => $session,
+        'semester' => $semester,
+        'courseA' => $courseA,
+        'lastMatric' => $lastMatric,
+    ];
+}
+
 it('allows users with permission to view the results index', function (): void {
     $institution = Institution::factory()->create();
     $user = User::factory()
@@ -200,4 +350,43 @@ it('rejects csv export without semester', function (): void {
     $this->actingAs($user)->get(route('cms.results.export.csv', [
         'session_id' => AcademicSession::factory()->create()->id,
     ]))->assertStatus(400);
+});
+
+it('embeds every matrix row in the page html for print beyond pagination', function (): void {
+    $f = seedMatrixPrintFixture(21);
+    $user = User::factory()
+        ->for($f['institution'])
+        ->withRole('Institutional Admin')
+        ->create();
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::cms.results.index')
+        ->set('department_id', (string) $f['department']->id)
+        ->set('program_id', (string) $f['program']->id)
+        ->set('session_id', (string) $f['session']->id)
+        ->set('level', '100')
+        ->set('semester_id', (string) $f['semester']->id)
+        ->assertSee($f['lastMatric'], false)
+        ->assertSee(__('Summary (all students, graded course outcomes)'), false)
+        ->assertSee('100%', false);
+});
+
+it('embeds every course-mode result row in the page html for print beyond pagination', function (): void {
+    $f = seedCoursePrintFixture(21);
+    $user = User::factory()
+        ->for($f['institution'])
+        ->withRole('Institutional Admin')
+        ->create();
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::cms.results.index')
+        ->set('department_id', (string) $f['department']->id)
+        ->set('program_id', (string) $f['program']->id)
+        ->set('session_id', (string) $f['session']->id)
+        ->set('level', '100')
+        ->set('semester_id', (string) $f['semester']->id)
+        ->set('course_id', (string) $f['courseA']->id)
+        ->assertSee($f['lastMatric'], false);
 });

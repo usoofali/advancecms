@@ -171,9 +171,69 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
     @if ($filterSession && $filterSemester && $filterSession !== 'null' && $filterSemester !== 'null')
     {{-- Results Table --}}
     @if ($results->count() > 0)
-    @php $grouped = $results->groupBy(fn($r) => $r->academicSession->name . ' – ' . ucfirst($r->semester->name) . '
-    Semester'); @endphp
-    <div class="space-y-6">
+    @php $grouped = $results->groupBy(fn($r) => $r->academicSession->name . ' – ' . ucfirst($r->semester->name) . ' Semester'); @endphp
+    <div class="space-y-6 print:space-y-2">
+        {{-- Print-Only Header Section --}}
+        <div class="hidden print:block mb-6 space-y-4">
+            <div class="flex flex-col items-center justify-center text-center border-b-2 border-zinc-900 pb-3 gap-4">
+                <div class="flex items-center gap-4 mx-auto">
+                    @php $institution = $this->student->program?->department?->institution; @endphp
+                    @if ($institution?->logo_url)
+                    <img src="{{ $institution->logo_url }}" alt="Logo" class="size-20 object-contain" />
+                    @else
+                    <div class="size-20 bg-zinc-100 dark:bg-zinc-800 rounded flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shrink-0">
+                        <flux:icon.building-library class="size-10 text-zinc-300 dark:text-zinc-600" />
+                    </div>
+                    @endif
+                    
+                    <div class="space-y-1 text-left">
+                        <h1 class="text-2xl font-black uppercase tracking-tight text-zinc-900 leading-none">{{ $institution?->name ?? __('Institution Name') }}</h1>
+                        <div class="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{{ $institution?->address ?? __('Institution Address') }}</div>
+                        <div class="flex items-center text-[10px] font-bold text-zinc-500 uppercase tracking-widest gap-4">
+                            <span>TEL: {{ $institution?->phone ?? '—' }}</span>
+                            <span>EMAIL: {{ $institution?->email ?? '—' }}</span>
+                        </div>
+                        <div class="inline-block px-3 py-1 mt-1 bg-zinc-900 text-white text-[11px] font-black tracking-[0.2em] uppercase">
+                            {{ __('Student Academic Result') }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <table class="w-full border-collapse">
+                <tr>
+                    <td class="py-1 w-1/3">
+                        <div class="text-[8px] font-bold text-zinc-400 uppercase">{{ __('Student Full Name') }}</div>
+                        <div class="text-lg font-black text-zinc-900 uppercase">{{ $this->student->full_name }}</div>
+                    </td>
+                    <td class="py-1 w-1/3">
+                        <div class="text-[8px] font-bold text-zinc-400 uppercase">{{ __('Matriculation Number') }}</div>
+                        <div class="text-lg font-bold text-zinc-900">{{ $this->student->matric_number }}</div>
+                    </td>
+                    <td class="py-1 w-1/3 text-right">
+                        <div class="text-[8px] font-bold text-zinc-400 uppercase">{{ __('Cumulative GPA') }}</div>
+                        <div class="text-2xl font-black text-zinc-900">{{ number_format($cgpa, 2) }}</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="py-1" colspan="2">
+                        <div class="text-[8px] font-bold text-zinc-400 uppercase">{{ __('Academic Program') }}</div>
+                        <div class="text-sm font-bold text-zinc-900">{{ $this->student->program->name ?? '—' }}</div>
+                    </td>
+                    <td class="py-1 text-right">
+                        <div class="text-[8px] font-bold text-zinc-400 uppercase">{{ __('Total Units') }}</div>
+                        <div class="text-sm font-black text-zinc-900">{{ $totalUnits }}</div>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="py-1" colspan="3">
+                        <div class="text-[8px] font-bold text-zinc-400 uppercase">{{ __('Department') }}</div>
+                        <div class="text-sm font-bold text-zinc-900">{{ $this->student->program?->department?->name ?? '—' }}</div>
+                    </td>
+                </tr>
+            </table>
+        </div>
+
         @foreach ($grouped as $groupLabel => $groupResults)
         @php
         $first = $groupResults->first();
@@ -181,7 +241,7 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
         $accessData = $accessMap[$accessKey] ?? ['canAccess' => true, 'invoices' => collect()];
         $hasAccess = $accessData['canAccess'];
         @endphp
-        <flux:card>
+        <flux:card class="print:hidden">
             <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6 justify-between">
                 <div class="flex items-center gap-5">
                     <div>
@@ -320,6 +380,54 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
             @endif
         </flux:card>
         @endforeach
+
+        {{-- Verification Section (Print Only) --}}
+        <div class="hidden print:flex mt-8 justify-between items-end border-t-2 border-zinc-900 pt-4 break-inside-avoid">
+            <div class="space-y-4">
+                <div class="text-[8px] font-bold uppercase tracking-widest text-zinc-400">{{ __('Authorized Signature') }}</div>
+                <div class="w-48 border-b-2 border-zinc-900 h-8"></div>
+                <div class="text-[8px] font-bold text-zinc-500">{{ __('Academic Secretary / Registrar') }}</div>
+            </div>
+
+            <div class="text-center flex flex-col items-center gap-1">
+                <div class="size-16 flex items-center justify-center bg-white">
+                    <svg viewBox="0 0 100 100" class="size-full text-zinc-900">
+                        @for ($i = 0; $i < 10; $i++)
+                            @for ($j = 0; $j < 10; $j++)
+                                <rect x="{{ $i * 10 + 4 }}" y="{{ $j * 10 + 4 }}" width="2" height="2" fill="currentColor" opacity="0.1" />
+                            @endfor
+                        @endfor
+                        <path d="M5,5 h25 v25 h-25 z M10,10 h15 v15 h-15 z M13,13 h9 v9 h-9 z" fill="currentColor" />
+                        <path d="M70,5 h25 v25 h-25 z M75,10 h15 v15 h-15 z M78,13 h9 v9 h-9 z" fill="currentColor" />
+                        <path d="M5,70 h25 v25 h-25 z M10,75 h15 v15 h-15 z M13,78 h9 v9 h-9 z" fill="currentColor" />
+                        <path d="M72,72 h12 v12 h-12 z M75,75 h6 v6 h-6 z" fill="currentColor" />
+                        <rect x="40" y="5" width="5" height="5" fill="currentColor" />
+                        <rect x="50" y="10" width="5" height="5" fill="currentColor" />
+                        <rect x="40" y="20" width="10" height="5" fill="currentColor" />
+                        <rect x="55" y="5" width="5" height="10" fill="currentColor" />
+                        <rect x="5" y="40" width="5" height="5" fill="currentColor" />
+                        <rect x="15" y="45" width="5" height="10" fill="currentColor" />
+                        <rect x="25" y="40" width="5" height="5" fill="currentColor" />
+                        <rect x="40" y="40" width="20" height="5" fill="currentColor" />
+                        <rect x="40" y="50" width="5" height="20" fill="currentColor" />
+                        <rect x="55" y="45" width="5" height="5" fill="currentColor" />
+                        <rect x="65" y="40" width="10" height="5" fill="currentColor" />
+                        <rect x="70" y="40" width="5" height="5" fill="currentColor" />
+                        <rect x="85" y="45" width="5" height="15" fill="currentColor" />
+                        <rect x="45" y="75" width="10" height="5" fill="currentColor" />
+                        <rect x="40" y="85" width="15" height="5" fill="currentColor" />
+                        <rect x="60" y="80" width="5" height="5" fill="currentColor" />
+                    </svg>
+                </div>
+                <div class="text-[7px] font-bold text-zinc-400 uppercase tracking-widest">{{ __('Scan to Verify') }}</div>
+            </div>
+
+            <div class="text-right space-y-2">
+                <div class="text-[7px] font-bold text-zinc-400 uppercase tracking-widest">{{ __('Date of Issue') }}</div>
+                <div class="text-[10px] font-black">{{ now()->format('D, M j, Y') }}</div>
+                <div class="text-[6px] italic text-zinc-400">{{ __('This result is valid only when it bears the official stamp.') }}</div>
+            </div>
+        </div>
     </div>
     @else
     <div class="p-12 text-center border-2 border-dashed rounded-2xl text-zinc-500 dark:border-zinc-700">
@@ -382,15 +490,11 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
             background-color: transparent !important;
         }
 
-        /* Optional: Add a custom print header */
-        body::before {
-            content: "Official Academic Results Transcript";
-            display: block;
-            text-align: center;
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 20px;
+        table td, table th {
+            padding-top: 0.2rem !important;
+            padding-bottom: 0.2rem !important;
         }
+
     }
 </style>
 @endpush

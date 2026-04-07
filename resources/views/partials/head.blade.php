@@ -19,3 +19,15 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 @endif
 @fluxAppearance
+<style>
+    :root {
+        --color-accent: {{ config('theme.accent') }};
+        --color-accent-content: {{ config('theme.accent_content') }};
+        --color-accent-foreground: {{ config('theme.accent_foreground') }};
+    }
+    .dark {
+        --color-accent: {{ config('theme.dark_accent') }};
+        --color-accent-content: {{ config('theme.dark_accent_content') }};
+        --color-accent-foreground: {{ config('theme.dark_accent_foreground') }};
+    }
+</style>

@@ -73,7 +73,7 @@ new #[Layout('layouts.app')] #[Title('Edit Course')] class extends Component
             'institution_id' => ['required', 'exists:institutions,id'],
             'program_id' => ['required', 'exists:programs,id'],
             'department_id' => ['required', 'exists:departments,id'],
-            'course_code' => ['required', 'string', 'size:6', 'regex:/^[A-Z]{3}[0-9]{3}$/', 'unique:courses,course_code,'.$this->course->id],
+            'course_code' => ['required', 'string', 'size:6', 'regex:/^[A-Z]{3}[0-9]{3}$/'],
             'title' => ['required', 'string', 'max:255'],
             'credit_unit' => ['required', 'integer', 'min:1', 'max:6'],
             'course_type' => ['required', 'in:core,elective'],

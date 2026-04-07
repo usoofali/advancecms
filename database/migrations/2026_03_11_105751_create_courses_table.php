@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('courses', function (Blueprint $table) {
             $table->id();
             $table->foreignId('department_id')->constrained('departments')->cascadeOnDelete();
-            $table->string('course_code', 20)->unique();
+            $table->string('course_code', 20);
             $table->string('title');
             $table->unsignedTinyInteger('credit_unit')->default(2);
             $table->enum('course_type', ['core', 'elective'])->default('core');

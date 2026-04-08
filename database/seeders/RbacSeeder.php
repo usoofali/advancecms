@@ -18,19 +18,15 @@ class RbacSeeder extends Seeder
     {
         // Define Permissions
         $permissions = [
-            'manage_platform' => 'Global platform management',
             'manage_institutions' => 'Create and delete institutions',
-            'manage_users' => 'Manage all platform users',
             'manage_configurations' => 'System-wide settings',
             'view_all_data' => 'Access data across all institutions',
             'manage_roles' => 'Manage system roles and their permissions',
 
             'manage_staff' => 'Manage institutional staff accounts',
-            'assign_roles' => 'Assign roles to staff',
             'manage_departments' => 'Manage institutional structure',
             'manage_programs' => 'Manage academic programs',
             'manage_courses' => 'Manage institutional courses',
-            'view_institutional_reports' => 'Access institutional data and reports',
 
             'view_dept_students' => 'View students in department',
             'view_dept_courses' => 'View departmental courses',
@@ -41,7 +37,6 @@ class RbacSeeder extends Seeder
             'modify_results' => 'Modify results before final approval',
 
             'manage_registrations' => 'Manage student course registrations',
-            'view_academic_records' => 'View institutional academic records',
             'generate_reports' => 'Generate transcripts and academic reports',
 
             'view_applications' => 'View student admission applications',
@@ -53,7 +48,6 @@ class RbacSeeder extends Seeder
             'view_payments' => 'View dynamic financial records',
             'record_payments' => 'Record student fee payments',
             'manage_invoices' => 'Manage school fee templates and assignments',
-            'generate_financial_reports' => 'Generate institutional financial statements',
 
             'view_personal_results' => 'View own academic results',
             'view_personal_registrations' => 'View own course registrations',
@@ -78,9 +72,9 @@ class RbacSeeder extends Seeder
             'Super Admin' => [
                 'description' => 'Global platform ownership',
                 'permissions' => [
-                    'manage_platform', 'manage_institutions', 'manage_users',
+                    'manage_institutions',
                     'manage_configurations', 'view_all_data', 'manage_roles',
-                    'manage_invoices', 'view_payments', 'record_payments', 'generate_financial_reports',
+                    'manage_invoices', 'view_payments', 'record_payments',
                     'manage_application_forms', 'enroll_applicants', 'manage_admission_status',
                     'take_attendance', 'view_attendance_history', 'view_own_attendance', 'view_all_attendance', 'manage_attendance_payments',
                     'manage_system',
@@ -90,18 +84,18 @@ class RbacSeeder extends Seeder
                 'description' => 'Full administrative control within one institution',
                 'permissions' => [
                     // Core Admin
-                    'manage_staff', 'assign_roles', 'manage_departments',
-                    'manage_programs', 'manage_courses', 'view_institutional_reports',
+                    'manage_staff', 'manage_departments',
+                    'manage_programs', 'manage_courses',
                     // HOD Level
                     'view_dept_students', 'view_dept_courses', 'view_dept_results',
                     // Lecturer Level
                     'view_assigned_courses', 'enter_results', 'modify_results',
                     // Secretary Level
-                    'manage_registrations', 'view_academic_records', 'generate_reports',
+                    'manage_registrations', 'generate_reports',
                     // Admission Level
                     'view_applications', 'approve_admissions', 'create_student_records', 'manage_application_forms', 'enroll_applicants',
                     // Finance Level
-                    'view_payments', 'record_payments', 'generate_financial_reports', 'manage_invoices',
+                    'view_payments', 'record_payments', 'manage_invoices',
                     // Registration Control
                     'manage_registration_status', 'manage_admission_status',
                     // Attendance & Payments
@@ -122,7 +116,7 @@ class RbacSeeder extends Seeder
             ],
             'Academic Secretary' => [
                 'description' => 'Coordinate academic record keeping',
-                'permissions' => ['manage_registrations', 'view_academic_records', 'generate_reports', 'view_attendance_history'],
+                'permissions' => ['manage_registrations', 'generate_reports', 'view_attendance_history'],
             ],
             'Admission Officer' => [
                 'description' => 'Process student admissions',
@@ -130,7 +124,7 @@ class RbacSeeder extends Seeder
             ],
             'Accountant' => [
                 'description' => 'Institutional financial management',
-                'permissions' => ['view_payments', 'record_payments', 'generate_financial_reports', 'manage_invoices', 'manage_attendance_payments', 'view_attendance_history'],
+                'permissions' => ['view_payments', 'record_payments', 'manage_invoices', 'manage_attendance_payments', 'view_attendance_history'],
             ],
             'Student' => [
                 'description' => 'Access personal academic features',

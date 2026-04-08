@@ -35,6 +35,11 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
     public function mount(): void
     {
         $user = auth()->user();
+
+        if ($user->cannot('manage_courses') && $user->cannot('view_dept_courses')) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $staff = Staff::where('email', $user->email)->first();
         
         if ($staff) {

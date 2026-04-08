@@ -88,13 +88,13 @@
             </flux:sidebar.group>
 
             <flux:sidebar.group :heading="__('Academic')" class="grid" expandable expanded="false">
-                @canany(['view_dept_students', 'manage_staff', 'view_all_data'])
+                @can('view_dept_students')
                 <flux:sidebar.item icon="users" :href="route('cms.students.index')"
                     :current="request()->routeIs('cms.students.index') || request()->routeIs('cms.students.create') || request()->routeIs('cms.students.edit')"
                     wire:navigate>
                     {{ __('Students') }}
                 </flux:sidebar.item>
-                @endcanany
+                @endcan
 
                 @can('manage_registrations')
                 <flux:sidebar.item icon="clipboard-document-check" :href="route('cms.students.registration')"
@@ -178,12 +178,12 @@
                 </flux:sidebar.item>
                 @endcan
 
-                @canany(['view_dept_results', 'view_all_data'])
+                @can('view_dept_results')
                 <flux:sidebar.item icon="chart-bar" :href="route('cms.results.index')"
                     :current="request()->routeIs('cms.results.index')" wire:navigate>
                     {{ __('View Results') }}
                 </flux:sidebar.item>
-                @endcanany
+                @endcan
 
                 @can('generate_reports')
                 <flux:sidebar.item icon="academic-cap" :href="route('cms.results.transcripts')"

@@ -55,13 +55,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::livewire('admissions/applications', 'pages::cms.admissions.application-index')->name('cms.admissions.index');
         Route::livewire('admissions/issue-notification', 'pages::cms.admissions.issue-admission-notification')->name('cms.admissions.issue-notification');
         Route::livewire('admissions/applications/{applicant}', 'pages::cms.admissions.application-show')->name('cms.admissions.show');
+    });
 
-        // Application Form Management
-        Route::middleware('can:manage_application_forms')->group(function () {
-            Route::livewire('admissions/forms', 'pages::cms.admissions.form-index')->name('cms.admissions.forms.index');
-            Route::livewire('admissions/forms/create', 'pages::cms.admissions.form-create')->name('cms.admissions.forms.create');
-            Route::livewire('admissions/forms/{form}/edit', 'pages::cms.admissions.form-create')->name('cms.admissions.forms.edit');
-        });
+    // Application Form Management
+    Route::middleware('can:manage_application_forms')->group(function () {
+        Route::livewire('admissions/forms', 'pages::cms.admissions.form-index')->name('cms.admissions.forms.index');
+        Route::livewire('admissions/forms/create', 'pages::cms.admissions.form-create')->name('cms.admissions.forms.create');
+        Route::livewire('admissions/forms/{form}/edit', 'pages::cms.admissions.form-create')->name('cms.admissions.forms.edit');
     });
 
     // Student Management
@@ -84,13 +84,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('portal/invoices', 'pages::cms.students.portal-invoices')->name('cms.students.portal-invoices')->middleware('auth');
 
     // Course Management
+    Route::livewire('courses', 'pages::cms.courses.index')->name('cms.courses.index');
+
     Route::middleware('can:manage_courses')->group(function () {
-        Route::livewire('courses', 'pages::cms.courses.index')->name('cms.courses.index');
         Route::livewire('courses/create', 'pages::cms.courses.create')->name('cms.courses.create');
         Route::livewire('courses/allocations', 'pages::cms.courses.allocations')->name('cms.courses.allocations');
         Route::livewire('courses/{course}/edit', 'pages::cms.courses.edit')->name('cms.courses.edit');
-    }
-    );
+    });
+
     Route::livewire('courses/my-allocations', 'pages::cms.courses.my-allocations')->name('cms.courses.my-allocations')->middleware('can:view_assigned_courses');
 
     // Attendance

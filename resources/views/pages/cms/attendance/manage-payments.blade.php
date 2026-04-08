@@ -22,6 +22,12 @@ new #[Layout('layouts.app')] #[Title('Manage Lecturer Payments')] class extends 
     #[Url]
     public string $year = '';
 
+    #[Url]
+    public string $search = '';
+
+    #[Url]
+    public string $payment_status = '';
+
     public bool $is_processing = false;
     public ?int $editing_staff_id = null;
     public float $new_rate = 0;
@@ -45,6 +51,16 @@ new #[Layout('layouts.app')] #[Title('Manage Lecturer Payments')] class extends 
         }
     }
 
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedPaymentStatus(): void
+    {
+        $this->resetPage();
+    }
+
     public function getStaffPaymentsProperty()
     {
         $institutionId = $this->selected_institution_id ?? auth()->user()->institution_id;
@@ -53,10 +69,34 @@ new #[Layout('layouts.app')] #[Title('Manage Lecturer Payments')] class extends 
             return new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10);
         }
 
-        return Staff::where('institution_id', $institutionId)
+        $query = Staff::where('institution_id', $institutionId)
             ->where('role_id', 4) // 4 is the Lecturer role ID
-            ->where('status', 'active')
-            ->paginate(10)
+            ->where('status', 'active');
+
+        if ($this->search) {
+            $query->where(function ($q) {
+                $q->where('first_name', 'like', '%' . $this->search . '%')
+                  ->orWhere('last_name', 'like', '%' . $this->search . '%')
+                  ->orWhere('staff_number', 'like', '%' . $this->search . '%');
+            });
+        }
+
+        if ($this->payment_status) {
+            if ($this->payment_status === 'unprocessed') {
+                $query->whereDoesntHave('attendancePayments', function ($q) {
+                    $q->where('month', $this->month)
+                      ->where('year', $this->year);
+                });
+            } else {
+                $query->whereHas('attendancePayments', function ($q) {
+                    $q->where('month', $this->month)
+                      ->where('year', $this->year)
+                      ->where('status', $this->payment_status);
+                });
+            }
+        }
+
+        return $query->paginate(10)
             ->through(function ($staff) {
                 // Find existing payment record
                 $payment = AttendancePayment::where([
@@ -185,21 +225,29 @@ new #[Layout('layouts.app')] #[Title('Manage Lecturer Payments')] class extends 
 }; ?>
 
 <div class="mx-auto max-w-7xl">
-    <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-            <flux:heading size="xl">{{ __('Lecturer Attendance Payments') }}</flux:heading>
-            <flux:subheading>{{ __('Manage and process monthly payments based on lecture contacts') }}</flux:subheading>
+    <div class="mb-4 flex flex-col md:flex-row gap-4 items-center justify-between">
+        <div class="w-full md:w-auto">
+            <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" placeholder="{{ __('Search staff...') }}" class="w-full md:w-64" clearable />
         </div>
-
         <div class="flex flex-wrap items-center gap-2">
             @if(auth()->user()->hasRole('Super Admin'))
                 <flux:select wire:model.live="selected_institution_id" class="w-full md:w-64"
                     :placeholder="__('Select Institution...')">
+                    <flux:select.option value="">{{ __('All Institutions') }}</flux:select.option>
                     @foreach ($institutions as $inst)
                         <flux:select.option :value="$inst->id">{{ $inst->name }}</flux:select.option>
                     @endforeach
                 </flux:select>
             @endif
+
+            <flux:select wire:model.live="payment_status" class="w-full sm:w-36" :placeholder="__('All Statuses')">
+                <flux:select.option value="">{{ __('All Statuses') }}</flux:select.option>
+                <flux:select.option value="unprocessed">{{ __('Unprocessed') }}</flux:select.option>
+                <flux:select.option value="pending">{{ __('Pending') }}</flux:select.option>
+                <flux:select.option value="approved">{{ __('Approved') }}</flux:select.option>
+                <flux:select.option value="paid">{{ __('Paid') }}</flux:select.option>
+                <flux:select.option value="cancelled">{{ __('Cancelled') }}</flux:select.option>
+            </flux:select>
 
             <flux:select wire:model.live="month" class="w-full sm:w-36">
                 @foreach ($months as $num => $name)
@@ -214,35 +262,28 @@ new #[Layout('layouts.app')] #[Title('Manage Lecturer Payments')] class extends 
         </div>
     </div>
 
-    <flux:card>
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm border-collapse">
-                <thead>
-                    <tr class="border-b border-zinc-200 dark:border-zinc-700">
-                        <th class="px-4 py-3 font-semibold text-zinc-900 dark:text-white">{{ __('Staff Member') }}</th>
-                        <th class="px-4 py-3 font-semibold text-zinc-900 dark:text-white hidden sm:table-cell">{{ __('Bank Details') }}</th>
-                        <th class="px-4 py-3 font-semibold text-center text-zinc-900 dark:text-white">
-                            {{ __('Contacts') }}</th>
-                        <th class="px-4 py-3 font-semibold text-right text-zinc-900 dark:text-white">
-                            {{ __('Rate / Total') }}</th>
-                        <th class="px-4 py-3 font-semibold text-center text-zinc-900 dark:text-white">{{ __('Status') }}
-                        </th>
-                        <th class="px-4 py-3 font-semibold text-right text-zinc-900 dark:text-white">{{ __('Actions') }}
-                        </th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                    @forelse ($staffPayments as $item)
-                        <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                            <td class="px-4 py-3">
+    <flux:table :paginate="$staffPayments">
+        <flux:table.columns>
+            <flux:table.column>{{ __('Staff Member') }}</flux:table.column>
+            <flux:table.column class="hidden sm:table-cell">{{ __('Bank Details') }}</flux:table.column>
+            <flux:table.column align="center">{{ __('Contacts') }}</flux:table.column>
+            <flux:table.column align="right">{{ __('Rate / Total') }}</flux:table.column>
+            <flux:table.column align="center">{{ __('Status') }}</flux:table.column>
+            <flux:table.column align="right">{{ __('Actions') }}</flux:table.column>
+        </flux:table.columns>
+
+        <flux:table.rows>
+            @forelse ($staffPayments as $item)
+                <flux:table.row>
+                    <flux:table.cell>
                                 <div class="font-bold text-zinc-900 dark:text-white">{{ $item['staff']->first_name }}
                                     {{ $item['staff']->last_name }}</div>
                                 <div class="text-xs text-zinc-500 uppercase">
                                     {{ $item['staff']->hodDepartments->first()?->name ?? __('Lecturer') }}
                                 </div>
                                 <div class="text-[10px] text-zinc-400 italic">{{ $item['staff']->staff_number }}</div>
-                            </td>
-                            <td class="px-4 py-3 hidden sm:table-cell">
+                    </flux:table.cell>
+                    <flux:table.cell class="hidden sm:table-cell">
                                 @if($item['staff']->bank_name && $item['staff']->account_number)
                                     <div class="text-xs font-medium text-zinc-900 dark:text-white">
                                         {{ $item['staff']->bank_name }}</div>
@@ -255,8 +296,8 @@ new #[Layout('layouts.app')] #[Title('Manage Lecturer Payments')] class extends 
                                         {{ __('No Bank Details') }}
                                     </flux:badge>
                                 @endif
-                            </td>
-                            <td class="px-4 py-3 text-center">
+                    </flux:table.cell>
+                    <flux:table.cell align="center">
                                 <div class="text-lg font-black text-zinc-900 dark:text-white">
                                     {{ $item['payment'] ? $item['payment']->contacts_count : $item['calculated_contacts'] }}
                                 </div>
@@ -265,8 +306,8 @@ new #[Layout('layouts.app')] #[Title('Manage Lecturer Payments')] class extends 
                                         {{ __('Live:') }} {{ $item['calculated_contacts'] }}
                                     </div>
                                 @endif
-                            </td>
-                            <td class="px-4 py-3 text-right">
+                    </flux:table.cell>
+                    <flux:table.cell align="right">
                                 @if($editing_staff_id === $item['staff']->id)
                                     <div class="flex items-center justify-end gap-1 mb-1">
                                         <flux:input wire:model="new_rate" type="number" step="0.01" size="sm" class="w-28" />
@@ -291,8 +332,8 @@ new #[Layout('layouts.app')] #[Title('Manage Lecturer Payments')] class extends 
                                 <div class="text-lg font-black text-zinc-900 dark:text-white">
                                     ₦{{ number_format($item['payment'] ? $item['payment']->total_amount : $item['calculated_total'], 2) }}
                                 </div>
-                            </td>
-                            <td class="px-4 py-3 text-center">
+                    </flux:table.cell>
+                    <flux:table.cell align="center">
                                 @if($item['payment'])
                                     <flux:badge :color="match($item['payment']->status) {
                                                 'paid' => 'green',
@@ -309,8 +350,8 @@ new #[Layout('layouts.app')] #[Title('Manage Lecturer Payments')] class extends 
                                 @else
                                     <flux:badge color="zinc" size="sm" variant="outline">{{ __('Unprocessed') }}</flux:badge>
                                 @endif
-                            </td>
-                            <td class="px-4 py-3 text-right">
+                    </flux:table.cell>
+                    <flux:table.cell align="right">
                                 <div class="flex justify-end gap-2">
                                     @if(!$item['payment'] || ($item['payment']->status === 'pending' && ($item['payment']->contacts_count != $item['calculated_contacts'] || $item['payment']->allowance_rate != $item['current_rate'])))
                                         <flux:button size="xs" variant="ghost"
@@ -327,22 +368,16 @@ new #[Layout('layouts.app')] #[Title('Manage Lecturer Payments')] class extends 
                                         </flux:button>
                                     @endif
                                 </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="py-12 text-center text-zinc-500">
-                                <flux:icon.users class="mx-auto size-8 mb-3 opacity-20" />
-                                <p>{{ __('No staff members found for this institution.') }}</p>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        <div class="mt-4 px-4 pb-4">
-            {{ $staffPayments->links() }}
-        </div>
-    </flux:card>
+                    </flux:table.cell>
+                </flux:table.row>
+            @empty
+                <flux:table.row>
+                    <flux:table.cell colspan="6" class="text-center text-zinc-500 py-12">
+                        <flux:icon.users class="mx-auto size-8 mb-3 opacity-20" />
+                        <p>{{ __('No staff members found for this institution.') }}</p>
+                    </flux:table.cell>
+                </flux:table.row>
+            @endforelse
+        </flux:table.rows>
+    </flux:table>
 </div>

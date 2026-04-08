@@ -58,10 +58,10 @@ new #[Layout('layouts.app')] #[Title('Attendance History')] class extends Compon
             return ['contacts' => 0, 'amount' => 0, 'rate' => 0];
         }
 
-        $query = Attendance::whereMonth('date', $this->month)
-            ->whereYear('date', $this->year)
-            ->where('status', 'submitted')
-            ->where('is_combined_child', false);
+        $query = Attendance::whereMonth('attendances.date', $this->month)
+            ->whereYear('attendances.date', $this->year)
+            ->where('attendances.status', 'submitted')
+            ->where('attendances.is_combined_child', false);
 
         // Filter by permissions and selected institution
         if (! auth()->user()->hasRole('Institutional Admin') && ! auth()->user()->hasRole('Super Admin')) {
@@ -69,7 +69,7 @@ new #[Layout('layouts.app')] #[Title('Attendance History')] class extends Compon
                 $q->where('user_id', auth()->user()->id);
             });
         } elseif ($this->institution_id) {
-            $query->where('institution_id', $this->institution_id);
+            $query->where('attendances.institution_id', $this->institution_id);
         }
 
         $contacts = $query->count();
@@ -96,16 +96,16 @@ new #[Layout('layouts.app')] #[Title('Attendance History')] class extends Compon
             'courseAllocation.semester',
             'courseAllocation.user.staff'
         ])
-            ->whereMonth('date', $this->month)
-            ->whereYear('date', $this->year)
-            ->latest('date');
+            ->whereMonth('attendances.date', $this->month)
+            ->whereYear('attendances.date', $this->year)
+            ->latest('attendances.date');
 
         if (! auth()->user()->hasRole('Institutional Admin') && ! auth()->user()->hasRole('Super Admin')) {
             $query->whereHas('courseAllocation', function ($q) {
                 $q->where('user_id', auth()->user()->id);
             });
         } elseif ($this->institution_id) {
-            $query->where('institution_id', $this->institution_id);
+            $query->where('attendances.institution_id', $this->institution_id);
         }
 
         return $query->paginate(10);

@@ -21,6 +21,7 @@
                 </flux:sidebar.item>
             </flux:sidebar.group>
 
+            @canany(['manage_institutions', 'manage_departments', 'manage_programs', 'view_applications', 'manage_application_forms', 'manage_staff', 'manage_configurations', 'manage_roles'])
             <flux:sidebar.group :heading="__('Administration')" class="grid" expandable expanded="false">
                 @can('manage_institutions')
                 <flux:sidebar.item icon="building-office-2" :href="route('cms.institutions.index')"
@@ -86,7 +87,9 @@
                 </flux:sidebar.item>
                 @endcan
             </flux:sidebar.group>
+            @endcanany
 
+            @canany(['view_dept_students', 'manage_registrations', 'manage_registration_status', 'view_personal_registrations', 'manage_courses', 'view_dept_courses', 'view_assigned_courses', 'take_attendance'])
             <flux:sidebar.group :heading="__('Academic')" class="grid" expandable expanded="false">
                 @can('view_dept_students')
                 <flux:sidebar.item icon="users" :href="route('cms.students.index')"
@@ -169,7 +172,9 @@
                     {{ __('Request ID Card') }}
                 </flux:sidebar.item>
             </flux:sidebar.group>
+            @endcanany
 
+            @canany(['enter_results', 'view_dept_results', 'generate_reports', 'view_personal_results'])
             <flux:sidebar.group :heading="__('Results')" class="grid" expandable expanded="false">
                 @can('enter_results')
                 <flux:sidebar.item icon="pencil-square" :href="route('cms.results.entry')"
@@ -199,7 +204,9 @@
                 </flux:sidebar.item>
                 @endcan
             </flux:sidebar.group>
+            @endcanany
 
+            @canany(['manage_attendance_payments', 'view_payments', 'record_payments', 'view_personal_registrations'])
             <flux:sidebar.group :heading="__('Finance')" class="grid" expandable expanded="false">
                 @can('manage_attendance_payments')
                 <flux:sidebar.item icon="banknotes" :href="route('cms.attendance.payments')"
@@ -230,6 +237,7 @@
                 </flux:sidebar.item>
                 @endcan
             </flux:sidebar.group>
+            @endcanany
         </flux:sidebar.nav>
 
         <flux:spacer />

@@ -11,9 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('courses', function (Blueprint $table) {
-            $table->dropUnique(['course_code']);
-        });
+        try {
+            Schema::table('courses', function (Blueprint $table) {
+                $table->dropUnique(['course_code']);
+            });
+        } catch (\Exception $e) {
+            // Index might not exist in some environments (e.g. fresh test DB)
+        }
     }
 
     /**

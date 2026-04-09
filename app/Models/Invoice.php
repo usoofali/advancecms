@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Invoice extends Model
 {
+    use HasFactory;
+
     public const CATEGORY_GENERAL = 'general';
     public const CATEGORY_ADMISSION = 'admission';
     public const CATEGORY_EXAM = 'exam_fee';

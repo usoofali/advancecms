@@ -7,7 +7,6 @@ use App\Models\Invoice;
 use App\Models\Semester;
 use App\Models\Student;
 use App\Models\StudentInvoice;
-
 use Illuminate\Support\Collection;
 
 class PaymentAccessService
@@ -53,21 +52,14 @@ class PaymentAccessService
                 $q->whereNull('semester_id')->orWhere('semester_id', $semester->id);
             })
             ->where('status', 'published')
+            ->where('department_id', $student->program?->department_id)
+            ->where(function ($q) use ($student) {
+                $q->whereNull('program_id')
+                    ->orWhere('program_id', $student->program_id);
+            })
             ->where(function ($q) use ($student, $session) {
-                // Check targeting logic similar to StudentInvoiceService
-                $q->where('target_type', 'student')
-                    ->orWhere(function ($sq) use ($student) {
-                        $sq->where('target_type', 'program')
-                            ->where('program_id', $student->program_id);
-                    })
-                    ->orWhere(function ($sq) use ($student, $session) {
-                        $sq->where('target_type', 'level')
-                            ->where('level', $student->currentLevel($session));
-                    })
-                    ->orWhere(function ($sq) use ($student) {
-                        $sq->where('target_type', 'dept')
-                            ->where('department_id', $student->program?->department_id);
-                    });
+                $q->whereNull('level')
+                    ->orWhere('level', (string) $student->currentLevel($session));
             })
             ->get();
 

@@ -10,8 +10,7 @@ use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-new #[Layout('layouts.app')] #[Title('Students')] class extends Component
-{
+new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
     use WithFileUploads, WithPagination;
 
     public string $search = '';
@@ -39,8 +38,10 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
 
     public function mount(): void
     {
+        Gate::authorize('students.view');
+
         $user = auth()->user();
-        
+
         // Super Admins don't have these locked
         if ($user->hasRole('Super Admin')) {
             return;
@@ -95,14 +96,18 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
 
     public function export(): StreamedResponse
     {
-        return (new StudentsExport(auth()->user()->institution_id))->download();
+        Gate::authorize('students.export');
+
+        return (new StudentsExport($this->getFilteredQuery()))->download();
     }
 
     public function import(): void
     {
+        Gate::authorize('students.import');
+
         $institutionId = $this->filterInstitution ?: auth()->user()->institution_id;
 
-        if (! $institutionId) {
+        if (!$institutionId) {
             $this->dispatch('notify', [
                 'type' => 'error',
                 'message' => 'Please select an institution before importing.',
@@ -132,7 +137,9 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
 
     public function confirmDelete(): void
     {
-        if (! $this->deletingId) {
+        Gate::authorize('students.delete');
+
+        if (!$this->deletingId) {
             return;
         }
 
@@ -149,38 +156,43 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
         $this->dispatch('modal-close', name: 'delete-student');
     }
 
+    private function getFilteredQuery()
+    {
+        $activeSession = \App\Models\AcademicSession::where('status', 'active')->first();
+
+        return Student::query()
+            ->with(['program.department.institution'])
+            ->when($this->filterInstitution ?: auth()->user()->institution_id, fn($q, $id) => $q->where('institution_id', $id))
+            ->when($this->filterDepartment, function ($q) {
+                $q->whereHas('program', fn($pq) => $pq->where('department_id', $this->filterDepartment));
+            })
+            ->when($this->filterProgram, fn($q) => $q->where('program_id', $this->filterProgram))
+            ->when($this->filterLevel, function ($q) use ($activeSession) {
+                if ($activeSession) {
+                    return $q->whereRaw("entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS UNSIGNED) - admission_year) * 100 = ?", [
+                        $activeSession->name,
+                        $this->filterLevel
+                    ]);
+                }
+                return $q->where('entry_level', $this->filterLevel);
+            })
+            ->when($this->filterStatus, fn($q) => $q->where('status', $this->filterStatus))
+            ->when($this->search, function ($q) {
+                $q->where(function ($sq) {
+                    $sq->where('first_name', 'like', "%{$this->search}%")
+                        ->orWhere('last_name', 'like', "%{$this->search}%")
+                        ->orWhere('matric_number', 'like', "%{$this->search}%");
+                });
+            });
+    }
+
     public function with(): array
     {
         $activeSession = \App\Models\AcademicSession::where('status', 'active')->first();
 
         return [
             'activeSession' => $activeSession,
-            'students' => Student::query()
-                ->with(['program.department.institution'])
-                ->when($this->filterInstitution ?: auth()->user()->institution_id, fn ($q, $id) => $q->where('institution_id', $id))
-                ->when($this->filterDepartment, function ($q) {
-                    $q->whereHas('program', fn ($pq) => $pq->where('department_id', $this->filterDepartment));
-                })
-                ->when($this->filterProgram, fn ($q) => $q->where('program_id', $this->filterProgram))
-                ->when($this->filterLevel, function ($q) use ($activeSession) {
-                    if ($activeSession) {
-                        return $q->whereRaw("entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS UNSIGNED) - admission_year) * 100 = ?", [
-                            $activeSession->name,
-                            $this->filterLevel
-                        ]);
-                    }
-                    return $q->where('entry_level', $this->filterLevel);
-                })
-                ->when($this->filterStatus, fn ($q) => $q->where('status', $this->filterStatus))
-                ->when($this->search, function ($q) {
-                    $q->where(function ($sq) {
-                        $sq->where('first_name', 'like', "%{$this->search}%")
-                            ->orWhere('last_name', 'like', "%{$this->search}%")
-                            ->orWhere('matric_number', 'like', "%{$this->search}%");
-                    });
-                })
-                ->orderBy('matric_number')
-                ->paginate(15),
+            'students' => $this->getFilteredQuery()->orderBy('matric_number')->paginate(15),
         ];
     }
 }; ?>
@@ -191,37 +203,46 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
             <flux:heading size="xl">{{ __('Students') }}</flux:heading>
             <flux:subheading>
                 @php
-                $activeFilters = [];
-                if ($filterInstitution) $activeFilters[] = \App\Models\Institution::find($filterInstitution)?->name;
-                if ($filterDepartment) $activeFilters[] = \App\Models\Department::find($filterDepartment)?->name;
-                if ($filterProgram) $activeFilters[] = \App\Models\Program::find($filterProgram)?->name;
-                if ($filterLevel) $activeFilters[] = "Level " . $filterLevel;
-                if ($filterStatus) $activeFilters[] = ucfirst($filterStatus);
-                $filterText = !empty($activeFilters) ? implode(' / ', $activeFilters) : __('All student records');
+                    $activeFilters = [];
+                    if ($filterInstitution)
+                        $activeFilters[] = \App\Models\Institution::find($filterInstitution)?->name;
+                    if ($filterDepartment)
+                        $activeFilters[] = \App\Models\Department::find($filterDepartment)?->name;
+                    if ($filterProgram)
+                        $activeFilters[] = \App\Models\Program::find($filterProgram)?->name;
+                    if ($filterLevel)
+                        $activeFilters[] = "Level " . $filterLevel;
+                    if ($filterStatus)
+                        $activeFilters[] = ucfirst($filterStatus);
+                    $filterText = !empty($activeFilters) ? implode(' / ', $activeFilters) : __('All student records');
                 @endphp
                 {{ $filterText }}
             </flux:subheading>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-            <flux:button icon="printer" variant="ghost" x-on:click="window.open('{{ route('cms.students.print', [
-                    'institution_id' => $filterInstitution,
-                    'department_id' => $filterDepartment,
-                    'program_id' => $filterProgram,
-                    'level' => $filterLevel,
-                    'status' => $filterStatus,
-                    'search' => $search
-                ]) }}', '_blank')">
+            <flux:button icon="printer" variant="ghost" target="_blank" :href="route('cms.students.print', [
+                'institution_id' => $filterInstitution,
+                'department_id' => $filterDepartment,
+                'program_id' => $filterProgram,
+                'level' => $filterLevel,
+                'status' => $filterStatus,
+                'search' => $search
+            ])">
                 {{ __('Print List') }}
             </flux:button>
-            <flux:button icon="arrow-down-tray" wire:click="export">{{ __('Export CSV') }}</flux:button>
-            <flux:button icon="arrow-up-tray" x-on:click="$flux.modal('import-students').show()">
-                {{ __('Import CSV') }}
-            </flux:button>
-            @if(auth()->user()->hasAnyRole(['Super Admin', 'Institutional Admin', 'Admission Officer']))
-            <flux:button icon="plus" variant="primary" :href="route('cms.students.create')" wire:navigate>
-                {{ __('Add Student') }}
-            </flux:button>
-            @endif
+            @can('students.export')
+                <flux:button icon="arrow-down-tray" wire:click="export">{{ __('Export CSV') }}</flux:button>
+            @endcan
+            @can('students.import')
+                <flux:button icon="arrow-up-tray" x-on:click="$flux.modal('import-students').show()">
+                    {{ __('Import CSV') }}
+                </flux:button>
+            @endcan
+            @can('students.create')
+                <flux:button icon="plus" variant="primary" :href="route('cms.students.create')" wire:navigate>
+                    {{ __('Add Student') }}
+                </flux:button>
+            @endcan
         </div>
     </div>
 
@@ -231,43 +252,43 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
             :placeholder="__('Search students...')" />
 
         @if(auth()->user()->hasRole('Super Admin'))
-        <flux:select wire:model.live="filterInstitution" :placeholder="__('All Institutions')">
-            <flux:select.option value="">{{ __('All Institutions') }}</flux:select.option>
-            @foreach(\App\Models\Institution::all() as $inst)
-            <flux:select.option :value="$inst->id">{{ $inst->name }}</flux:select.option>
-            @endforeach
-        </flux:select>
+            <flux:select wire:model.live="filterInstitution" :placeholder="__('All Institutions')">
+                <flux:select.option value="">{{ __('All Institutions') }}</flux:select.option>
+                @foreach(\App\Models\Institution::all() as $inst)
+                    <flux:select.option :value="$inst->id">{{ $inst->name }}</flux:select.option>
+                @endforeach
+            </flux:select>
         @endif
 
         @if(!$isHod)
-        <flux:select wire:model.live="filterDepartment" :placeholder="__('All Departments')"
-            :disabled="!$filterInstitution && !auth()->user()->institution_id">
-            <flux:select.option value="">{{ __('All Departments') }}</flux:select.option>
-            @php
-            $instId = $filterInstitution ?: auth()->user()->institution_id;
-            $depts = $instId ? \App\Models\Department::where('institution_id', $instId)->get() : collect();
-            @endphp
-            @foreach($depts as $dept)
-            <flux:select.option :value="$dept->id">{{ $dept->name }}</flux:select.option>
-            @endforeach
-        </flux:select>
+            <flux:select wire:model.live="filterDepartment" :placeholder="__('All Departments')"
+                :disabled="!$filterInstitution && !auth()->user()->institution_id">
+                <flux:select.option value="">{{ __('All Departments') }}</flux:select.option>
+                @php
+                    $instId = $filterInstitution ?: auth()->user()->institution_id;
+                    $depts = $instId ? \App\Models\Department::where('institution_id', $instId)->get() : collect();
+                @endphp
+                @foreach($depts as $dept)
+                    <flux:select.option :value="$dept->id">{{ $dept->name }}</flux:select.option>
+                @endforeach
+            </flux:select>
         @endif
 
         <flux:select wire:model.live="filterProgram" :placeholder="__('All Programs')" :disabled="!$filterDepartment">
             <flux:select.option value="">{{ __('All Programs') }}</flux:select.option>
             @php
-            $progs = $filterDepartment ? \App\Models\Program::where('department_id', $filterDepartment)->get() :
-            collect();
+                $progs = $filterDepartment ? \App\Models\Program::where('department_id', $filterDepartment)->get() :
+                    collect();
             @endphp
             @foreach($progs as $prog)
-            <flux:select.option :value="$prog->id">{{ $prog->name }}</flux:select.option>
+                <flux:select.option :value="$prog->id">{{ $prog->name }}</flux:select.option>
             @endforeach
         </flux:select>
 
         <flux:select wire:model.live="filterLevel" :placeholder="__('All Levels')">
             <flux:select.option value="">{{ __('All Levels') }}</flux:select.option>
-            @foreach([100, 200, 300, 400, 500, 600] as $lvl)
-            <flux:select.option :value="$lvl">{{ $lvl }}</flux:select.option>
+            @foreach([100, 200, 300] as $lvl)
+                <flux:select.option :value="$lvl">{{ $lvl }}</flux:select.option>
             @endforeach
         </flux:select>
 
@@ -280,57 +301,52 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
         </flux:select>
     </div>
 
-    <div
-        class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
-        <table class="w-full text-left border-collapse">
-            <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700">
-                <tr>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Matric Number')
-                        }}</th>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Name') }}</th>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Program') }}
-                    </th>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Level') }}</th>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Status') }}</th>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-right">{{
-                        __('Actions') }}</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                @forelse ($students as $student)
-                <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors" wire:key="{{ $student->id }}">
-                    <td class="px-4 py-4 font-medium font-mono text-sm text-zinc-900 dark:text-zinc-100 uppercase">
-                        <a href="{{ route('cms.students.show', $student) }}" wire:navigate class="hover:text-blue-600 transition-colors">
+    <flux:table>
+        <flux:table.columns>
+            <flux:table.column>{{ __('Matric Number') }}</flux:table.column>
+            <flux:table.column>{{ __('Name') }}</flux:table.column>
+            <flux:table.column>{{ __('Program') }}</flux:table.column>
+            <flux:table.column>{{ __('Level') }}</flux:table.column>
+            <flux:table.column>{{ __('Status') }}</flux:table.column>
+            <flux:table.column class="text-right">{{ __('Actions') }}</flux:table.column>
+        </flux:table.columns>
+
+        <flux:table.rows>
+            @forelse ($students as $student)
+                <flux:table.row wire:key="{{ $student->id }}">
+                    <flux:table.cell class="font-medium font-mono uppercase">
+                        <a href="{{ route('cms.students.show', $student) }}" wire:navigate
+                            class="hover:text-blue-600 transition-colors">
                             {{ $student->matric_number }}
                         </a>
-                    </td>
-                    <td class="px-4 py-4">
+                    </flux:table.cell>
+                    <flux:table.cell>
                         <div class="flex items-center gap-3">
                             <div
                                 class="h-10 w-10 flex-shrink-0 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 overflow-hidden flex items-center justify-center">
                                 @if ($student->photo_path)
-                                <img src="{{ $student->photo_url }}" class="h-full w-full object-cover">
+                                    <img src="{{ $student->photo_url }}" class="h-full w-full object-cover">
                                 @else
-                                <flux:icon icon="user" class="h-5 w-5 text-zinc-400" />
+                                    <flux:icon icon="user" class="h-5 w-5 text-zinc-400" />
                                 @endif
                             </div>
                             <div>
-                                <a href="{{ route('cms.students.show', $student) }}" wire:navigate class="font-medium text-zinc-900 dark:text-zinc-100 hover:text-blue-600 transition-colors">
+                                <a href="{{ route('cms.students.show', $student) }}" wire:navigate
+                                    class="font-medium text-zinc-900 dark:text-zinc-100 hover:text-blue-600 transition-colors">
                                     {{ $student->full_name }}
                                 </a>
                                 <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{{ $student->email }}</div>
                             </div>
                         </div>
-                    </td>
-                    <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400">
+                    </flux:table.cell>
+                    <flux:table.cell class="text-zinc-600 dark:text-zinc-400">
                         {{ $student->program->name }}
-                        <div class="text-xs text-zinc-500 mt-0.5">{{ $student->program->department->institution->acronym
-                            }}</div>
-                    </td>
-                    <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400 font-mono">
+                        <div class="text-xs text-zinc-500 mt-0.5">{{ $student->program->department->institution->acronym }}</div>
+                    </flux:table.cell>
+                    <flux:table.cell class="text-zinc-600 dark:text-zinc-400 font-mono">
                         {{ $activeSession ? $student->currentLevel($activeSession) : $student->entry_level }}L
-                    </td>
-                    <td class="px-4 py-4 text-sm">
+                    </flux:table.cell>
+                    <flux:table.cell>
                         <flux:badge :color="match($student->status) {
                                     'active' => 'green',
                                     'graduated' => 'indigo',
@@ -340,26 +356,25 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
                                 }" size="sm">
                             {{ ucfirst($student->status) }}
                         </flux:badge>
-                    </td>
-                    <td class="px-4 py-4 text-right">
+                    </flux:table.cell>
+                    <flux:table.cell class="text-right">
                         <div class="flex items-center justify-end gap-2">
                             <flux:button size="sm" variant="ghost" icon="pencil"
                                 :href="route('cms.students.edit', $student)" wire:navigate />
                             <flux:button size="sm" variant="ghost" icon="trash"
                                 x-on:click="$wire.deletingId = {{ $student->id }}; $flux.modal('delete-student').show()" />
                         </div>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="5" class="px-4 py-12 text-center text-zinc-500 dark:text-zinc-400">
+                    </flux:table.cell>
+                </flux:table.row>
+            @empty
+                <flux:table.row>
+                    <flux:table.cell colspan="6" class="text-center text-zinc-500 dark:text-zinc-400">
                         {{ __('No students found.') }}
-                    </td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+                    </flux:table.cell>
+                </flux:table.row>
+            @endforelse
+        </flux:table.rows>
+    </flux:table>
 
     <div class="mt-4">{{ $students->links() }}</div>
 
@@ -380,14 +395,14 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
             <flux:error name="importFile" />
 
             @if (!empty($importFailures))
-            <div
-                class="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 p-4 space-y-1 max-h-48 overflow-y-auto">
-                <p class="text-sm font-medium text-red-700 dark:text-red-400">{{ count($importFailures) }} {{ __('row(s)
-                    failed:') }}</p>
-                @foreach ($importFailures as $failure)
-                <p class="text-xs text-red-600 dark:text-red-500">{{ $failure }}</p>
-                @endforeach
-            </div>
+                <div
+                    class="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 p-4 space-y-1 max-h-48 overflow-y-auto">
+                    <p class="text-sm font-medium text-red-700 dark:text-red-400">{{ count($importFailures) }} {{ __('row(s)
+                        failed:') }}</p>
+                    @foreach ($importFailures as $failure)
+                        <p class="text-xs text-red-600 dark:text-red-500">{{ $failure }}</p>
+                    @endforeach
+                </div>
             @endif
 
             <div class="flex gap-2">

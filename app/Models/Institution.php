@@ -23,10 +23,12 @@ class Institution extends Model
         'logo_path',
         'acronym',
         'portal_url',
-        'is_active',
+        'status',
         'is_admission_open',
         'admission_start_date',
         'admission_end_date',
+        'established_year',
+        'addons',
     ];
 
     /**
@@ -37,12 +39,18 @@ class Institution extends Model
     protected function casts(): array
     {
         return [
-            'is_active' => 'boolean',
+            'status' => 'string',
             'is_admission_open' => 'boolean',
             'admission_start_date' => 'datetime',
             'admission_end_date' => 'datetime',
-            'attendance_allowance' => 'decimal:2',
+            'default_allowance' => 'decimal:2',
+            'addons' => 'array',
         ];
+    }
+
+    public function hasAddon(string $addon): bool
+    {
+        return is_array($this->addons) && in_array($addon, $this->addons);
     }
 
     public function isAdmissionActive(): bool

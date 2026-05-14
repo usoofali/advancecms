@@ -7,8 +7,14 @@
                 <flux:navlist.item :href="route('two-factor.show')" wire:navigate>{{ __('Two-factor auth') }}</flux:navlist.item>
             @endif
             <flux:navlist.item :href="route('appearance.edit')" wire:navigate>{{ __('Appearance') }}</flux:navlist.item>
-            @can('manage_system')
+            @can('system.manage')
                 <flux:navlist.item :href="route('settings.system')" wire:navigate icon="cpu-chip">{{ __('System') }}</flux:navlist.item>
+            @endcan
+            @can('roles.view')
+                <flux:navlist.item :href="route('settings.roles')" wire:navigate icon="shield-check">{{ __('Roles & Permissions') }}</flux:navlist.item>
+            @endcan
+            @can('institutions.view')
+                <flux:navlist.item :href="route('settings.addons')" wire:navigate icon="puzzle-piece">{{ __('Add-ons') }}</flux:navlist.item>
             @endcan
         </flux:navlist>
     </div>

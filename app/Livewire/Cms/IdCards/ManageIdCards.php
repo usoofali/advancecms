@@ -44,6 +44,8 @@ class ManageIdCards extends Component
 
     public function mount(): void
     {
+        Gate::authorize('id_cards.manage');
+
         if (! auth()->user()->hasRole('Super Admin')) {
             $this->institution_id = auth()->user()->institution_id;
         }
@@ -96,6 +98,8 @@ class ManageIdCards extends Component
 
     public function approveRequest(int $id): void
     {
+        Gate::authorize('id_cards.manage');
+
         $request = IdCardRequest::findOrFail($id);
         $request->update(['status' => 'approved']);
         $this->dispatch('notify', ['message' => __('Request approved.'), 'variant' => 'success']);
@@ -103,6 +107,8 @@ class ManageIdCards extends Component
 
     public function rejectRequest(int $id): void
     {
+        Gate::authorize('id_cards.manage');
+
         $request = IdCardRequest::findOrFail($id);
         $request->update(['status' => 'rejected']);
         $this->dispatch('notify', ['message' => __('Request rejected.'), 'variant' => 'info']);
@@ -110,6 +116,8 @@ class ManageIdCards extends Component
 
     public function bulkGenerate(): void
     {
+        Gate::authorize('id_cards.manage');
+
         if (empty($this->selected_ids)) {
             $this->addError('bulk', __('Please select at least one record.'));
 

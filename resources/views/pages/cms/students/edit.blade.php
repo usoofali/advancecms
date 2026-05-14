@@ -43,6 +43,8 @@ new #[Layout('layouts.app')] #[Title('Edit Student')] class extends Component
 
     public function mount(Student $student): void
     {
+        Gate::authorize('students.edit');
+
         $user_institution_id = auth()->user()->institution_id;
         if ($user_institution_id && $student->institution_id !== $user_institution_id) {
             abort(403, 'Unauthorized. This student record belongs to another institution.');
@@ -77,6 +79,8 @@ new #[Layout('layouts.app')] #[Title('Edit Student')] class extends Component
 
     public function save(): void
     {
+        Gate::authorize('students.edit');
+
         $validated = $this->validate([
             'institution_id' => ['required', 'exists:institutions,id'],
             'program_id' => ['required', 'exists:programs,id'],

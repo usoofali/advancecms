@@ -9,6 +9,11 @@ use Livewire\Component;
 new #[Layout('layouts.app')] #[Title('My Allocations')] class extends Component {
     public ?int $selectedAllocationId = null;
 
+    public function mount(): void
+    {
+        Gate::authorize('courses.view_assigned');
+    }
+
     public function selectAllocation(int $id): void
     {
         $this->selectedAllocationId = $id;

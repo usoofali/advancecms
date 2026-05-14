@@ -22,6 +22,8 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
 
     public function mount(): void
     {
+        Gate::authorize('registrations.view');
+
         if (auth()->user()->institution_id) {
             $this->institution_id = auth()->user()->institution_id;
         }
@@ -34,6 +36,8 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
 
     public function register(): void
     {
+        Gate::authorize('registrations.create');
+
         $this->validate([
             'student_id'       => ['required', 'exists:students,id'],
             'session_id'       => ['required', 'exists:academic_sessions,id'],
@@ -121,6 +125,8 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
 
     public function drop(): void
     {
+        Gate::authorize('registrations.delete');
+
         $this->validate([
             'student_id'      => ['required', 'exists:students,id'],
             'session_id'      => ['required', 'exists:academic_sessions,id'],

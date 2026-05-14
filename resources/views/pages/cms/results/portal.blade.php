@@ -18,13 +18,19 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
         $user = auth()->user();
 
         // For admin/staff viewing a student portal — they can pass a ?student= param
-        if (request()->has('student') && $user->can('view_dept_results')) {
+        if (request()->has('student') && $user->can('results.view_dept')) {
             $this->student = Student::find(request('student'));
         }
 
         // For student self-service: auto-load by matching email
         if (! $this->student) {
+            Gate::authorize('results.view_personal');
             $this->student = Student::where('email', $user->email)->first();
+            
+            // Final ownership safeguard
+            if ($this->student && $this->student->email !== $user->email) {
+                abort(403);
+            }
         }
     }
 

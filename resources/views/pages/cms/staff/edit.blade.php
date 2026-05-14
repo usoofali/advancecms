@@ -23,6 +23,8 @@ new #[Layout('layouts.app')] #[Title('Edit Staff')] class extends Component {
 
     public function mount(Staff $staff): void
     {
+        Gate::authorize('staff.edit');
+
         $user_institution_id = auth()->user()->institution_id;
         if ($user_institution_id && $staff->institution_id !== $user_institution_id) {
             abort(403, 'Unauthorized. This staff record belongs to another institution.');
@@ -42,6 +44,8 @@ new #[Layout('layouts.app')] #[Title('Edit Staff')] class extends Component {
 
     public function save(): void
     {
+        Gate::authorize('staff.edit');
+
         $validated = $this->validate([
             'institution_id' => ['required', 'exists:institutions,id'],
             'role_id'        => ['required', 'exists:roles,role_id'],

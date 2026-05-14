@@ -4,6 +4,7 @@ use App\Models\Department;
 use App\Models\Institution;
 use App\Models\Staff;
 use App\Models\Role;
+use App\Models\GradingSystem;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -15,9 +16,12 @@ new #[Layout('layouts.app')] #[Title('Add Department')] class extends Component 
     public string $faculty = '';
     public string $description = '';
     public string $status = 'active';
+    public int|string|null $grading_system_id = null;
 
     public function mount(): void
     {
+        Gate::authorize('departments.create');
+
         if (auth()->user()->institution_id) {
             $this->institution_id = auth()->user()->institution_id;
         }
@@ -25,6 +29,8 @@ new #[Layout('layouts.app')] #[Title('Add Department')] class extends Component 
 
     public function save(): void
     {
+        Gate::authorize('departments.create');
+
         $validated = $this->validate([
             'institution_id' => ['required', 'exists:institutions,id'],
             'hod_id'         => ['nullable', 'exists:staff,id'],
@@ -32,6 +38,7 @@ new #[Layout('layouts.app')] #[Title('Add Department')] class extends Component 
             'faculty'        => ['nullable', 'string', 'max:255'],
             'description'    => ['nullable', 'string'],
             'status'         => ['required', 'in:active,inactive'],
+            'grading_system_id' => ['nullable', 'exists:grading_systems,id'],
         ]);
 
         Department::create($validated);
@@ -47,6 +54,10 @@ new #[Layout('layouts.app')] #[Title('Add Department')] class extends Component 
                 ->where('role_id', Role::where('role_name', 'Head of Department (HOD)')->value('role_id'))
                 ->when($this->institution_id, fn($q) => $q->where('institution_id', $this->institution_id))
                 ->orderBy('first_name')
+                ->get(),
+            'gradingSystems' => GradingSystem::query()
+                ->when($this->institution_id, fn($q) => $q->where('institution_id', $this->institution_id)->orWhereNull('institution_id'))
+                ->orderBy('name')
                 ->get(),
         ];
     }
@@ -89,6 +100,13 @@ new #[Layout('layouts.app')] #[Title('Add Department')] class extends Component 
                 <flux:select wire:model="status" :label="__('Status')">
                     <flux:select.option value="active">{{ __('Active') }}</flux:select.option>
                     <flux:select.option value="inactive">{{ __('Inactive') }}</flux:select.option>
+                </flux:select>
+
+                <flux:select wire:model="grading_system_id" :label="__('Grading System')" :placeholder="__('Select Grading System...')">
+                    <flux:select.option value="null">{{ __('Default System') }}</flux:select.option>
+                    @foreach ($gradingSystems as $system)
+                    <flux:select.option :value="$system->id">{{ $system->name }}</flux:select.option>
+                    @endforeach
                 </flux:select>
             </div>
         </flux:fieldset>

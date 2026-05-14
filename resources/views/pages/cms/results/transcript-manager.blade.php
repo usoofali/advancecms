@@ -20,6 +20,8 @@ new #[Layout('layouts.app')] #[Title('Transcript Manager')] class extends Compon
 
     public function mount(): void
     {
+        Gate::authorize('reports.generate');
+
         if (auth()->user()->institution_id) {
             $this->filterInstitution = auth()->user()->institution_id;
         }
@@ -108,9 +110,11 @@ new #[Layout('layouts.app')] #[Title('Transcript Manager')] class extends Compon
         </div>
 
         @if ($selectedStudent)
+        @can('reports.generate')
         <flux:button icon="printer" variant="primary" x-on:click="window.print()">
             {{ __('Print Transcript') }}
         </flux:button>
+        @endcan
         @endif
     </div>
 

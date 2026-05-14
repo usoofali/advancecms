@@ -23,6 +23,8 @@ new #[Layout('layouts.app')] #[Title('Edit Institution')] class extends Componen
 
     public function mount(Institution $institution): void
     {
+        Gate::authorize('institutions.edit');
+
         if (auth()->user()->institution_id) {
             abort(403, 'Unauthorized. Only Super Admins can edit institutions.');
         }
@@ -40,6 +42,8 @@ new #[Layout('layouts.app')] #[Title('Edit Institution')] class extends Componen
 
     public function save(): void
     {
+        Gate::authorize('institutions.edit');
+
         $validated = $this->validate([
             'name'                 => ['required', 'string', 'max:255', 'unique:institutions,name,' . $this->institution->id],
             'default_allowance'    => ['required', 'numeric', 'min:0'],

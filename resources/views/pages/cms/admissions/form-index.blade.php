@@ -26,6 +26,8 @@ new #[Layout('layouts.app')] #[Title('Manage Application Forms')] class extends 
 
     public function mount()
     {
+        Gate::authorize('application_forms.view');
+
         if (!Auth::user()->hasRole('Super Admin')) {
             $this->selectedInstitution = Auth::user()->institution_id;
             $this->loadAdmissionSettings();
@@ -56,7 +58,7 @@ new #[Layout('layouts.app')] #[Title('Manage Application Forms')] class extends 
 
     public function saveAdmissionSettings()
     {
-        $this->authorize('manage_admission_status');
+        $this->authorize('admission_status.update');
 
         if (!$this->selectedInstitution) {
             $this->dispatch('notify', [
@@ -81,7 +83,7 @@ new #[Layout('layouts.app')] #[Title('Manage Application Forms')] class extends 
 
     public function delete(ApplicationForm $form)
     {
-        $this->authorize('manage_application_forms');
+        Gate::authorize('application_forms.delete');
         
         // Prevent deletion if applicants exist
         if ($form->applicants()->exists()) {
@@ -102,7 +104,7 @@ new #[Layout('layouts.app')] #[Title('Manage Application Forms')] class extends 
 
     public function toggleStatus(ApplicationForm $form)
     {
-        $this->authorize('manage_application_forms');
+        $this->authorize('application_forms.view');
         $form->update(['is_active' => !$form->is_active]);
         
         $this->dispatch('notify', [
@@ -144,7 +146,7 @@ new #[Layout('layouts.app')] #[Title('Manage Application Forms')] class extends 
         </flux:button>
     </div>
 
-    @can('manage_admission_status')
+    @can('admission_status.update')
     @if($this->selectedInstitution)
     <div class="p-6 bg-blue-50/50 dark:bg-blue-900/10 rounded-2xl border border-blue-100 dark:border-blue-900/30 space-y-4">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">

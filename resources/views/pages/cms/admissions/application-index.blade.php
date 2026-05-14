@@ -35,6 +35,8 @@ new #[Title('Manage Applications')] #[Layout('layouts.app')] class extends Compo
 
     public function mount(): void
     {
+        Gate::authorize('applications.view');
+
         $user = auth()->user();
 
         // If user is an Institutional Admin, lock the filter to their institution
@@ -91,11 +93,13 @@ new #[Title('Manage Applications')] #[Layout('layouts.app')] class extends Compo
             <flux:heading size="xl">{{ __('Manage Applications') }}</flux:heading>
             <flux:subheading>{{ __('Review and process admission applications.') }}</flux:subheading>
         </div>
-        <div class="flex items-center gap-2">
-            <flux:button variant="outline" icon="document-text" :href="route('cms.admissions.issue-notification')" wire:navigate>
-                {{ __('Issue admission notification') }}
-            </flux:button>
-        </div>
+        @can('applications.notify')
+            <div class="flex items-center gap-2">
+                <flux:button variant="outline" icon="document-text" :href="route('cms.admissions.issue-notification')" wire:navigate>
+                    {{ __('Issue admission notification') }}
+                </flux:button>
+            </div>
+        @endcan
     </div>
 
     <!-- Filters -->

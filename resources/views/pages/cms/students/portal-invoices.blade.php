@@ -11,6 +11,11 @@ use Livewire\Component;
 
 new #[Layout('layouts.app')] #[Title('My Invoices')] class extends Component
 {
+    public function mount(): void
+    {
+        Gate::authorize('invoices.view_personal');
+    }
+
     public $selectedInvoice;
 
     public $viewingReceipt;

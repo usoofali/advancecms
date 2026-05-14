@@ -11,7 +11,15 @@ new #[Layout('layouts.guest')] #[Title('Print Application Receipt')] class exten
 
     public function mount(Receipt $receipt)
     {
-        $this->receipt = $receipt->load(['payment.applicant.program', 'payment.applicant.institution', 'institution']);
+        Gate::authorize('applications.print_receipt');
+
+        $receipt->load(['payment.applicant.program', 'payment.applicant.institution', 'institution']);
+
+        if (auth()->user()->hasRole('Student') && auth()->user()->email !== ($receipt->payment?->applicant?->email ?? '')) {
+            abort(403, 'Unauthorized. You can only view your own application receipt.');
+        }
+
+        $this->receipt = $receipt;
     }
 };
 ?>

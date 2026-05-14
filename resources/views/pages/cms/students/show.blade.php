@@ -16,12 +16,41 @@ new #[Layout('layouts.app')] #[Title('Student Profile')] class extends Component
 
     public function mount(Student $student): void
     {
+        $user = auth()->user();
+        
+        // Ownership check for students
+        if ($user->hasRole('Student')) {
+            if ($user->email !== $student->email) {
+                abort(403, 'Unauthorized. You can only view your own profile.');
+            }
+        } else {
+            // Permission check for staff
+            if (! $user->can('students.view') && ! $user->can('students.view_dept')) {
+                abort(403, 'You do not have permission to view student profiles.');
+            }
+
+            // Institutional boundary check
+            if ($user->institution_id && $student->institution_id !== $user->institution_id) {
+                abort(403, 'Unauthorized. This student belongs to another institution.');
+            }
+
+            // Departmental boundary check for HODs
+            if ($user->hasRole('Head of Department (HOD)')) {
+                $hodDeptId = $user->staff?->department_id;
+                if ($hodDeptId && $student->program?->department_id !== $hodDeptId) {
+                    abort(403, 'Unauthorized. This student belongs to another department.');
+                }
+            }
+        }
+
         $this->student = $student;
         $this->newStatus = $student->status;
     }
 
     public function updateStatus(): void
     {
+        Gate::authorize('students.change_status');
+
         $this->validate([
             'newStatus' => 'required|in:active,graduated,suspended,withdrawn',
         ]);
@@ -95,10 +124,16 @@ new #[Layout('layouts.app')] #[Title('Student Profile')] class extends Component
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-            <flux:button icon="document-text" variant="ghost" :href="route('cms.students.admission-letter', $student)"
-                target="_blank">{{ __('Admission letter') }}</flux:button>
-            <flux:button icon="pencil-square" variant="ghost" :href="route('cms.students.edit', $student)" wire:navigate>{{ __('Edit Profile') }}</flux:button>
-            <flux:button icon="arrows-right-left" variant="primary" x-on:click="$flux.modal('change-status').show()">{{ __('Change Status') }}</flux:button>
+            @can('applications.print_letter')
+                <flux:button icon="document-text" variant="ghost" :href="route('cms.students.admission-letter', $student)"
+                    target="_blank">{{ __('Admission letter') }}</flux:button>
+            @endcan
+            @can('students.edit')
+                <flux:button icon="pencil-square" variant="ghost" :href="route('cms.students.edit', $student)" wire:navigate>{{ __('Edit Profile') }}</flux:button>
+            @endcan
+            @can('students.change_status')
+                <flux:button icon="arrows-right-left" variant="primary" x-on:click="$flux.modal('change-status').show()">{{ __('Change Status') }}</flux:button>
+            @endcan
         </div>
     </div>
 

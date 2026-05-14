@@ -20,6 +20,8 @@ new #[Layout('layouts.app')] #[Title('Add Staff')] class extends Component {
 
     public function mount(): void
     {
+        Gate::authorize('staff.create');
+
         if (auth()->user()->institution_id) {
             $this->institution_id = auth()->user()->institution_id;
         }
@@ -27,6 +29,8 @@ new #[Layout('layouts.app')] #[Title('Add Staff')] class extends Component {
 
     public function save(): void
     {
+        Gate::authorize('staff.create');
+
         $validated = $this->validate([
             'institution_id' => ['required', 'exists:institutions,id'],
             'role_id'        => ['required', 'exists:roles,role_id'],

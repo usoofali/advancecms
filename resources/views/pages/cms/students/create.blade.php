@@ -49,6 +49,8 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component
 
     public function mount(): void
     {
+        Gate::authorize('students.create');
+
         $this->admission_year = (int) date('Y');
         if (auth()->user()->institution_id) {
             $this->institution_id = auth()->user()->institution_id;
@@ -57,6 +59,8 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component
 
     public function save(): void
     {
+        Gate::authorize('students.create');
+
         $validated = $this->validate([
             'institution_id' => ['required', 'exists:institutions,id'],
             'program_id' => ['required', 'exists:programs,id'],

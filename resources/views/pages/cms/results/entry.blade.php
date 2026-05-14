@@ -29,6 +29,8 @@ use App\Services\GradingService;
 
     public function mount(): void
     {
+        Gate::authorize('results.enter');
+
         if (auth()->user()->institution_id) {
             $this->institution_id = auth()->user()->institution_id;
         }
@@ -65,6 +67,8 @@ use App\Services\GradingService;
 
     public function saveResults(GradingService $gradingService): void
     {
+        Gate::authorize('results.enter');
+
         $this->validate([
             'session_id'  => ['required'],
             'semester_id' => ['required'],
@@ -100,6 +104,8 @@ use App\Services\GradingService;
 
     public function exportCsv()
     {
+        Gate::authorize('results.export');
+
         $this->validate([
             'session_id' => 'required',
             'semester_id' => 'required',
@@ -118,6 +124,8 @@ use App\Services\GradingService;
 
     public function importCsv()
     {
+        Gate::authorize('results.import');
+
         $this->validate([
             'session_id' => 'required',
             'semester_id' => 'required',
@@ -253,13 +261,17 @@ use App\Services\GradingService;
             </x-action-message>
 
             @if ($course_id && count($students) > 0)
+            @can('results.export')
             <flux:button size="sm" variant="ghost" icon="document-arrow-down" wire:click="exportCsv">
                 {{ __('Export CSV') }}
             </flux:button>
+            @endcan
+            @can('results.import')
             <flux:button size="sm" variant="ghost" icon="document-arrow-up"
                 x-on:click="$flux.modal('import-results').show()">
                 {{ __('Import CSV') }}
             </flux:button>
+            @endcan
             @endif
         </div>
     </div>

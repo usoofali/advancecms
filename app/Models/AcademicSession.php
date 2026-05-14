@@ -46,4 +46,14 @@ class AcademicSession extends Model
     {
         return $this->hasMany(CourseRegistration::class);
     }
+
+    public function cbtExams(): HasMany
+    {
+        return $this->hasMany(CbtExam::class);
+    }
+
+    public function studentCbtProfiles(): HasMany
+    {
+        return $this->hasMany(StudentCbtProfile::class);
+    }
 }

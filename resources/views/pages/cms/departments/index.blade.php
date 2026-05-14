@@ -13,6 +13,11 @@ new #[Layout('layouts.app')] #[Title('Departments')] class extends Component {
     public string $search = '';
     public int|string|null $deletingId = null;
 
+    public function mount(): void
+    {
+        Gate::authorize('departments.view');
+    }
+
     public function updatingSearch(): void
     {
         $this->resetPage();
@@ -20,6 +25,8 @@ new #[Layout('layouts.app')] #[Title('Departments')] class extends Component {
 
     public function confirmDelete(): void
     {
+        Gate::authorize('departments.delete');
+
         if (!$this->deletingId) return;
         
         $department = Department::find($this->deletingId);
@@ -55,9 +62,11 @@ new #[Layout('layouts.app')] #[Title('Departments')] class extends Component {
                 <flux:heading size="xl">{{ __('Departments') }}</flux:heading>
                 <flux:subheading>{{ __('Manage academic departments') }}</flux:subheading>
             </div>
+            @can('departments.create')
             <flux:button icon="plus" variant="primary" :href="route('cms.departments.create')" wire:navigate>
                 {{ __('Add Department') }}
             </flux:button>
+            @endcan
         </div>
 
         <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search departments...')" class="max-w-sm" />
@@ -100,8 +109,12 @@ new #[Layout('layouts.app')] #[Title('Departments')] class extends Component {
                             </td>
                             <td class="px-4 py-4 text-right">
                                 <div class="flex items-center justify-end gap-2">
+                                    @can('departments.edit')
                                     <flux:button size="sm" variant="ghost" icon="pencil" :href="route('cms.departments.edit', $department)" wire:navigate />
+                                    @endcan
+                                    @can('departments.delete')
                                     <flux:button size="sm" variant="ghost" icon="trash" x-on:click="$wire.deletingId = {{ $department->id }}; $flux.modal('delete-department').show()" />
+                                    @endcan
                                 </div>
                             </td>
                         </tr>

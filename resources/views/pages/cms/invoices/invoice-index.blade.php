@@ -63,6 +63,8 @@ new #[Layout('layouts.app')] #[Title('Invoices')] class extends Component
 
     public function delete()
     {
+        Gate::authorize('invoices.delete');
+
         if ($this->deletingId) {
             $invoice = Invoice::find($this->deletingId);
             if ($invoice) {
@@ -85,6 +87,11 @@ new #[Layout('layouts.app')] #[Title('Invoices')] class extends Component
             $this->js('$flux.modal("delete-invoice").close()');
         }
     }
+    public function mount(): void
+    {
+        Gate::authorize('invoices.view');
+    }
+
     public function updatedInstitutionFilter()
     {
         $this->departmentFilter = null;
@@ -115,9 +122,11 @@ new #[Layout('layouts.app')] #[Title('Invoices')] class extends Component
             <flux:subheading>Manage school fee templates and assignments.</flux:subheading>
         </div>
 
+        @can('invoices.create')
         <flux:button variant="primary" icon="plus" :href="route('cms.invoices.create')" wire:navigate>
             New Invoice
         </flux:button>
+        @endcan
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -261,15 +270,21 @@ new #[Layout('layouts.app')] #[Title('Invoices')] class extends Component
                             <flux:button variant="ghost" icon="ellipsis-horizontal" size="sm" />
 
                             <flux:menu>
+                                @can('invoices.edit')
                                 <flux:menu.item icon="pencil-square" :href="route('cms.invoices.edit', $invoice->id)"
                                     wire:navigate>Edit Template</flux:menu.item>
+                                @endcan
+                                @can('invoices.manage_students')
                                 <flux:menu.item icon="users" :href="route('cms.invoices.students', $invoice->id)"
                                     wire:navigate>Manage Student Invoices</flux:menu.item>
+                                @endcan
                                 <flux:menu.separator />
+                                @can('invoices.delete')
                                 <flux:menu.item variant="danger" icon="trash"
                                     wire:click="confirmDelete({{ $invoice->id }})">
                                     Delete
                                 </flux:menu.item>
+                                @endcan
                             </flux:menu>
                         </flux:dropdown>
                     </td>

@@ -121,7 +121,7 @@ class LecturerResultsImport
                 $finalExam = $examScore !== null ? $examScore : ($existingResult ? $existingResult->exam_score : 0);
 
                 // Calculate grades
-                $grading = GradingService::calculateGrades($finalCa, $finalExam);
+                $grading = GradingService::calculateGrades($finalCa, $finalExam, $student->program?->department);
 
                 // Create or Update Result
                 Result::updateOrCreate(

@@ -21,6 +21,8 @@ new #[Layout('layouts.app')] #[Title('Add Institution')] class extends Component
 
     public function mount(): void
     {
+        Gate::authorize('institutions.create');
+
         if (auth()->user()->institution_id) {
             abort(403, 'Unauthorized. Only Super Admins can create institutions.');
         }
@@ -28,6 +30,8 @@ new #[Layout('layouts.app')] #[Title('Add Institution')] class extends Component
 
     public function save(): void
     {
+        Gate::authorize('institutions.create');
+
         $validated = $this->validate([
             'name'                 => ['required', 'string', 'max:255', 'unique:institutions,name'],
             'default_allowance'    => ['required', 'numeric', 'min:0'],

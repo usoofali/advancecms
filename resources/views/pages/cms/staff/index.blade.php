@@ -15,6 +15,11 @@ new #[Layout('layouts.app')] #[Title('Staff Management')] class extends Componen
     public int|string $role_id = '';
     public int|string|null $deletingId = null;
 
+    public function mount(): void
+    {
+        Gate::authorize('staff.view');
+    }
+
     public function updatingSearch(): void
     {
         $this->resetPage();
@@ -22,6 +27,8 @@ new #[Layout('layouts.app')] #[Title('Staff Management')] class extends Componen
 
     public function confirmDelete(): void
     {
+        Gate::authorize('staff.delete');
+
         if (!$this->deletingId) return;
 
         $staff = Staff::find($this->deletingId);
@@ -68,9 +75,11 @@ new #[Layout('layouts.app')] #[Title('Staff Management')] class extends Componen
             <flux:heading size="xl">{{ __('Staff Directory') }}</flux:heading>
             <flux:subheading>{{ __('Manage academic and non-academic staff members') }}</flux:subheading>
         </div>
+        @can('staff.create')
         <flux:button icon="plus" variant="primary" :href="route('cms.staff.create')" wire:navigate>
             {{ __('Add Staff') }}
         </flux:button>
+        @endcan
     </div>
 
     <div class="flex items-center gap-4">
@@ -131,11 +140,15 @@ new #[Layout('layouts.app')] #[Title('Staff Management')] class extends Componen
                     </td>
                     <td class="px-4 py-4 text-right">
                         <div class="flex items-center justify-end gap-2">
+                            @can('staff.edit')
                             <flux:button size="sm" variant="ghost" icon="pencil-square"
                                 :href="route('cms.staff.edit', $staff->id)" wire:navigate
                                 title="{{ __('Edit Staff') }}" />
+                            @endcan
+                            @can('staff.delete')
                             <flux:button size="sm" variant="ghost" icon="trash" title="{{ __('Delete Staff') }}"
                                 x-on:click="$wire.deletingId = {{ $staff->id }}; $flux.modal('delete-staff').show()" />
+                            @endcan
                         </div>
                     </td>
                 </tr>

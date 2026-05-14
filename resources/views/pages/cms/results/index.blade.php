@@ -37,6 +37,10 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
 
     public function mount(): void
     {
+        if (auth()->user()->cannot('results.view') && auth()->user()->cannot('results.view_dept')) {
+            abort(403, 'Unauthorized.');
+        }
+
         if (auth()->user()->institution_id) {
             $this->institution_id = auth()->user()->institution_id;
         }
@@ -275,13 +279,6 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
 
         $sessions = $this->filterActive($this->program_id)
             ? AcademicSession::query()
-                ->whereHas('results', function ($rq) {
-                    $rq->whereHas('course', function ($cq) {
-                        $cq->where('program_id', $this->program_id)
-                            ->when($this->filterActive($this->department_id), fn ($q) => $q->where('department_id', $this->department_id));
-                    })
-                        ->when($this->filterActive($this->institution_id), fn ($q) => $q->where('institution_id', $this->institution_id));
-                })
                 ->orderByDesc('name')
                 ->get()
             : collect();
@@ -291,10 +288,6 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
                 ->where('program_id', $this->program_id)
                 ->when($this->filterActive($this->department_id), fn ($q) => $q->where('department_id', $this->department_id))
                 ->when($this->filterActive($this->institution_id), fn ($q) => $q->where('institution_id', $this->institution_id))
-                ->whereHas('results', function ($rq) {
-                    $rq->where('academic_session_id', $this->session_id)
-                        ->when($this->filterActive($this->institution_id), fn ($q) => $q->where('institution_id', $this->institution_id));
-                })
                 ->distinct()
                 ->orderBy('level')
                 ->pluck('level')
@@ -317,8 +310,8 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
             'program' => $this->filterActive($this->department_id),
             'session' => $this->filterActive($this->program_id),
             'level' => $this->filterActive($this->session_id),
-            'semester' => $this->filterActive($this->level),
-            'course' => $this->filterActive($this->semester_id),
+            'semester' => $this->filterActive($this->session_id),
+            'course' => $this->filterActive($this->level) && $this->filterActive($this->semester_id),
         ];
 
         $institutions = auth()->user()->institution_id
@@ -444,15 +437,21 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
             <flux:button variant="ghost" icon="printer" onclick="window.print()">
                 {{ __('Print Results') }}
             </flux:button>
+            @can('results.export')
             <flux:button icon="arrow-down-tray" :href="$this->exportCsvUrl" :disabled="$this->exportCsvUrl === '#'">
                 {{ __('Export CSV') }}
             </flux:button>
+            @endcan
+            @can('results.import')
             <flux:button icon="arrow-up-tray" x-on:click="$flux.modal('import-results').show()">
                 {{ __('Import CSV') }}
             </flux:button>
+            @endcan
+            @can('results.enter')
             <flux:button icon="plus" variant="primary" :href="route('cms.results.entry')" wire:navigate>
                 {{ __('Enter Result') }}
             </flux:button>
+            @endcan
         </div>
     </div>
 

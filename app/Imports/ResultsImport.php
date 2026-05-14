@@ -107,7 +107,7 @@ class ResultsImport
                 $caScore = (float) $row['ca_score'];
                 $examScore = (float) $row['exam_score'];
                 $total = $caScore + $examScore;
-                $graded = $this->gradingService->resolveGrade($total);
+                $graded = $this->gradingService->resolveGrade($total, $student->program?->department);
 
                 Result::updateOrCreate(
                     [

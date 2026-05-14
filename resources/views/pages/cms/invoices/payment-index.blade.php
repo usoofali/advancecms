@@ -23,6 +23,11 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
 
     public ?int $rejectingPaymentId = null;
 
+    public function mount(): void
+    {
+        Gate::authorize('payments.view');
+    }
+
     /**
      * Payments the current user may list and act on (institution scope).
      */
@@ -69,6 +74,8 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
 
     public function approve()
     {
+        Gate::authorize('payments.verify');
+
         $payment = $this->paymentQueryForCurrentUser()
             ->whereKey($this->approvingPaymentId)
             ->where('status', 'pending')
@@ -127,6 +134,8 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
 
     public function reject()
     {
+        Gate::authorize('payments.verify');
+
         $payment = $this->paymentQueryForCurrentUser()
             ->whereKey($this->rejectingPaymentId)
             ->where('status', 'pending')
@@ -228,8 +237,10 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
                             <td class="py-4 px-4 text-right">
                                 @if($payment->status === 'pending')
                                     <div class="flex items-center justify-end gap-2">
+                                        @can('payments.verify')
                                         <flux:button variant="subtle" size="sm" wire:click="confirmApprove({{ $payment->id }})" class="text-green-600 hover:text-green-700">Approve</flux:button>
                                         <flux:button variant="ghost" size="sm" wire:click="confirmReject({{ $payment->id }})" class="text-red-600 hover:text-red-700">Reject</flux:button>
+                                        @endcan
                                     </div>
                                 @elseif($payment->status === 'success' && $payment->receipt)
                                     <div class="flex items-center justify-end">

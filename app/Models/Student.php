@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class Student extends Model
 {
@@ -199,7 +198,7 @@ class Student extends Model
         $query = $this->attendanceRecords();
 
         if ($courseId || $sessionId || $semesterId) {
-            $query->whereHas('attendance.courseAllocation', function ($q) use ($courseId, $sessionId, $semesterId) {
+            $query->whereHas('attendance.attendanceSession', function ($q) use ($courseId, $sessionId, $semesterId) {
                 if ($courseId) {
                     $q->where('course_id', $courseId);
                 }
@@ -220,5 +219,15 @@ class Student extends Model
         $presentCount = $query->where('is_present', '=', true)->count();
 
         return (int) round(($presentCount / $totalCount) * 100);
+    }
+
+    public function cbtProfiles(): HasMany
+    {
+        return $this->hasMany(StudentCbtProfile::class);
+    }
+
+    public function cbtResults(): HasMany
+    {
+        return $this->hasMany(CbtResultStaging::class);
     }
 }

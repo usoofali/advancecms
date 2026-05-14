@@ -37,6 +37,8 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
 
     public function mount(): void
     {
+        Gate::authorize('courses.allocate');
+
         $user = auth()->user();
         if ($user->institution_id) {
             $this->institution_id = $user->institution_id;
@@ -82,6 +84,8 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
 
     public function allocate(): void
     {
+        Gate::authorize('courses.allocate');
+
         $this->validate([
             'session_id' => ['required', 'exists:academic_sessions,id'],
             'semester_id' => ['required', 'exists:semesters,id'],
@@ -130,6 +134,8 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
 
     public function confirmRevoke(): void
     {
+        Gate::authorize('courses.revoke_allocation');
+
         if (! $this->revokingId) {
             return;
         }
@@ -269,6 +275,7 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
     <div class="grid grid-cols-1 md:grid-cols-3 gap-8 print:block">
         <!-- Allocation Form -->
         <div class="md:col-span-1 print:hidden">
+            @can('courses.allocate')
             <flux:card>
                 <form wire:submit="allocate" class="space-y-6">
                     @if (!auth()->user()->institution_id)
@@ -347,6 +354,12 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
                     </div>
                 </form>
             </flux:card>
+            @else
+            <div class="p-6 text-center border-2 border-dashed rounded-2xl text-zinc-400">
+                <flux:icon.shield-exclamation class="size-12 mx-auto mb-4 opacity-20" />
+                <p class="text-sm">{{ __('Search and view existing allocations in the list.') }}</p>
+            </div>
+            @endcan
         </div>
 
         <!-- Allocations List -->
@@ -417,9 +430,11 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
                                         ucfirst($alloc->semester->name) }}</div>
                                 </td>
                                 <td class="px-4 py-3 text-right print:hidden">
+                                    @can('courses.revoke_allocation')
                                     <flux:button size="sm" variant="danger" icon="trash" title="{{ __('Revoke') }}"
                                         x-on:click="$wire.revokingId = {{ $alloc->id }}; $flux.modal('revoke-allocation').show()">
                                     </flux:button>
+                                    @endcan
                                 </td>
                             </tr>
                             @empty

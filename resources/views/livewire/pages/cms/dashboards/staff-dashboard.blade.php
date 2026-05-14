@@ -14,7 +14,7 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4">
         {{-- Lecturer Specifics --}}
-        @can('view_assigned_courses')
+        @can('courses.view_assigned')
         <flux:card class="flex items-center gap-4">
             <div class="size-10 rounded-lg bg-blue-50 dark:bg-blue-950 flex items-center justify-center">
                 <flux:icon.book-open class="size-6 text-blue-600 dark:text-blue-400" />
@@ -47,7 +47,7 @@
         @endcan
 
         {{-- Accountant Specifics --}}
-        @can('record_payments')
+        @can('payments.create')
         <flux:card class="flex items-center gap-4 border-orange-100 dark:border-orange-900/30">
             <div class="size-10 rounded-lg bg-orange-50 dark:bg-orange-950 flex items-center justify-center">
                 <flux:icon.clock class="size-6 text-orange-600 dark:text-orange-400" />
@@ -112,7 +112,7 @@
             </flux:card>
             @endcan
             {{-- Teaching Tools --}}
-            @can('enter_results')
+            @can('results.enter')
             <flux:card class="p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors border border-zinc-100 dark:border-zinc-800">
                 <div class="flex items-center gap-3 mb-3">
                     <flux:icon.pencil-square class="size-5 text-blue-600" />
@@ -124,7 +124,7 @@
             @endcan
 
             {{-- Financial Tools --}}
-            @can('manage_invoices')
+            @can('invoices.view')
             <flux:card class="p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors border border-zinc-100 dark:border-zinc-800">
                 <div class="flex items-center gap-3 mb-3">
                     <flux:icon.banknotes class="size-5 text-orange-600" />
@@ -136,7 +136,7 @@
             @endcan
 
             {{-- Attendance Tools --}}
-            @can('take_attendance')
+            @can('attendance.take')
             <flux:card class="p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors border border-zinc-100 dark:border-zinc-800">
                 <div class="flex items-center gap-3 mb-3">
                     <flux:icon.calendar class="size-5 text-teal-600" />
@@ -147,7 +147,7 @@
             </flux:card>
             @endcan
 
-            @can('view_attendance_history')
+            @can('attendance.view_history')
             <flux:card class="p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors border border-zinc-100 dark:border-zinc-800 focus:outline focus:outline-blue-600">
                 <div class="flex items-center gap-3 mb-3">
                     <flux:icon.clock class="size-5 text-indigo-600" />
@@ -159,7 +159,7 @@
             @endcan
 
             {{-- Accountant Payment Management --}}
-            @can('manage_attendance_payments')
+            @can('attendance_payments.process')
             <flux:card class="p-4 bg-emerald-50 dark:bg-emerald-950/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors border border-emerald-100 dark:border-emerald-800">
                 <div class="flex items-center gap-3 mb-3">
                     <flux:icon.banknotes class="size-5 text-emerald-600" />
@@ -171,7 +171,7 @@
             @endcan
 
             {{-- Student Management Tools --}}
-            @can('view_dept_students')
+            @can('students.view_dept')
             <flux:card class="p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors border border-zinc-100 dark:border-zinc-800">
                 <div class="flex items-center gap-3 mb-3">
                     <flux:icon.users class="size-5 text-purple-600" />

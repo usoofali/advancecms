@@ -30,7 +30,7 @@ new #[Layout('layouts.app')] #[Title('Take Attendance')] class extends Component
     public function mount(): void
     {
         $this->date = date('Y-m-d');
-        Gate::authorize('take_attendance');
+        Gate::authorize('attendance.take');
     }
 
     public function getAllocationsProperty()
@@ -78,6 +78,8 @@ new #[Layout('layouts.app')] #[Title('Take Attendance')] class extends Component
 
     public function submit(): void
     {
+        Gate::authorize('attendance.take');
+
         $this->validate([
             'selected_allocation_ids' => ['required', 'array', 'min:1'],
             'date' => ['required', 'date', 'before_or_equal:today'],

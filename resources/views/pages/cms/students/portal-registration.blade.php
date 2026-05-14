@@ -21,6 +21,8 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
 
     public function mount(): void
     {
+        Gate::authorize('registrations.create');
+
         $user = auth()->user();
         if ($user->institution_id) {
             $this->institution_id = $user->institution_id;
@@ -40,6 +42,8 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
 
     public function register(): void
     {
+        Gate::authorize('registrations.create');
+
         $this->validate([
             'student_id'       => ['required', 'exists:students,id'],
             'session_id'       => ['required', 'exists:academic_sessions,id'],
@@ -127,6 +131,8 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
 
     public function drop(): void
     {
+        Gate::authorize('registrations.delete');
+
         $this->validate([
             'student_id'      => ['required', 'exists:students,id'],
             'session_id'      => ['required', 'exists:academic_sessions,id'],

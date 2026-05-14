@@ -40,6 +40,8 @@ new #[Title('Issue admission notification')] #[Layout('layouts.app')] class exte
 
     public function mount(): void
     {
+        Gate::authorize('applications.notify');
+
         $user = Auth::user();
         $year = (int) now()->format('Y');
         $this->admissionYear = $year;
@@ -104,6 +106,8 @@ new #[Title('Issue admission notification')] #[Layout('layouts.app')] class exte
 
     public function generateLetter(): void
     {
+        Gate::authorize('applications.notify');
+
         $user = Auth::user();
         $rules = [
             'fullName' => ['required', 'string', 'max:255'],

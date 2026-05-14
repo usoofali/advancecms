@@ -8,8 +8,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Str;
 
-new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends Component
-{
+new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends Component {
     use WithPagination;
 
     public Invoice $invoice;
@@ -17,7 +16,7 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
     public string $search = '';
 
     public string $statusFilter = 'all';
-    
+
     public string $levelFilter = 'all';
 
     public ?int $actionId = null;
@@ -30,6 +29,8 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
 
     public function mount(Invoice $invoice)
     {
+        Gate::authorize('invoices.manage_students');
+        
         $this->invoice = $invoice;
     }
 
@@ -38,20 +39,23 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
         $sessionYear = (int) explode('/', $this->invoice->academicSession->name)[0];
 
         return $this->invoice->studentInvoices()
+            ->select('student_invoices.*')
+            ->leftJoin('students', 'student_invoices.student_id', '=', 'students.id')
+            ->leftJoin('applicants', 'student_invoices.applicant_id', '=', 'applicants.id')
             ->with(['student', 'applicant'])
             ->when($this->search, function ($q) {
                 $q->where(function ($qq) {
                     $qq->whereHas('student', function ($sq) {
-                        $sq->where('first_name', 'like', '%'.$this->search.'%')
-                            ->orWhere('last_name', 'like', '%'.$this->search.'%')
-                            ->orWhere('matric_number', 'like', '%'.$this->search.'%');
+                        $sq->where('first_name', 'like', '%' . $this->search . '%')
+                            ->orWhere('last_name', 'like', '%' . $this->search . '%')
+                            ->orWhere('matric_number', 'like', '%' . $this->search . '%');
                     })->orWhereHas('applicant', function ($aq) {
-                        $aq->where('full_name', 'like', '%'.$this->search.'%')
-                            ->orWhere('application_number', 'like', '%'.$this->search.'%');
+                        $aq->where('full_name', 'like', '%' . $this->search . '%')
+                            ->orWhere('application_number', 'like', '%' . $this->search . '%');
                     });
                 });
             })
-            ->when($this->statusFilter !== 'all', fn ($q) => $q->where('status', $this->statusFilter))
+            ->when($this->statusFilter !== 'all', fn($q) => $q->where('status', $this->statusFilter))
             ->when($this->levelFilter !== 'all', function ($q) use ($sessionYear) {
                 $q->where(function ($qq) use ($sessionYear) {
                     $qq->whereHas('student', function ($sq) use ($sessionYear) {
@@ -67,7 +71,7 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
                     });
                 });
             })
-            ->latest()
+            ->orderByRaw('COALESCE(students.matric_number, applicants.application_number)')
             ->paginate(20);
     }
 
@@ -79,16 +83,16 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
             ->when($this->search, function ($q) {
                 $q->where(function ($qq) {
                     $qq->whereHas('student', function ($sq) {
-                        $sq->where('first_name', 'like', '%'.$this->search.'%')
-                            ->orWhere('last_name', 'like', '%'.$this->search.'%')
-                            ->orWhere('matric_number', 'like', '%'.$this->search.'%');
+                        $sq->where('first_name', 'like', '%' . $this->search . '%')
+                            ->orWhere('last_name', 'like', '%' . $this->search . '%')
+                            ->orWhere('matric_number', 'like', '%' . $this->search . '%');
                     })->orWhereHas('applicant', function ($aq) {
-                        $aq->where('full_name', 'like', '%'.$this->search.'%')
-                            ->orWhere('application_number', 'like', '%'.$this->search.'%');
+                        $aq->where('full_name', 'like', '%' . $this->search . '%')
+                            ->orWhere('application_number', 'like', '%' . $this->search . '%');
                     });
                 });
             })
-            ->when($this->statusFilter !== 'all', fn ($q) => $q->where('status', $this->statusFilter))
+            ->when($this->statusFilter !== 'all', fn($q) => $q->where('status', $this->statusFilter))
             ->when($this->levelFilter !== 'all', function ($q) use ($sessionYear) {
                 $q->where(function ($qq) use ($sessionYear) {
                     $qq->whereHas('student', function ($sq) use ($sessionYear) {
@@ -121,8 +125,14 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
 
     public function executeAction()
     {
-        if (! $this->actionId) {
+        if (!$this->actionId) {
             return;
+        }
+
+        if ($this->actionType === 'delete') {
+            Gate::authorize('invoices.delete');
+        } elseif ($this->actionType === 'cancel') {
+            Gate::authorize('invoices.cancel');
         }
 
         $studentInvoice = StudentInvoice::find($this->actionId);
@@ -158,22 +168,25 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
     public function exportCsv()
     {
         $sessionYear = (int) explode('/', $this->invoice->academicSession->name)[0];
-        
+
         $invoices = $this->invoice->studentInvoices()
+            ->select('student_invoices.*')
+            ->leftJoin('students', 'student_invoices.student_id', '=', 'students.id')
+            ->leftJoin('applicants', 'student_invoices.applicant_id', '=', 'applicants.id')
             ->with(['student', 'student.program', 'applicant', 'applicant.program'])
             ->when($this->search, function ($q) {
                 $q->where(function ($qq) {
                     $qq->whereHas('student', function ($sq) {
-                        $sq->where('first_name', 'like', '%'.$this->search.'%')
-                            ->orWhere('last_name', 'like', '%'.$this->search.'%')
-                            ->orWhere('matric_number', 'like', '%'.$this->search.'%');
+                        $sq->where('first_name', 'like', '%' . $this->search . '%')
+                            ->orWhere('last_name', 'like', '%' . $this->search . '%')
+                            ->orWhere('matric_number', 'like', '%' . $this->search . '%');
                     })->orWhereHas('applicant', function ($aq) {
-                        $aq->where('full_name', 'like', '%'.$this->search.'%')
-                            ->orWhere('application_number', 'like', '%'.$this->search.'%');
+                        $aq->where('full_name', 'like', '%' . $this->search . '%')
+                            ->orWhere('application_number', 'like', '%' . $this->search . '%');
                     });
                 });
             })
-            ->when($this->statusFilter !== 'all', fn ($q) => $q->where('status', $this->statusFilter))
+            ->when($this->statusFilter !== 'all', fn($q) => $q->where('status', $this->statusFilter))
             ->when($this->levelFilter !== 'all', function ($q) use ($sessionYear) {
                 $q->where(function ($qq) use ($sessionYear) {
                     $qq->whereHas('student', function ($sq) use ($sessionYear) {
@@ -188,10 +201,11 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
                     });
                 });
             })
+            ->orderByRaw('COALESCE(students.matric_number, applicants.application_number)')
             ->get();
 
         $filename = "invoices_" . Str::slug($this->invoice->title) . "_" . now()->format('YmdHis') . ".csv";
-        
+
         $headers = [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => "attachment; filename=\"$filename\"",
@@ -227,6 +241,8 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
 
     public function generateInvoices(\App\Services\StudentInvoiceService $service)
     {
+        Gate::authorize('invoices.generate');
+        
         $this->isGenerating = true;
 
         try {
@@ -259,19 +275,24 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
                 <flux:subheading>Manage individual student records for this template.</flux:subheading>
             </div>
         </div>
-        
+
         <div class="flex items-center gap-2">
+            @can('invoices.generate')
             <flux:button variant="subtle" icon="bolt" wire:click="openGenerationModal">
                 Force Generate
             </flux:button>
+            @endcan
+            @can('invoices.export')
             <flux:button icon="document-text" variant="ghost" wire:click="exportCsv">
                 Export CSV
             </flux:button>
-            <flux:button icon="printer" variant="primary" 
-                @click.prevent="window.open('{{ route('cms.invoices.print-report', ['invoice' => $invoice->id]) }}' + '?search=' + encodeURIComponent($wire.search) + '&status=' + $wire.statusFilter + '&level=' + $wire.levelFilter + '&institution_id={{ $invoice->institution_id }}', '_blank')"
-            >
+            @endcan
+            @can('invoices.print_report')
+            <flux:button icon="printer" variant="primary"
+                @click.prevent="window.open('{{ route('cms.invoices.print-report', ['invoice' => $invoice->id]) }}' + '?search=' + encodeURIComponent($wire.search) + '&status=' + $wire.statusFilter + '&level=' + $wire.levelFilter + '&institution_id={{ $invoice->institution_id }}', '_blank')">
                 Print Filtered Report
             </flux:button>
+            @endcan
         </div>
     </div>
 
@@ -287,27 +308,29 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
         </flux:card>
         <flux:card class="space-y-1 border-l-4 border-green-500">
             <flux:text size="sm" class="text-zinc-500 uppercase font-bold tracking-tight">Total Paid</flux:text>
-            <flux:heading size="xl" class="text-green-600">₦{{ number_format($summary['total_paid'], 2) }}</flux:heading>
+            <flux:heading size="xl" class="text-green-600">₦{{ number_format($summary['total_paid'], 2) }}
+            </flux:heading>
         </flux:card>
         <flux:card class="space-y-1 border-l-4 border-orange-500">
-            <flux:text size="sm" class="text-zinc-500 uppercase font-bold tracking-tight">Outstanding Balance</flux:text>
-            <flux:heading size="xl" class="text-orange-600">₦{{ number_format($summary['total_balance'], 2) }}</flux:heading>
+            <flux:text size="sm" class="text-zinc-500 uppercase font-bold tracking-tight">Outstanding Balance
+            </flux:text>
+            <flux:heading size="xl" class="text-orange-600">₦{{ number_format($summary['total_balance'], 2) }}
+            </flux:heading>
         </flux:card>
     </div>
     <div class="flex items-center gap-4">
         <div class="flex-1">
-            <flux:input wire:model.live="search" icon="magnifying-glass" placeholder="Search student name or matric..." clearable />
+            <flux:input wire:model.live="search" icon="magnifying-glass" placeholder="Search student name or matric..."
+                clearable />
         </div>
-        
-        <flux:select wire:model.live="levelFilter" :placeholder="__('All Levels')" class="max-w-[150px]">
+
+        <flux:select wire:model.live="levelFilter" class="max-w-[150px]">
             <flux:select.option value="all">All Levels</flux:select.option>
             <flux:select.option value="100">100 Level</flux:select.option>
             <flux:select.option value="200">200 Level</flux:select.option>
             <flux:select.option value="300">300 Level</flux:select.option>
-            <flux:select.option value="400">400 Level</flux:select.option>
-            <flux:select.option value="500">500 Level</flux:select.option>
         </flux:select>
-        
+
         <flux:select wire:model.live="statusFilter" :placeholder="__('Filter Status')" class="max-w-[150px]">
             <flux:select.option value="all">All Statuses</flux:select.option>
             <flux:select.option value="pending">Pending</flux:select.option>
@@ -317,80 +340,91 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
         </flux:select>
     </div>
 
-    <div class="overflow-x-auto">
-        <table class="w-full text-left">
-            <thead>
-                <tr class="border-b border-zinc-200 dark:border-zinc-700">
-                    <th class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider">Student</th>
-                    <th class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider text-right">Invoiced</th>
-                    <th class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider text-right">Paid</th>
-                    <th class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider">Status</th>
-                    <th class="py-3 px-4"></th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                @php $paginated = $this->studentInvoices(); @endphp
-                @forelse ($paginated as $item)
-                    <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                        <td class="py-4 px-4">
-                            <flux:text weight="medium" class="text-zinc-900 dark:text-white">
-                                {{ $item->student ? $item->student->full_name : $item->applicant->full_name }}
-                            </flux:text>
-                            <flux:text size="sm" class="text-zinc-500">
-                                {{ $item->student ? $item->student->matric_number : $item->applicant->application_number }}
-                                @if(!$item->student)
-                                    <span class="ml-1 text-[10px] px-1 bg-amber-100 text-amber-700 rounded">{{ __('Applicant') }}</span>
-                                @endif
-                            </flux:text>
-                        </td>
-                        <td class="py-4 px-4 text-right">₦{{ number_format($item->total_amount, 2) }}</td>
-                        <td class="py-4 px-4 text-right">₦{{ number_format($item->amount_paid, 2) }}</td>
-                        <td class="py-4 px-4">
-                            <flux:badge 
-                                :variant="$item->status === 'paid' ? 'success' : ($item->status === 'cancelled' ? 'danger' : 'warning')"
-                                size="sm"
-                            >
-                                {{ ucfirst($item->status) }}
-                            </flux:badge>
-                        </td>
-                        <td class="py-4 px-4 text-right">
-                            <div class="flex items-center justify-end gap-2">
-                                <flux:button variant="ghost" size="sm" icon="printer"
-                                    href="{{ route('cms.invoices.print', $item->id) }}" target="_blank">
-                                    Print
-                                </flux:button>
+    @php $paginated = $this->studentInvoices(); @endphp
 
-                                @if($item->status !== 'cancelled' && $item->status !== 'paid')
-                                    <flux:button variant="ghost" size="sm" icon="x-mark" wire:click="confirmAction('cancel', {{ $item->id }})">Cancel</flux:button>
-                                @endif
-                                
-                                @if($item->amount_paid <= 0)
-                                    <flux:button variant="ghost" size="sm" icon="trash" variant="danger" wire:click="confirmAction('delete', {{ $item->id }})">Delete</flux:button>
-                                @endif
-                            </div>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="5" class="py-12 text-center text-zinc-500">No student invoices found.</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
+    <flux:table :paginate="$paginated">
+        <flux:table.columns>
+            <flux:table.column>{{ __('Student') }}</flux:table.column>
+            <flux:table.column class="text-right">{{ __('Invoiced') }}</flux:table.column>
+            <flux:table.column class="text-right">{{ __('Paid') }}</flux:table.column>
+            <flux:table.column>{{ __('Status') }}</flux:table.column>
+            <flux:table.column></flux:table.column>
+        </flux:table.columns>
 
-    <div class="py-4">
-        {{ $paginated->links() }}
-    </div>
+        <flux:table.rows>
+            @forelse ($paginated as $item)
+                <flux:table.row :wire:key="$item->id">
+                    <flux:table.cell>
+                        <flux:text weight="medium" class="text-zinc-900 dark:text-white">
+                            {{ $item->student ? $item->student->full_name : $item->applicant->full_name }}
+                        </flux:text>
+                        <flux:text size="sm" class="text-zinc-500">
+                            {{ $item->student ? $item->student->matric_number : $item->applicant->application_number }}
+                            @if (!$item->student)
+                                <span
+                                    class="ml-1 text-[10px] px-1 bg-amber-100 text-amber-700 rounded">{{ __('Applicant') }}</span>
+                            @endif
+                        </flux:text>
+                    </flux:table.cell>
+
+                    <flux:table.cell class="text-right">
+                        ₦{{ number_format($item->total_amount, 2) }}
+                    </flux:table.cell>
+
+                    <flux:table.cell class="text-right">
+                        ₦{{ number_format($item->amount_paid, 2) }}
+                    </flux:table.cell>
+
+                    <flux:table.cell>
+                        <flux:badge
+                            :color="$item->status === 'paid' ? 'green' : ($item->status === 'cancelled' ? 'red' : 'orange')"
+                            size="sm">
+                            {{ ucfirst($item->status) }}
+                        </flux:badge>
+                    </flux:table.cell>
+
+                    <flux:table.cell class="text-right">
+                        <div class="flex items-center justify-end gap-2">
+                            <flux:button variant="ghost" size="sm" icon="printer"
+                                href="{{ route('cms.invoices.print', $item->id) }}" target="_blank">
+                                Print
+                            </flux:button>
+
+                            @if ($item->status !== 'cancelled' && $item->status !== 'paid')
+                                @can('invoices.cancel')
+                                <flux:button variant="ghost" size="sm" icon="x-mark"
+                                    wire:click="confirmAction('cancel', {{ $item->id }})">Cancel</flux:button>
+                                @endcan
+                            @endif
+
+                            @if ($item->amount_paid <= 0)
+                                @can('invoices.delete')
+                                <flux:button variant="ghost" size="sm" icon="trash" variant="danger"
+                                    wire:click="confirmAction('delete', {{ $item->id }})">Delete</flux:button>
+                                @endcan
+                            @endif
+                        </div>
+                    </flux:table.cell>
+                </flux:table.row>
+            @empty
+                <flux:table.row>
+                    <flux:table.cell colspan="5" class="py-12 text-center text-zinc-500">No student invoices found.
+                    </flux:table.cell>
+                </flux:table.row>
+            @endforelse
+        </flux:table.rows>
+    </flux:table>
 
     <flux:modal name="confirm-action" class="min-w-[400px]">
         <form wire:submit="executeAction" class="space-y-6">
             <div>
-                <flux:heading size="lg">{{ $actionType === 'delete' ? 'Delete Student Invoice?' : 'Cancel Student Invoice?' }}</flux:heading>
+                <flux:heading size="lg">
+                    {{ $actionType === 'delete' ? 'Delete Student Invoice?' : 'Cancel Student Invoice?' }}
+                </flux:heading>
                 <flux:subheading>
-                    {{ $actionType === 'delete' 
-                        ? 'This will permanently remove the record. You can only delete invoices with no payments.' 
-                        : 'This will mark the invoice as cancelled. The student will no longer be able to pay for it.' }}
+                    {{ $actionType === 'delete'
+    ? 'This will permanently remove the record. You can only delete invoices with no payments.'
+    : 'This will mark the invoice as cancelled. The student will no longer be able to pay for it.' }}
                 </flux:subheading>
             </div>
 
@@ -410,7 +444,8 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
             <div>
                 <flux:heading size="lg">Force Generate Invoices</flux:heading>
                 <flux:subheading>
-                    This will automatically generate a billing record for all eligible students in the target department/program who don't already have one.
+                    This will automatically generate a billing record for all eligible students in the target
+                    department/program who don't already have one.
                 </flux:subheading>
             </div>
 
@@ -429,7 +464,8 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
             </flux:field>
 
             <div class="p-4 bg-orange-50 text-orange-700 text-sm rounded-lg border border-orange-200">
-                <strong>Note:</strong> Depending on the number of students, this action may take a few moments to complete.
+                <strong>Note:</strong> Depending on the number of students, this action may take a few moments to
+                complete.
             </div>
 
             <div class="flex items-center justify-end gap-3">

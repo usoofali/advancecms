@@ -3,15 +3,16 @@
 namespace App\Exports;
 
 use App\Models\Student;
+use Illuminate\Database\Eloquent\Builder;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StudentsExport
 {
-    public int|string|null $institutionId;
+    public Builder $query;
 
-    public function __construct(int|string|null $institutionId = null)
+    public function __construct(Builder $query)
     {
-        $this->institutionId = $institutionId;
+        $this->query = $query;
     }
 
     /**
@@ -19,10 +20,9 @@ class StudentsExport
      */
     public function rows(): array
     {
-        return Student::query()
+        return $this->query
             ->with('program.department')
-            ->when($this->institutionId, fn ($q) => $q->where('institution_id', $this->institutionId))
-            ->orderBy('last_name')
+            ->orderBy('matric_number')
             ->get()
             ->map(fn (Student $s) => [
                 'matric_number' => $s->matric_number,

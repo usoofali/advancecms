@@ -15,12 +15,16 @@ new #[Title('Review Application')] #[Layout('layouts.app')] class extends Compon
 
     public function mount(Applicant $applicant): void
     {
+        Gate::authorize('applications.view');
+
         $this->applicant = $applicant->load(['institution', 'program', 'applicationForm']);
         $this->credentials = ApplicantCredential::where('applicant_id', $this->applicant->id)->first();
     }
 
     public function admitApplicant(AdmissionService $admissionService)
     {
+        Gate::authorize('applications.approve');
+
         try {
             $admissionService->admit($this->applicant);
 
@@ -34,6 +38,8 @@ new #[Title('Review Application')] #[Layout('layouts.app')] class extends Compon
 
     public function rejectApplicant(AdmissionService $admissionService)
     {
+        Gate::authorize('applications.approve');
+
         $this->validate([
             'rejectionReason' => 'required|string|max:500',
         ]);
@@ -51,11 +57,8 @@ new #[Title('Review Application')] #[Layout('layouts.app')] class extends Compon
 
     public function enrollApplicant(AdmissionService $admissionService)
     {
-        if (! auth()->user()->can('enroll_applicants')) {
-            $this->dispatch('notify', ['type' => 'error', 'message' => 'You are not authorized to perform enrollment.']);
-            $this->js('$flux.modal("enroll-modal").close()');
-            return;
-        }
+        Gate::authorize('applicants.enroll');
+        
 
         try {
             $student = $admissionService->enrollApplicant($this->applicant);
@@ -78,8 +81,9 @@ new #[Title('Review Application')] #[Layout('layouts.app')] class extends Compon
         $meetsEnrollmentThreshold = $feesTotal > 0 && $feePercent >= 50;
 
         return [
-            'canApprove' => auth()->user()->can('approve_admissions'),
-            'canEnroll' => auth()->user()->can('enroll_applicants'),
+            'canApprove' => auth()->user()->can('applications.approve'),
+            'canEnroll' => auth()->user()->can('applicants.enroll'),
+            'canPrintLetter' => auth()->user()->can('applications.print_letter'),
             'admissionInvoice' => $admissionInvoice,
             'feesPaid' => $feesPaid,
             'feesTotal' => $feesTotal,
@@ -112,11 +116,15 @@ new #[Title('Review Application')] #[Layout('layouts.app')] class extends Compon
         @if($applicant->enrolled_at)
         <div class="flex items-center gap-2">
             <flux:badge color="green" size="lg" icon="check-circle">{{ __('Enrolled') }}</flux:badge>
-            <flux:button variant="primary" icon="printer" href="{{ route('applicant.admission-letter', $applicant) }}" target="_blank">{{ __('Print Admission Letter') }}</flux:button>
+            @if($canPrintLetter)
+                <flux:button variant="primary" icon="printer" href="{{ route('applicant.admission-letter', $applicant) }}" target="_blank">{{ __('Print Admission Letter') }}</flux:button>
+            @endif
         </div>
         @elseif($applicant->admission_status === 'admitted')
         <div class="flex items-center gap-2">
-            <flux:button variant="primary" icon="printer" href="{{ route('applicant.admission-letter', $applicant) }}" target="_blank">{{ __('Print Admission Letter') }}</flux:button>
+            @if($canPrintLetter)
+                <flux:button variant="primary" icon="printer" href="{{ route('applicant.admission-letter', $applicant) }}" target="_blank">{{ __('Print Admission Letter') }}</flux:button>
+            @endif
             @if($canEnroll)
                 @if($meetsEnrollmentThreshold)
                     <flux:modal.trigger name="enroll-modal">

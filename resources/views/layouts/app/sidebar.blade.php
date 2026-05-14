@@ -14,229 +14,306 @@
         </flux:sidebar.header>
 
         <flux:sidebar.nav>
-            <flux:sidebar.group :heading="__('Overview')" class="grid">
-                <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')"
-                    wire:navigate>
-                    {{ __('Dashboard') }}
-                </flux:sidebar.item>
-            </flux:sidebar.group>
-
-            @canany(['manage_institutions', 'manage_departments', 'manage_programs', 'view_applications', 'manage_application_forms', 'manage_staff', 'manage_configurations', 'manage_roles'])
-            <flux:sidebar.group :heading="__('Administration')" class="grid" expandable expanded="false">
-                @can('manage_institutions')
-                <flux:sidebar.item icon="building-office-2" :href="route('cms.institutions.index')"
-                    :current="request()->routeIs('cms.institutions.*')" wire:navigate>
-                    {{ __('Institutions') }}
-                </flux:sidebar.item>
-                @endcan
-
-                @can('manage_departments')
-                <flux:sidebar.item icon="square-3-stack-3d" :href="route('cms.departments.index')"
-                    :current="request()->routeIs('cms.departments.*')" wire:navigate>
-                    {{ __('Departments') }}
-                </flux:sidebar.item>
-                @endcan
-
-                @can('manage_programs')
-                <flux:sidebar.item icon="academic-cap" :href="route('cms.programs.index')"
-                    :current="request()->routeIs('cms.programs.*')" wire:navigate>
-                    {{ __('Programs') }}
-                </flux:sidebar.item>
-                @endcan
-
-                @can('view_applications')
-                <flux:sidebar.item icon="document-magnifying-glass" :href="route('cms.admissions.index')"
-                    :current="request()->routeIs('cms.admissions.index') || request()->routeIs('cms.admissions.show')" wire:navigate>
-                    {{ __('Applications') }}
-                </flux:sidebar.item>
-                <flux:sidebar.item icon="document-text" :href="route('cms.admissions.issue-notification')"
-                    :current="request()->routeIs('cms.admissions.issue-notification')" wire:navigate>
-                    {{ __('Issue notification') }}
-                </flux:sidebar.item>
-                @endcan
-
-                @can('manage_application_forms')
-                <flux:sidebar.item icon="document-plus" :href="route('cms.admissions.forms.index')"
-                    :current="request()->routeIs('cms.admissions.forms.*')" wire:navigate>
-                    {{ __('Admission Forms') }}
-                </flux:sidebar.item>
-                @endcan
-
-                @can('manage_staff')
-                <flux:sidebar.item icon="user-group" :href="route('cms.staff.index')"
-                    :current="request()->routeIs('cms.staff.*')" wire:navigate>
-                    {{ __('Staff') }}
-                </flux:sidebar.item>
-                <flux:sidebar.item icon="identification" :href="route('cms.id-cards.manage')"
-                    :current="request()->routeIs('cms.id-cards.manage')" wire:navigate>
-                    {{ __('ID Card Management') }}
-                </flux:sidebar.item>
-                @endcan
-
-                @can('manage_configurations')
-                <flux:sidebar.item icon="calendar-date-range" :href="route('cms.sessions.index')"
-                    :current="request()->routeIs('cms.sessions.*')" wire:navigate>
-                    {{ __('Sessions') }}
-                </flux:sidebar.item>
-                @endcan
-
-                @can('manage_roles')
-                <flux:sidebar.item icon="shield-check" :href="route('cms.roles.index')"
-                    :current="request()->routeIs('cms.roles.*')" wire:navigate>
-                    {{ __('Roles & Permissions') }}
-                </flux:sidebar.item>
-                @endcan
-            </flux:sidebar.group>
+            @canany(['dashboard.view'])
+                <flux:sidebar.group :heading="__('Overview')" class="grid">
+                    @can('dashboard.view')
+                        <flux:sidebar.item icon="home" :href="route('dashboard')" :current="request()->routeIs('dashboard')"
+                            wire:navigate>
+                            {{ __('Dashboard') }}
+                        </flux:sidebar.item>
+                    @endcan
+                </flux:sidebar.group>
             @endcanany
 
-            @canany(['view_dept_students', 'manage_registrations', 'manage_registration_status', 'view_personal_registrations', 'manage_courses', 'view_dept_courses', 'view_assigned_courses', 'take_attendance'])
-            <flux:sidebar.group :heading="__('Academic')" class="grid" expandable expanded="false">
-                @can('view_dept_students')
-                <flux:sidebar.item icon="users" :href="route('cms.students.index')"
-                    :current="request()->routeIs('cms.students.index') || request()->routeIs('cms.students.create') || request()->routeIs('cms.students.edit')"
-                    wire:navigate>
-                    {{ __('Students') }}
-                </flux:sidebar.item>
-                @endcan
+            @canany(['institutions.view', 'departments.view', 'programs.view', 'applications.view', 'application_forms.view', 'staff.view', 'id_cards.manage', 'grading_systems.view', 'academic_sessions.view', 'roles.view', 'system.manage', 'system.manage_addons'])
+                <flux:sidebar.group :heading="__('Administration')" class="grid" expandable expanded="false">
+                    @can('institutions.view')
+                        <flux:sidebar.item icon="building-office-2" :href="route('cms.institutions.index')"
+                            :current="request()->routeIs('cms.institutions.*')" wire:navigate>
+                            {{ __('Institutions') }}
+                        </flux:sidebar.item>
+                    @endcan
 
-                @can('manage_registrations')
-                <flux:sidebar.item icon="clipboard-document-check" :href="route('cms.students.registration')"
-                    :current="request()->routeIs('cms.students.registration')" wire:navigate>
-                    {{ __('Course Registration') }}
-                </flux:sidebar.item>
-                @endcan
+                    @can('departments.view')
+                        <flux:sidebar.item icon="square-3-stack-3d" :href="route('cms.departments.index')"
+                            :current="request()->routeIs('cms.departments.*')" wire:navigate>
+                            {{ __('Departments') }}
+                        </flux:sidebar.item>
+                    @endcan
 
-                @can('manage_registration_status')
-                <flux:sidebar.item icon="lock-closed" :href="route('cms.students.manage-registrations')"
-                    :current="request()->routeIs('cms.students.manage-registrations')" wire:navigate>
-                    {{ __('Manage Registrations') }}
-                </flux:sidebar.item>
-                @endcan
+                    @can('programs.view')
+                        <flux:sidebar.item icon="academic-cap" :href="route('cms.programs.index')"
+                            :current="request()->routeIs('cms.programs.*')" wire:navigate>
+                            {{ __('Programs') }}
+                        </flux:sidebar.item>
+                    @endcan
 
-                @can('view_personal_registrations')
-                <flux:sidebar.item icon="clipboard-document-check" :href="route('cms.students.portal-registration')"
-                    :current="request()->routeIs('cms.students.portal-registration')" wire:navigate>
-                    {{ __('My Courses') }}
-                </flux:sidebar.item>
-                <flux:sidebar.item icon="document-text" :href="route('cms.students.course-form')"
-                    :current="request()->routeIs('cms.students.course-form')" wire:navigate>
-                    {{ __('Course Form') }}
-                </flux:sidebar.item>
-                <flux:sidebar.item icon="identification" :href="route('cms.students.exam-card')"
-                    :current="request()->routeIs('cms.students.exam-card')" wire:navigate>
-                    {{ __('Examination Card') }}
-                </flux:sidebar.item>
-                <flux:sidebar.item icon="user-circle" :href="route('cms.students.my-lecturers')"
-                    :current="request()->routeIs('cms.students.my-lecturers')" wire:navigate>
-                    {{ __('My Lecturers') }}
-                </flux:sidebar.item>
-                @endcan
+                    @can('applications.view')
+                        <flux:sidebar.item icon="document-magnifying-glass" :href="route('cms.admissions.index')"
+                            :current="request()->routeIs('cms.admissions.index') || request()->routeIs('cms.admissions.show')"
+                            wire:navigate>
+                            {{ __('Applications') }}
+                        </flux:sidebar.item>
+                    @endcan
 
-                @canany(['manage_courses', 'view_dept_courses'])
-                <flux:sidebar.item icon="book-open" :href="route('cms.courses.index')"
-                    :current="request()->routeIs('cms.courses.index') || request()->routeIs('cms.courses.create') || request()->routeIs('cms.courses.edit')"
-                    wire:navigate>
-                    {{ __('Courses') }}
-                </flux:sidebar.item>
+                    @can('applications.notify')
+                        <flux:sidebar.item icon="document-text" :href="route('cms.admissions.issue-notification')"
+                            :current="request()->routeIs('cms.admissions.issue-notification')" wire:navigate>
+                            {{ __('Issue notification') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('application_forms.view')
+                        <flux:sidebar.item icon="document-plus" :href="route('cms.admissions.forms.index')"
+                            :current="request()->routeIs('cms.admissions.forms.*')" wire:navigate>
+                            {{ __('Admission Forms') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('staff.view')
+                        <flux:sidebar.item icon="user-group" :href="route('cms.staff.index')"
+                            :current="request()->routeIs('cms.staff.*')" wire:navigate>
+                            {{ __('Staff') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('id_cards.manage')
+                        <flux:sidebar.item icon="identification" :href="route('cms.id-cards.manage')"
+                            :current="request()->routeIs('cms.id-cards.manage')" wire:navigate>
+                            {{ __('ID Card Management') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('academic_sessions.view')
+                        <flux:sidebar.item icon="calendar-date-range" :href="route('cms.sessions.index')"
+                            :current="request()->routeIs('cms.sessions.*')" wire:navigate>
+                            {{ __('Sessions') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('grading_systems.view')
+                        <flux:sidebar.item icon="chart-bar" :href="route('cms.grading-systems.index')"
+                            :current="request()->routeIs('cms.grading-systems.*')" wire:navigate>
+                            {{ __('Grading Systems') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('roles.view')
+                        <flux:sidebar.item icon="shield-check" :href="route('settings.roles')"
+                            :current="request()->routeIs('settings.roles')" wire:navigate>
+                            {{ __('Roles & Permissions') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('system.manage_addons')
+                        <flux:sidebar.item icon="puzzle-piece" :href="route('settings.addons')"
+                            :current="request()->routeIs('settings.addons')" wire:navigate>
+                            {{ __('Addon Management') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('system.manage')
+                        <flux:sidebar.item icon="cog-6-tooth" :href="route('settings.system')"
+                            :current="request()->routeIs('settings.system')" wire:navigate>
+                            {{ __('System Config') }}
+                        </flux:sidebar.item>
+                    @endcan
+                </flux:sidebar.group>
+            @endcanany
+
+            @canany(['students.view_dept', 'registrations.view', 'registration_status.update', 'registrations.view_personal', 'courses.view', 'courses.view_dept', 'courses.view_assigned', 'attendance.take', 'id_cards.request'])
+                <flux:sidebar.group :heading="__('Academic')" class="grid" expandable expanded="false">
+                    @can('students.view_dept')
+                        <flux:sidebar.item icon="users" :href="route('cms.students.index')"
+                            :current="request()->routeIs('cms.students.index') || request()->routeIs('cms.students.create') || request()->routeIs('cms.students.edit')"
+                            wire:navigate>
+                            {{ __('Students') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('registrations.view')
+                        <flux:sidebar.item icon="clipboard-document-check" :href="route('cms.students.registration')"
+                            :current="request()->routeIs('cms.students.registration')" wire:navigate>
+                            {{ __('Course Registration') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('registration_status.update')
+                        <flux:sidebar.item icon="lock-closed" :href="route('cms.students.manage-registrations')"
+                            :current="request()->routeIs('cms.students.manage-registrations')" wire:navigate>
+                            {{ __('Manage Registrations') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('registrations.view_personal')
+                        <flux:sidebar.item icon="clipboard-document-check" :href="route('cms.students.portal-registration')"
+                            :current="request()->routeIs('cms.students.portal-registration')" wire:navigate>
+                            {{ __('My Courses') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('registrations.print_form')
+                        <flux:sidebar.item icon="document-text" :href="route('cms.students.course-form')"
+                            :current="request()->routeIs('cms.students.course-form')" wire:navigate>
+                            {{ __('Course Form') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('registrations.print_exam_card')
+                        <flux:sidebar.item icon="identification" :href="route('cms.students.exam-card')"
+                            :current="request()->routeIs('cms.students.exam-card')" wire:navigate>
+                            {{ __('Examination Card') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('students.view_lecturers')
+                        <flux:sidebar.item icon="user-circle" :href="route('cms.students.my-lecturers')"
+                            :current="request()->routeIs('cms.students.my-lecturers')" wire:navigate>
+                            {{ __('My Lecturers') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @canany(['courses.view', 'courses.view_dept'])
+                        <flux:sidebar.item icon="book-open" :href="route('cms.courses.index')"
+                            :current="request()->routeIs('cms.courses.index') || request()->routeIs('cms.courses.create') || request()->routeIs('cms.courses.edit')"
+                            wire:navigate>
+                            {{ __('Courses') }}
+                        </flux:sidebar.item>
+                    @endcanany
+
+                    @canany(['courses.view', 'courses.view_dept'])
+                        <flux:sidebar.item icon="clipboard-document-check" :href="route('cms.courses.allocations')"
+                            :current="request()->routeIs('cms.courses.allocations')" wire:navigate>
+                            {{ __('Manage Allocations') }}
+                        </flux:sidebar.item>
+                    @endcanany
+
+                    @can('courses.view_assigned')
+                        <flux:sidebar.item icon="clipboard-document-check" :href="route('cms.courses.my-allocations')"
+                            :current="request()->routeIs('cms.courses.my-allocations')" wire:navigate>
+                            {{ __('My Allocations') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('attendance.take')
+                        <flux:sidebar.item icon="check-badge" :href="route('cms.attendance.take')"
+                            :current="request()->routeIs('cms.attendance.take')" wire:navigate>
+                            {{ __('Take Attendance') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('courses.view_assigned')
+                        <flux:sidebar.item icon="clock" :href="route('cms.attendance.history')"
+                            :current="request()->routeIs('cms.attendance.history')" wire:navigate>
+                            {{ __('Attendance History') }}
+                        </flux:sidebar.item>
+                    @endcan
+                    @can('id_cards.request')
+                        <flux:sidebar.item icon="identification" :href="route('cms.id-cards.request')"
+                            :current="request()->routeIs('cms.id-cards.request')" wire:navigate>
+                            {{ __('Request ID Card') }}
+                        </flux:sidebar.item>
+                    @endcan
+                </flux:sidebar.group>
+            @endcanany
+
+            @if(auth()->user()->institution?->hasAddon('exam_module'))
+                @canany(['cbt_exams.view', 'cbt_questions.view', 'cbt_sync.view', 'cbt_results.view'])
+                    <flux:sidebar.group :heading="__('Examinations')" class="grid" expandable expanded="false">
+                        @can('cbt_exams.view')
+                            <flux:sidebar.item icon="clipboard-document-list" :href="route('cms.cbt.exams')"
+                                :current="request()->routeIs('cms.cbt.exams*')" wire:navigate>
+                                {{ __('Manage Exams') }}
+                            </flux:sidebar.item>
+                        @endcan
+
+                        @can('cbt_questions.view')
+                            <flux:sidebar.item icon="question-mark-circle" :href="route('cms.cbt.questions')"
+                                :current="request()->routeIs('cms.cbt.questions*')" wire:navigate>
+                                {{ __('Question Bank') }}
+                            </flux:sidebar.item>
+                        @endcan
+
+                        @can('cbt_sync.view')
+                            <flux:sidebar.item icon="arrows-right-left" :href="route('cms.cbt.sync')"
+                                :current="request()->routeIs('cms.cbt.sync*')" wire:navigate>
+                                {{ __('Sync Hub') }}
+                            </flux:sidebar.item>
+                        @endcan
+
+                        @can('cbt_results.view')
+                            <flux:sidebar.item icon="check-badge" :href="route('cms.cbt.results')"
+                                :current="request()->routeIs('cms.cbt.results*')" wire:navigate>
+                                {{ __('Review Results') }}
+                            </flux:sidebar.item>
+                        @endcan
+                    </flux:sidebar.group>
                 @endcanany
+            @endif
 
-                @can('manage_courses')
-                <flux:sidebar.item icon="clipboard-document-check" :href="route('cms.courses.allocations')"
-                    :current="request()->routeIs('cms.courses.allocations')" wire:navigate>
-                    {{ __('Manage Allocations') }}
-                </flux:sidebar.item>
-                @endcan
+            @canany(['results.enter', 'results.view_dept', 'reports.generate', 'results.view_personal'])
+                <flux:sidebar.group :heading="__('Results')" class="grid" expandable expanded="false">
+                    @can('results.enter')
+                        <flux:sidebar.item icon="pencil-square" :href="route('cms.results.entry')"
+                            :current="request()->routeIs('cms.results.entry')" wire:navigate>
+                            {{ __('Enter Results') }}
+                        </flux:sidebar.item>
+                    @endcan
 
-                @can('view_assigned_courses')
-                <flux:sidebar.item icon="clipboard-document-check" :href="route('cms.courses.my-allocations')"
-                    :current="request()->routeIs('cms.courses.my-allocations')" wire:navigate>
-                    {{ __('My Allocations') }}
-                </flux:sidebar.item>
-                @endcan
+                    @can('results.view_dept')
+                        <flux:sidebar.item icon="chart-bar" :href="route('cms.results.index')"
+                            :current="request()->routeIs('cms.results.index')" wire:navigate>
+                            {{ __('View Results') }}
+                        </flux:sidebar.item>
+                    @endcan
 
-                @can('take_attendance')
-                <flux:sidebar.item icon="check-badge" :href="route('cms.attendance.take')"
-                    :current="request()->routeIs('cms.attendance.take')" wire:navigate>
-                    {{ __('Take Attendance') }}
-                </flux:sidebar.item>
-                @endcan
+                    @can('reports.generate')
+                        <flux:sidebar.item icon="academic-cap" :href="route('cms.results.transcripts')"
+                            :current="request()->routeIs('cms.results.transcripts')" wire:navigate>
+                            {{ __('Transcript Manager') }}
+                        </flux:sidebar.item>
+                    @endcan
 
-                @can('view_assigned_courses')
-                <flux:sidebar.item icon="clock" :href="route('cms.attendance.history')"
-                    :current="request()->routeIs('cms.attendance.history')" wire:navigate>
-                    {{ __('Attendance History') }}
-                </flux:sidebar.item>
-                @endcan
-                <flux:sidebar.item icon="identification" :href="route('cms.id-cards.request')"
-                    :current="request()->routeIs('cms.id-cards.request')" wire:navigate>
-                    {{ __('Request ID Card') }}
-                </flux:sidebar.item>
-            </flux:sidebar.group>
+                    @can('results.view_personal')
+                        <flux:sidebar.item icon="identification" :href="route('cms.results.portal')"
+                            :current="request()->routeIs('cms.results.portal')" wire:navigate>
+                            {{ __('Semester Results') }}
+                        </flux:sidebar.item>
+                    @endcan
+                </flux:sidebar.group>
             @endcanany
 
-            @canany(['enter_results', 'view_dept_results', 'generate_reports', 'view_personal_results'])
-            <flux:sidebar.group :heading="__('Results')" class="grid" expandable expanded="false">
-                @can('enter_results')
-                <flux:sidebar.item icon="pencil-square" :href="route('cms.results.entry')"
-                    :current="request()->routeIs('cms.results.entry')" wire:navigate>
-                    {{ __('Enter Results') }}
-                </flux:sidebar.item>
-                @endcan
+            @canany(['attendance_payments.process', 'invoices.view', 'payments.view', 'payments.verify', 'invoices.view_personal'])
+                <flux:sidebar.group :heading="__('Finance')" class="grid" expandable expanded="false">
+                    @can('attendance_payments.process')
+                        <flux:sidebar.item icon="banknotes" :href="route('cms.attendance.payments')"
+                            :current="request()->routeIs('cms.attendance.payments')" wire:navigate>
+                            {{ __('Attendance Payments') }}
+                        </flux:sidebar.item>
+                    @endcan
 
-                @can('view_dept_results')
-                <flux:sidebar.item icon="chart-bar" :href="route('cms.results.index')"
-                    :current="request()->routeIs('cms.results.index')" wire:navigate>
-                    {{ __('View Results') }}
-                </flux:sidebar.item>
-                @endcan
+                    @can('invoices.view')
+                        <flux:sidebar.item icon="banknotes" :href="route('cms.invoices.index')"
+                            :current="request()->routeIs('cms.invoices.index') || request()->routeIs('cms.invoices.create') || request()->routeIs('cms.invoices.edit') || request()->routeIs('cms.invoices.students')"
+                            wire:navigate>
+                            {{ __('Invoice Management') }}
+                        </flux:sidebar.item>
+                    @endcan
 
-                @can('generate_reports')
-                <flux:sidebar.item icon="academic-cap" :href="route('cms.results.transcripts')"
-                    :current="request()->routeIs('cms.results.transcripts')" wire:navigate>
-                    {{ __('Transcript Manager') }}
-                </flux:sidebar.item>
-                @endcan
+                    @canany(['payments.view', 'payments.verify'])
+                        <flux:sidebar.item icon="check-badge" :href="route('cms.invoices.payments')"
+                            :current="request()->routeIs('cms.invoices.payments')" wire:navigate>
+                            {{ __('Verify Payments') }}
+                        </flux:sidebar.item>
+                    @endcanany
 
-                @can('view_personal_results')
-                <flux:sidebar.item icon="identification" :href="route('cms.results.portal')"
-                    :current="request()->routeIs('cms.results.portal')" wire:navigate>
-                    {{ __('Semester Results') }}
-                </flux:sidebar.item>
-                @endcan
-            </flux:sidebar.group>
-            @endcanany
-
-            @canany(['manage_attendance_payments', 'view_payments', 'record_payments', 'view_personal_registrations'])
-            <flux:sidebar.group :heading="__('Finance')" class="grid" expandable expanded="false">
-                @can('manage_attendance_payments')
-                <flux:sidebar.item icon="banknotes" :href="route('cms.attendance.payments')"
-                    :current="request()->routeIs('cms.attendance.payments')" wire:navigate>
-                    {{ __('Attendance Payments') }}
-                </flux:sidebar.item>
-                @endcan
-
-                @can('view_payments')
-                <flux:sidebar.item icon="banknotes" :href="route('cms.invoices.index')"
-                    :current="request()->routeIs('cms.invoices.index') || request()->routeIs('cms.invoices.create') || request()->routeIs('cms.invoices.edit')"
-                    wire:navigate>
-                    {{ __('Invoice Management') }}
-                </flux:sidebar.item>
-                @endcan
-
-                @can('record_payments')
-                <flux:sidebar.item icon="check-badge" :href="route('cms.invoices.payments')"
-                    :current="request()->routeIs('cms.invoices.payments')" wire:navigate>
-                    {{ __('Verify Payments') }}
-                </flux:sidebar.item>
-                @endcan
-
-                @can('view_personal_registrations')
-                <flux:sidebar.item icon="credit-card" :href="route('cms.students.portal-invoices')"
-                    :current="request()->routeIs('cms.students.portal-invoices')" wire:navigate>
-                    {{ __('My Invoices') }}
-                </flux:sidebar.item>
-                @endcan
-            </flux:sidebar.group>
+                    @can('invoices.view_personal')
+                        <flux:sidebar.item icon="credit-card" :href="route('cms.students.portal-invoices')"
+                            :current="request()->routeIs('cms.students.portal-invoices')" wire:navigate>
+                            {{ __('My Invoices') }}
+                        </flux:sidebar.item>
+                    @endcan
+                </flux:sidebar.group>
             @endcanany
         </flux:sidebar.nav>
 
@@ -292,7 +369,6 @@
 
     {{ $slot }}
 
-    @include('components.partials.flash-alerts')
     @include('components.partials.livewire-notify-alerts')
     @stack('scripts')
     @fluxScripts

@@ -23,7 +23,7 @@ new #[Layout('layouts.app')] #[Title('Manage Application Form')] class extends C
     public function mount(?ApplicationForm $form = null)
     {
         if ($form && $form->exists) {
-            $this->authorize('manage_application_forms');
+            Gate::authorize('application_forms.edit');
             $this->form = $form;
             $this->institution_id = $form->institution_id;
             $this->program_id = $form->program_id;
@@ -33,6 +33,7 @@ new #[Layout('layouts.app')] #[Title('Manage Application Form')] class extends C
             $this->category = $form->category ?? 'fresh';
             $this->is_active = (bool) $form->is_active;
         } else {
+            Gate::authorize('application_forms.create');
             $this->institution_id = Auth::user()->institution_id;
             $this->academic_session_id = AcademicSession::latest()->first()?->id;
         }
@@ -40,7 +41,11 @@ new #[Layout('layouts.app')] #[Title('Manage Application Form')] class extends C
 
     public function save()
     {
-        $this->authorize('manage_application_forms');
+        if ($this->form) {
+            Gate::authorize('application_forms.edit');
+        } else {
+            Gate::authorize('application_forms.create');
+        }
 
         $this->validate([
             'institution_id' => 'required|exists:institutions,id',

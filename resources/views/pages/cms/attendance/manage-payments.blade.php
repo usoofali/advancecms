@@ -37,7 +37,7 @@ new #[Layout('layouts.app')] #[Title('Manage Lecturer Payments')] class extends 
 
     public function mount(): void
     {
-        Gate::authorize('manage_attendance_payments');
+        Gate::authorize('attendance_payments.process');
 
         if (!$this->month) {
             $this->month = date('n');
@@ -129,6 +129,8 @@ new #[Layout('layouts.app')] #[Title('Manage Lecturer Payments')] class extends 
 
     public function generatePayment(int $staffId, int $contacts, float $rate): void
     {
+        Gate::authorize('attendance_payments.process');
+
         $staff = Staff::findOrFail($staffId);
         $institutionId = $staff->institution_id;
 
@@ -182,7 +184,7 @@ new #[Layout('layouts.app')] #[Title('Manage Lecturer Payments')] class extends 
 
     public function updateRate(): void
     {
-        Gate::authorize('manage_attendance_payments');
+        Gate::authorize('attendance_payments.process');
 
         $staff = Staff::findOrFail($this->editing_staff_id);
         $staff->update([

@@ -36,7 +36,7 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
     {
         $user = auth()->user();
 
-        if ($user->cannot('manage_courses') && $user->cannot('view_dept_courses')) {
+        if ($user->cannot('courses.view') && $user->cannot('courses.view_dept')) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -89,11 +89,13 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
 
     public function export(): \Symfony\Component\HttpFoundation\StreamedResponse
     {
+        Gate::authorize('courses.export');
         return (new CoursesExport(auth()->user()->institution_id))->download();
     }
 
     public function import(): void
     {
+        Gate::authorize('courses.import');
         $this->validate(['importFile' => ['required', 'file', 'mimes:csv,txt', 'max:2048']]);
 
         $this->importFailures = [];
@@ -116,6 +118,8 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
 
     public function confirmDelete(): void
     {
+        Gate::authorize('courses.delete');
+
         if (! $this->deletingId) {
             return;
         }
@@ -184,13 +188,19 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
                 <flux:subheading>{{ __('Manage course offerings') }}</flux:subheading>
             </div>
             <div class="flex flex-wrap items-center gap-2">
+                @can('courses.export')
                 <flux:button icon="arrow-down-tray" wire:click="export" class="flex-1 sm:flex-none">{{ __('Export CSV') }}</flux:button>
+                @endcan
+                @can('courses.import')
                 <flux:button icon="arrow-up-tray" x-on:click="$flux.modal('import-courses').show()" class="flex-1 sm:flex-none">
                     {{ __('Import CSV') }}
                 </flux:button>
+                @endcan
+                @can('courses.create')
                 <flux:button icon="plus" variant="primary" :href="route('cms.courses.create')" wire:navigate class="w-full sm:w-auto">
                     {{ __('Add Course') }}
                 </flux:button>
+                @endcan
             </div>
         </div>
 
@@ -255,11 +265,17 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
                 <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
                     @forelse ($courses as $course)
                         <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors" wire:key="{{ $course->id }}">
-                            <td class="px-4 py-4 font-medium font-mono text-sm text-zinc-900 dark:text-zinc-100 uppercase">
-                                {{ $course->course_code }}
+                            <td class="px-4 py-4 font-medium font-mono text-sm uppercase">
+                                <a href="{{ route('cms.courses.show', $course) }}" wire:navigate
+                                   class="text-blue-600 dark:text-blue-400 hover:underline font-black">
+                                    {{ $course->course_code }}
+                                </a>
                             </td>
-                            <td class="px-4 py-4 text-sm text-zinc-900 dark:text-zinc-100">
-                                {{ $course->title }}
+                            <td class="px-4 py-4 text-sm">
+                                <a href="{{ route('cms.courses.show', $course) }}" wire:navigate
+                                   class="text-zinc-900 dark:text-zinc-100 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors">
+                                    {{ $course->title }}
+                                </a>
                             </td>
                             <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400 text-center font-mono">
                                 {{ $course->credit_unit }}
@@ -276,8 +292,12 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
                             </td>
                             <td class="px-4 py-4 text-right">
                                 <div class="flex items-center justify-end gap-2">
+                                    @can('courses.edit')
                                     <flux:button size="sm" variant="ghost" icon="pencil" :href="route('cms.courses.edit', $course)" wire:navigate />
+                                    @endcan
+                                    @can('courses.delete')
                                     <flux:button size="sm" variant="ghost" icon="trash" x-on:click="$wire.deletingId = {{ $course->id }}; $flux.modal('delete-course').show()" />
+                                    @endcan
                                 </div>
                             </td>
                         </tr>

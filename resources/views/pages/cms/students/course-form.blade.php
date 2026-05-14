@@ -1,23 +1,28 @@
 <?php
 
-use App\Models\Student;
 use App\Models\AcademicSession;
-use App\Models\Semester;
 use App\Models\CourseRegistration;
 use App\Models\RegistrationStatus;
+use App\Models\Semester;
+use App\Models\Student;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Layout('layouts.app')] #[Title('Course Form')] class extends Component {
+new #[Layout('layouts.app')] #[Title('Course Form')] class extends Component
+{
     public ?Student $student = null;
+
     public int|string $session_id = '';
+
     public int|string $semester_id = '';
 
     public function mount(): void
     {
+        Gate::authorize('registrations.print_form');
+
         $user = auth()->user();
-        
+
         // Students can only see their own
         if ($user->hasRole('Student')) {
             $this->student = Student::where('email', $user->email)->with('program.department.institution')->first();
@@ -52,7 +57,7 @@ new #[Layout('layouts.app')] #[Title('Course Form')] class extends Component {
         if ($this->student && $this->session_id && $this->semester_id) {
             $session = AcademicSession::find($this->session_id);
             $semester = Semester::find($this->semester_id);
-            
+
             $registrations = CourseRegistration::with('course')
                 ->where('student_id', $this->student->id)
                 ->where('academic_session_id', $this->session_id)
@@ -83,24 +88,26 @@ new #[Layout('layouts.app')] #[Title('Course Form')] class extends Component {
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <flux:select wire:model.live="session_id" :label="__('Academic Session')">
                 <option value="null">{{ __('Select Session') }}</option>
-                @foreach ($sessions as $session)
-                <option value="{{ $session->id }}">{{ $session->name }}</option>
+                @foreach ($sessions as $sessionOption)
+                <option value="{{ $sessionOption->id }}">{{ $sessionOption->name }}</option>
                 @endforeach
             </flux:select>
 
             <flux:select wire:model.live="semester_id" :label="__('Semester')" :disabled="!$session_id">
                 <option value="null">{{ __('Select Semester') }}</option>
-                @foreach ($semesters as $semester)
-                <option value="{{ $semester->id }}">{{ ucfirst($semester->name) }}</option>
+                @foreach ($semesters as $semesterOption)
+                <option value="{{ $semesterOption->id }}">{{ ucfirst($semesterOption->name) }}</option>
                 @endforeach
             </flux:select>
         </div>
 
         @if ($student && $session_id && $semester_id)
         <div class="flex justify-end">
-            <flux:button icon="printer" variant="primary" onclick="window.print()">
-                {{ __('Print Course Form') }}
-            </flux:button>
+            @can('registrations.print_form')
+                <flux:button icon="printer" variant="primary" onclick="window.print()">
+                    {{ __('Print Course Form') }}
+                </flux:button>
+            @endcan
         </div>
         @endif
     </flux:card>
@@ -122,7 +129,7 @@ new #[Layout('layouts.app')] #[Title('Course Form')] class extends Component {
             <div class="flex items-center justify-center gap-3 text-xs font-semibold text-zinc-500">
                 <span>{{ $session?->name }}</span>
                 <span>&bull;</span>
-                <span class="uppercase">{{ $semester?->name }} {{ __('Semester') }}</span>
+                <span class="uppercase">{{ ucfirst($semester?->name) }} {{ __('Semester') }}</span>
             </div>
         </div>
 

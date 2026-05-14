@@ -66,4 +66,9 @@ class Course extends Model
     {
         return $this->hasMany(CourseAllocation::class);
     }
+
+    public function cbtExams(): HasMany
+    {
+        return $this->hasMany(CbtExam::class);
+    }
 }

@@ -45,7 +45,7 @@ new #[Title('System Configuration')] class extends Component
 
     public function mount(): void
     {
-        if (Gate::denies('manage_system')) {
+        if (Gate::denies('system.manage')) {
             abort(403);
         }
 
@@ -58,6 +58,8 @@ new #[Title('System Configuration')] class extends Component
 
     public function updateLogo(): void
     {
+        Gate::authorize('system.manage');
+
         $this->validate([
             'system_logo' => 'image|max:2048', // 2MB Max
         ]);
@@ -79,6 +81,8 @@ new #[Title('System Configuration')] class extends Component
 
     public function removeLogo(): void
     {
+        Gate::authorize('system.manage');
+
         SystemSetting::where('key', 'system_logo')->delete();
         Cache::forget('system_logo');
         $this->current_logo = null;
@@ -122,6 +126,8 @@ new #[Title('System Configuration')] class extends Component
 
     public function createBackup(): void
     {
+        Gate::authorize('system.manage');
+
         $filename = 'backup-'.date('Y-m-d-His').'.sql';
         $path = storage_path('app/backups/'.$filename);
 
@@ -149,6 +155,8 @@ new #[Title('System Configuration')] class extends Component
 
     public function restoreBackup(string $filename): void
     {
+        Gate::authorize('system.manage');
+
         $path = storage_path('app/backups/'.$filename);
         if (! File::exists($path)) {
             $this->dispatch('notify', message: __('Backup file not found.'), variant: 'danger');
@@ -180,6 +188,8 @@ new #[Title('System Configuration')] class extends Component
 
     public function deleteBackup(string $filename): void
     {
+        Gate::authorize('system.manage');
+
         $path = storage_path('app/backups/'.$filename);
         if (File::exists($path)) {
             File::delete($path);
@@ -190,6 +200,8 @@ new #[Title('System Configuration')] class extends Component
 
     public function downloadBackup(string $filename)
     {
+        Gate::authorize('system.manage');
+
         $path = storage_path('app/backups/'.$filename);
         if (File::exists($path)) {
             return response()->download($path);
@@ -232,6 +244,8 @@ new #[Title('System Configuration')] class extends Component
 
     public function fixPermission(string $folder): void
     {
+        Gate::authorize('system.manage');
+
         $path = base_path($folder);
         if (! File::exists($path)) {
             $this->dispatch('notify', message: __(':folder is missing.', ['folder' => $folder]), variant: 'danger');
@@ -254,6 +268,8 @@ new #[Title('System Configuration')] class extends Component
 
     public function createStorageLink(): void
     {
+        Gate::authorize('system.manage');
+
         try {
             Artisan::call('storage:link');
             $this->last_output = Artisan::output();
@@ -267,6 +283,8 @@ new #[Title('System Configuration')] class extends Component
 
     public function runMigrations(): void
     {
+        Gate::authorize('system.manage');
+
         try {
             Artisan::call('migrate', ['--force' => true]);
             $this->last_output = Artisan::output();
@@ -280,6 +298,8 @@ new #[Title('System Configuration')] class extends Component
 
     public function forceMigrate(): void
     {
+        Gate::authorize('system.manage');
+
         try {
             Artisan::call('migrate', ['--force' => true]);
             $this->last_output = Artisan::output();
@@ -293,6 +313,8 @@ new #[Title('System Configuration')] class extends Component
 
     public function runSeeder(?string $class = null): void
     {
+        Gate::authorize('system.manage');
+
         try {
             $params = ['--force' => true];
             if ($class) {
@@ -309,6 +331,8 @@ new #[Title('System Configuration')] class extends Component
 
     public function clearOptimization(): void
     {
+        Gate::authorize('system.manage');
+
         try {
             Artisan::call('optimize:clear');
             $this->last_output = Artisan::output();

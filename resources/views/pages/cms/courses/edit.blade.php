@@ -35,6 +35,8 @@ new #[Layout('layouts.app')] #[Title('Edit Course')] class extends Component
 
     public function mount(Course $course): void
     {
+        Gate::authorize('courses.edit');
+
         $user_institution_id = auth()->user()->institution_id;
         if ($user_institution_id && $course->institution_id !== $user_institution_id) {
             abort(403, 'Unauthorized. This course record belongs to another institution.');
@@ -66,6 +68,8 @@ new #[Layout('layouts.app')] #[Title('Edit Course')] class extends Component
 
     public function save(): void
     {
+        Gate::authorize('courses.edit');
+
         $this->course_code = strtoupper(str_replace(' ', '', $this->course_code));
         $this->title = strtoupper($this->title);
 

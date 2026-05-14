@@ -18,6 +18,12 @@ new #[Title('Admission Letter')] #[Layout('layouts.guest')] class extends Compon
 
     public function mount(Applicant $applicant): void
     {
+        Gate::authorize('applications.print_letter');
+
+        if (auth()->user()->hasRole('Student') && auth()->user()->email !== $applicant->email) {
+            abort(403, 'Unauthorized. You can only view your own admission letter.');
+        }
+
         if ($applicant->admission_status !== 'admitted') {
             abort(403, 'Applicant has not been admitted.');
         }

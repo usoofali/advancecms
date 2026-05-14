@@ -46,7 +46,7 @@ return new class extends Migration
             'description' => 'Financial record maintenance',
         ]);
 
-        $permissions = Permission::whereIn('permission_name', ['view_payments', 'record_payments'])->pluck('permission_id');
+        $permissions = Permission::whereIn('permission_name', ['payments.view', 'payments.create'])->pluck('permission_id');
         $role->permissions()->sync($permissions);
     }
 };

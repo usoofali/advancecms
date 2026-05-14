@@ -15,7 +15,13 @@ new #[Title('Admission Letter')] #[Layout('layouts.guest')] class extends Compon
 
     public function mount(Student $student): void
     {
+        Gate::authorize('applications.print_letter');
+
         $user = auth()->user();
+        if ($user->hasRole('Student') && $user->email !== $student->email) {
+            abort(403, 'Unauthorized. You can only view your own admission letter.');
+        }
+
         if ($user->institution_id && $student->institution_id !== $user->institution_id) {
             abort(403, 'Unauthorized. This student record belongs to another institution.');
         }

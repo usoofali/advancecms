@@ -20,6 +20,7 @@ class Department extends Model
         'faculty',
         'description',
         'status',
+        'grading_system_id',
     ];
 
     public function institution(): BelongsTo
@@ -40,5 +41,10 @@ class Department extends Model
     public function courses(): HasMany
     {
         return $this->hasMany(Course::class);
+    }
+
+    public function gradingSystem(): BelongsTo
+    {
+        return $this->belongsTo(GradingSystem::class);
     }
 }

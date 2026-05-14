@@ -76,7 +76,7 @@ final class AdmissionLetterPayload
             'Date: '.$applicant->updated_at->format('d/m/Y'),
         ]));
 
-        $backUrl = auth()->check() && auth()->user()->can('view_applications')
+        $backUrl = auth()->check() && auth()->user()->can('applications.view')
             ? route('cms.admissions.show', $applicant)
             : route('applicant.portal', ['application_number' => $applicant->application_number]);
 

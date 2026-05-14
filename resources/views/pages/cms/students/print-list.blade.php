@@ -34,6 +34,8 @@ new #[Layout('layouts.guest')] #[Title('Print Student List')] class extends Comp
 
     public function students()
     {
+        $activeSession = \App\Models\AcademicSession::where('status', 'active')->first();
+
         return Student::query()
             ->with(['program.department.institution'])
             ->when($this->institution_id ?: auth()->user()->institution_id, fn ($q, $id) => $q->where('institution_id', $id))
@@ -41,7 +43,15 @@ new #[Layout('layouts.guest')] #[Title('Print Student List')] class extends Comp
                 $q->whereHas('program', fn ($pq) => $pq->where('department_id', $this->department_id));
             })
             ->when($this->program_id, fn ($q) => $q->where('program_id', $this->program_id))
-            ->when($this->level, fn ($q) => $q->where('entry_level', $this->level))
+            ->when($this->level, function ($q) use ($activeSession) {
+                if ($activeSession) {
+                    return $q->whereRaw("entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS UNSIGNED) - admission_year) * 100 = ?", [
+                        $activeSession->name,
+                        $this->level
+                    ]);
+                }
+                return $q->where('entry_level', $this->level);
+            })
             ->when($this->status, fn ($q) => $q->where('status', $this->status))
             ->when($this->search, function ($q) {
                 $q->where(function ($sq) {

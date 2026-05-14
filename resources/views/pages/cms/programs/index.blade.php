@@ -13,6 +13,11 @@ new #[Layout('layouts.app')] #[Title('Programs')] class extends Component {
     public string $search = '';
     public int|string|null $deletingId = null;
 
+    public function mount(): void
+    {
+        Gate::authorize('programs.view');
+    }
+
     public function updatingSearch(): void
     {
         $this->resetPage();
@@ -20,6 +25,8 @@ new #[Layout('layouts.app')] #[Title('Programs')] class extends Component {
 
     public function confirmDelete(): void
     {
+        Gate::authorize('programs.delete');
+
         if (!$this->deletingId) return;
         
         $program = Program::find($this->deletingId);
@@ -55,9 +62,11 @@ new #[Layout('layouts.app')] #[Title('Programs')] class extends Component {
                 <flux:heading size="xl">{{ __('Programs') }}</flux:heading>
                 <flux:subheading>{{ __('Manage academic programs') }}</flux:subheading>
             </div>
+            @can('programs.create')
             <flux:button icon="plus" variant="primary" :href="route('cms.programs.create')" wire:navigate>
                 {{ __('Add Program') }}
             </flux:button>
+            @endcan
         </div>
 
         <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search programs...')" class="max-w-sm" />
@@ -101,8 +110,12 @@ new #[Layout('layouts.app')] #[Title('Programs')] class extends Component {
                             </td>
                             <td class="px-4 py-4 text-right">
                                 <div class="flex items-center justify-end gap-2">
+                                    @can('programs.edit')
                                     <flux:button size="sm" variant="ghost" icon="pencil" :href="route('cms.programs.edit', $program)" wire:navigate />
+                                    @endcan
+                                    @can('programs.delete')
                                     <flux:button size="sm" variant="ghost" icon="trash" x-on:click="$wire.deletingId = {{ $program->id }}; $flux.modal('delete-program').show()" />
+                                    @endcan
                                 </div>
                             </td>
                         </tr>

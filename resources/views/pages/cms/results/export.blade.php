@@ -14,6 +14,8 @@ new #[Layout('layouts.app')] #[Title('Export Results')] class extends Component 
 
     public function mount(): void
     {
+        Gate::authorize('results.export');
+
         if (auth()->user()->institution_id) {
             $this->institution_id = auth()->user()->institution_id;
         }
@@ -21,6 +23,8 @@ new #[Layout('layouts.app')] #[Title('Export Results')] class extends Component 
 
     public function export(): \Symfony\Component\HttpFoundation\StreamedResponse
     {
+        Gate::authorize('results.export');
+
         return (new ResultsExport(
             $this->institution_id ?: null,
             $this->session_id ?: null,

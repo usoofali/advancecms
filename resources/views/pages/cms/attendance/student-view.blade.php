@@ -27,9 +27,9 @@ new #[Layout('layouts.app')] #[Title('My Attendance')] class extends Component
 
     public function mount(): void
     {
-        Gate::authorize('view_own_attendance');
+        Gate::authorize('attendance.view_own');
 
-        if (! auth()->user()->can('view_all_attendance')) {
+        if (! auth()->user()->can('attendance.view_all')) {
             $this->student_id = '';
         }
 
@@ -48,7 +48,7 @@ new #[Layout('layouts.app')] #[Title('My Attendance')] class extends Component
 
     public function getStudentProperty()
     {
-        if (auth()->user()->can('view_all_attendance') && $this->student_id) {
+        if (auth()->user()->can('attendance.view_all') && $this->student_id) {
             return Student::with(['program.department', 'institution'])->find($this->student_id);
         }
 
@@ -57,7 +57,7 @@ new #[Layout('layouts.app')] #[Title('My Attendance')] class extends Component
 
     public function getStudentsProperty()
     {
-        if (! auth()->user()->can('view_all_attendance')) {
+        if (! auth()->user()->can('attendance.view_all')) {
             return [];
         }
 
@@ -143,7 +143,7 @@ new #[Layout('layouts.app')] #[Title('My Attendance')] class extends Component
         </div>
 
         <div class="flex flex-col md:flex-row items-end gap-2">
-            @can('view_all_attendance')
+            @can('attendance.view_all')
                 <div class="relative">
                     <flux:input wire:model.live.debounce.300ms="search" :placeholder="__('Search Student...')" icon="magnifying-glass" class="w-64" />
                     @if($search)
@@ -177,7 +177,7 @@ new #[Layout('layouts.app')] #[Title('My Attendance')] class extends Component
         </div>
     </div>
 
-    @can('view_all_attendance')
+    @can('attendance.view_all')
         @if($this->student)
             <flux:card class="mb-8 p-4 bg-zinc-50 dark:bg-zinc-900 flex items-center gap-4">
                 <flux:avatar :name="$this->student->first_name" size="lg" />

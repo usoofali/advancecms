@@ -33,6 +33,8 @@ new #[Layout('layouts.app')] #[Title('Add Course')] class extends Component
 
     public function mount(): void
     {
+        Gate::authorize('courses.create');
+
         if (auth()->user()->institution_id) {
             $this->institution_id = auth()->user()->institution_id;
         }
@@ -51,6 +53,8 @@ new #[Layout('layouts.app')] #[Title('Add Course')] class extends Component
 
     public function save(): void
     {
+        Gate::authorize('courses.create');
+
         $this->course_code = strtoupper(str_replace(' ', '', $this->course_code));
         $this->title = strtoupper($this->title);
 

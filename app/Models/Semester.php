@@ -32,4 +32,14 @@ class Semester extends Model
     {
         return $this->hasMany(Result::class);
     }
+
+    public function cbtExams(): HasMany
+    {
+        return $this->hasMany(CbtExam::class);
+    }
+
+    public function studentCbtProfiles(): HasMany
+    {
+        return $this->hasMany(StudentCbtProfile::class);
+    }
 }

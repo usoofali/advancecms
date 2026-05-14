@@ -26,7 +26,7 @@ new #[Layout('layouts.app')] #[Title('Attendance History')] class extends Compon
 
     public function mount(): void
     {
-        Gate::authorize('view_attendance_history');
+        Gate::authorize('attendance.view_history');
 
         if (! $this->month) {
             $this->month = date('n');

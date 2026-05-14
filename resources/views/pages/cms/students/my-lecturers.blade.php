@@ -15,6 +15,8 @@ new #[Layout('layouts.app')] #[Title('My Lecturers')] class extends Component {
 
     public function mount(): void
     {
+        Gate::authorize('students.view_lecturers');
+
         $user = auth()->user();
         $this->student = Student::where('email', $user->email)->first();
         

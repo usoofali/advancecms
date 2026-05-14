@@ -25,6 +25,8 @@ new #[Layout('layouts.app')] #[Title('Manage Registrations')] class extends Comp
 
     public function mount(): void
     {
+        Gate::authorize('registration_status.update');
+
         $activeSession = AcademicSession::where('status', 'active')->first();
         if ($activeSession) {
             $this->session_id = $activeSession->id;
@@ -122,7 +124,7 @@ new #[Layout('layouts.app')] #[Title('Manage Registrations')] class extends Comp
         $studentId = $this->actionStudentId;
         $user = auth()->user();
 
-        if (!$user->can('manage_registration_status')) {
+        if (!$user->can('registration_status.update')) {
             return;
         }
 
@@ -172,7 +174,7 @@ new #[Layout('layouts.app')] #[Title('Manage Registrations')] class extends Comp
 
     public function executeBulkToggle(): void
     {
-        if (empty($this->selectedStudents) || !auth()->user()->can('manage_registration_status')) {
+        if (empty($this->selectedStudents) || !auth()->user()->can('registration_status.update')) {
             return;
         }
 
@@ -362,8 +364,10 @@ new #[Layout('layouts.app')] #[Title('Manage Registrations')] class extends Comp
         <div class="mb-4 flex items-center gap-3 p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-zinc-200 dark:border-zinc-700">
             <span class="text-sm font-medium text-zinc-600 dark:text-zinc-300 ml-2"><strong>{{ count($selectedStudents) }}</strong> students selected</span>
             <div class="flex gap-2">
-                <flux:button size="sm" variant="primary" icon="lock-open" wire:click="confirmBulkToggle('open')">{{ __('Unlock Selected') }}</flux:button>
-                <flux:button size="sm" variant="danger" icon="lock-closed" wire:click="confirmBulkToggle('close')">{{ __('Close Selected') }}</flux:button>
+                @can('registration_status.update')
+                    <flux:button size="sm" variant="primary" icon="lock-open" wire:click="confirmBulkToggle('open')">{{ __('Unlock Selected') }}</flux:button>
+                    <flux:button size="sm" variant="danger" icon="lock-closed" wire:click="confirmBulkToggle('close')">{{ __('Close Selected') }}</flux:button>
+                @endcan
             </div>
         </div>
         @endif
@@ -420,14 +424,16 @@ new #[Layout('layouts.app')] #[Title('Manage Registrations')] class extends Comp
                                     :href="route('cms.students.course-form', ['student' => $student->id, 'session' => $session_id, 'semester' => $semester_id])"
                                     wire:navigate title="{{ __('View Course Form') }}" />
 
-                                @if ($isClosed)
-                                <flux:button size="sm" variant="danger" icon="lock-closed"
-                                    wire:click="confirmToggle({{ $student->id }}, '{{ addslashes($student->full_name) }}', true)" />
-                                @else
-                                <flux:button size="sm" variant="primary" icon="lock-open"
-                                    wire:click="confirmToggle({{ $student->id }}, '{{ addslashes($student->full_name) }}', false)"
-                                    :disabled="$units === 0" />
-                                @endif
+                                @can('registration_status.update')
+                                    @if ($isClosed)
+                                    <flux:button size="sm" variant="danger" icon="lock-closed"
+                                        wire:click="confirmToggle({{ $student->id }}, '{{ addslashes($student->full_name) }}', true)" />
+                                    @else
+                                    <flux:button size="sm" variant="primary" icon="lock-open"
+                                        wire:click="confirmToggle({{ $student->id }}, '{{ addslashes($student->full_name) }}', false)"
+                                        :disabled="$units === 0" />
+                                    @endif
+                                @endcan
                             </div>
                         </td>
                     </tr>

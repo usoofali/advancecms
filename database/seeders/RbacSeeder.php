@@ -11,55 +11,98 @@ class RbacSeeder extends Seeder
     /**
      * Run the database seeds.
      */
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
+        // Define standard CRUD models
+        $crudModels = [
+            'institutions', 'departments', 'programs', 'courses', 'staff',
+            'roles', 'permissions', 'settings', 'application_forms', 'invoices',
+            'payments', 'cbt_exams', 'cbt_questions', 'students', 'registrations',
+            'grading_systems', 'academic_sessions',
+        ];
+
         // Define Permissions
         $permissions = [
-            'manage_institutions' => 'Create and delete institutions',
-            'manage_configurations' => 'System-wide settings',
-            'view_all_data' => 'Access data across all institutions',
-            'manage_roles' => 'Manage system roles and their permissions',
+            'dashboard.view' => 'View the main application dashboard',
+            'id_cards.request' => 'Submit requests for institutional ID cards',
+            'id_cards.manage' => 'Approve, reject, and generate ID cards for students and staff',
 
-            'manage_staff' => 'Manage institutional staff accounts',
-            'manage_departments' => 'Manage institutional structure',
-            'manage_programs' => 'Manage academic programs',
-            'manage_courses' => 'Manage institutional courses',
+            // Specialized Scopes
+            'students.view_dept' => 'View students in department',
+            'courses.view_dept' => 'View departmental courses',
+            'courses.view_assigned' => 'View assigned courses and student lists',
 
-            'view_dept_students' => 'View students in department',
-            'view_dept_courses' => 'View departmental courses',
-            'view_dept_results' => 'View departmental academic results',
+            'results.view_dept' => 'View departmental academic results',
+            'results.enter' => 'Enter student marks for assigned courses',
+            'results.modify' => 'Modify results before final approval',
+            'results.view_personal' => 'View own academic results',
 
-            'view_assigned_courses' => 'View assigned courses and student lists',
-            'enter_results' => 'Enter student marks for assigned courses',
-            'modify_results' => 'Modify results before final approval',
+            'registrations.view_personal' => 'View own course registrations',
+            'registration_status.update' => 'Lock or unlock student course registrations',
 
-            'manage_registrations' => 'Manage student course registrations',
-            'generate_reports' => 'Generate transcripts and academic reports',
+            'reports.generate' => 'Generate transcripts and academic reports',
 
-            'view_applications' => 'View student admission applications',
-            'approve_admissions' => 'Approve or reject student admissions',
-            'create_student_records' => 'Create new student user accounts',
-            'manage_application_forms' => 'Create, edit and delete application form templates',
-            'enroll_applicants' => 'Manually enroll admitted applicants as registered students',
+            'applications.view' => 'View student admission applications',
+            'applications.approve' => 'Approve or reject student admissions',
+            'applicants.enroll' => 'Manually enroll admitted applicants as registered students',
 
-            'view_payments' => 'View dynamic financial records',
-            'record_payments' => 'Record student fee payments',
-            'manage_invoices' => 'Manage school fee templates and assignments',
+            'admission_status.update' => 'Open, close or schedule admission windows for an institution',
 
-            'view_personal_results' => 'View own academic results',
-            'view_personal_registrations' => 'View own course registrations',
-            'manage_registration_status' => 'Lock or unlock student course registrations',
-            'manage_admission_status' => 'Open, close or schedule admission windows for an institution',
-            'take_attendance' => 'Record student attendance for assigned courses',
-            'view_attendance_history' => 'View past attendance records and session details',
-            'view_own_attendance' => 'View personal attendance percentages and history',
-            'view_all_attendance' => 'View attendance records for any student in the institution',
-            'manage_attendance_payments' => 'Process and manage monthly lecturer attendance payments',
-            'manage_system' => 'Manage production environment, migrations, and system-wide configurations',
+            'attendance.take' => 'Record student attendance for assigned courses',
+            'attendance.view_history' => 'View past attendance records and session details',
+            'attendance.view_own' => 'View personal attendance percentages and history',
+            'attendance.view_all' => 'View attendance records for any student in the institution',
+
+            'attendance_payments.process' => 'Process and manage monthly lecturer attendance payments',
+
+            'invoices.generate' => 'Force generate bulk student invoices from template',
+            'invoices.cancel' => 'Cancel issued student invoices',
+            'invoices.print_report' => 'Generate and print detailed financial reports for invoices',
+            'payments.verify' => 'Approve or reject student payment verification requests',
+
+            'cbt_data.sync' => 'Export exam packages and import CBT results',
+            'cbt_results.view' => 'View list of synchronized CBT results',
+            'cbt_results.review' => 'Audit detailed student examination scripts',
+            'cbt_results.approve' => 'Validate and finalize individual CBT results',
+            'cbt_results.reject' => 'Discard or reject staged CBT results',
+            'cbt_results.mass_action' => 'Perform batch approval or rejection of examination results',
+            'cbt_sync.view' => 'Monitor CBT connectivity and sync logs',
+            'cbt_sync.manage_tokens' => 'Generate and revoke Lab access tokens',
+
+            // New Granular Permissions
+            'applications.notify' => 'Issue admission notifications for walk-in candidates',
+            'applications.print_letter' => 'Generate and print admission letters',
+            'applications.print_receipt' => 'Print application fee receipts',
+            'students.change_status' => 'Update student administrative status (Active, Graduated, etc.)',
+            'students.export' => 'Export student records to CSV/Excel',
+            'students.import' => 'Bulk import student records from CSV',
+            'registrations.print_form' => 'Generate and print student course registration forms',
+            'registrations.print_exam_card' => 'Generate and print student examination cards',
+            'invoices.view_personal' => 'View personal financial invoices and payment history',
+            'students.view_lecturers' => 'View list of lecturers assigned to personal courses',
+
+            'courses.allocate' => 'Assign courses to lecturers for specific academic sessions',
+            'courses.revoke_allocation' => 'Remove course assignments from lecturers',
+            'courses.export' => 'Export course lists to CSV/Excel',
+            'courses.import' => 'Bulk import course records from CSV',
+
+            'results.export' => 'Export examination results and broadsheets',
+            'results.import' => 'Bulk import examination results from CSV',
+
+            'invoices.manage_students' => 'View and manage individual student fee records and status',
+
+            'system.manage' => 'Manage production environment, migrations, and system-wide configurations',
+            'system.manage_addons' => 'Enable or disable specialized modules for institutions',
+            'system.view_all_data' => 'Access data across all institutions',
         ];
+
+        // Generate CRUD permissions
+        foreach ($crudModels as $model) {
+            $permissions["{$model}.view"] = "View {$model}";
+            $permissions["{$model}.create"] = "Create {$model}";
+            $permissions["{$model}.edit"] = "Edit {$model}";
+            $permissions["{$model}.delete"] = "Delete {$model}";
+        }
 
         foreach ($permissions as $name => $desc) {
             Permission::updateOrCreate(
@@ -67,68 +110,99 @@ class RbacSeeder extends Seeder
             );
         }
 
+        // Helper function to get all CRUD permissions for an array of models
+        $crud = function (array $models) {
+            $perms = [];
+            foreach ($models as $model) {
+                $perms[] = "{$model}.view";
+                $perms[] = "{$model}.create";
+                $perms[] = "{$model}.edit";
+                $perms[] = "{$model}.delete";
+            }
+
+            return $perms;
+        };
+
         // Define Roles and their Permissions
         $roles = [
             'Super Admin' => [
                 'description' => 'Global platform ownership',
-                'permissions' => [
-                    'manage_institutions',
-                    'manage_configurations', 'view_all_data', 'manage_roles',
-                    'manage_invoices', 'view_payments', 'record_payments',
-                    'manage_application_forms', 'enroll_applicants', 'manage_admission_status',
-                    'take_attendance', 'view_attendance_history', 'view_own_attendance', 'view_all_attendance', 'manage_attendance_payments',
-                    'manage_system',
-                ],
+                'permissions' => array_keys($permissions), // Gets all permissions
             ],
             'Institutional Admin' => [
                 'description' => 'Full administrative control within one institution',
-                'permissions' => [
-                    // Core Admin
-                    'manage_staff', 'manage_departments',
-                    'manage_programs', 'manage_courses',
-                    // HOD Level
-                    'view_dept_students', 'view_dept_courses', 'view_dept_results',
-                    // Lecturer Level
-                    'view_assigned_courses', 'enter_results', 'modify_results',
-                    // Secretary Level
-                    'manage_registrations', 'generate_reports',
-                    // Admission Level
-                    'view_applications', 'approve_admissions', 'create_student_records', 'manage_application_forms', 'enroll_applicants',
-                    // Finance Level
-                    'view_payments', 'record_payments', 'manage_invoices',
-                    // Registration Control
-                    'manage_registration_status', 'manage_admission_status',
-                    // Attendance & Payments
-                    'take_attendance', 'view_attendance_history', 'view_own_attendance', 'view_all_attendance', 'manage_attendance_payments',
-                ],
+                'permissions' => array_merge(
+                    $crud(['staff', 'departments', 'programs', 'courses', 'application_forms', 'invoices', 'payments', 'cbt_exams', 'cbt_questions', 'students', 'registrations', 'grading_systems']),
+                    [
+                        'students.view_dept', 'courses.view_dept', 'results.view_dept',
+                        'courses.view_assigned', 'results.enter', 'results.modify',
+                        'reports.generate', 'applications.view', 'applications.approve', 'applicants.enroll',
+                        'registration_status.update', 'admission_status.update',
+                        'attendance.take', 'attendance.view_history', 'attendance.view_own', 'attendance.view_all', 'attendance_payments.process',
+                        'invoices.generate', 'invoices.cancel', 'invoices.print_report', 'payments.verify',
+                        'cbt_data.sync', 'cbt_results.view', 'cbt_results.review', 'cbt_results.approve', 'cbt_results.reject', 'cbt_results.mass_action',
+                        'cbt_sync.view', 'cbt_sync.manage_tokens',
+                        'applications.notify', 'applications.print_letter', 'applications.print_receipt',
+                        'students.change_status', 'students.export', 'students.import',
+                        'registrations.print_form', 'registrations.print_exam_card',
+                        'courses.allocate', 'courses.revoke_allocation', 'courses.export', 'courses.import',
+                        'results.export', 'results.import', 'invoices.manage_students',
+                        'dashboard.view', 'id_cards.request',
+                    ]
+                ),
             ],
             'Head of Department (HOD)' => [
                 'description' => 'Manage departmental academic activities',
-                'permissions' => [
-                    'view_dept_students', 'view_dept_courses', 'view_dept_results',
-                    'manage_registration_status',
-                    'view_attendance_history',
-                ],
+                'permissions' => array_merge(
+                    $crud(['cbt_questions', 'cbt_exams']),
+                    [
+                        'students.view_dept', 'courses.view_dept', 'results.view_dept',
+                        'registration_status.update', 'attendance.view_history',
+                        'cbt_results.view', 'cbt_results.review', 'cbt_results.approve', 'cbt_results.reject', 'cbt_results.mass_action',
+                        'cbt_sync.view', 'students.export',
+                        'courses.allocate', 'courses.revoke_allocation', 'courses.export',
+                        'results.export', 'invoices.manage_students',
+                        'dashboard.view', 'id_cards.request',
+                    ]
+                ),
             ],
             'Lecturer' => [
                 'description' => 'Academic instruction and result entry',
-                'permissions' => ['view_assigned_courses', 'enter_results', 'modify_results', 'take_attendance', 'view_attendance_history'],
+                'permissions' => array_merge(
+                    $crud(['cbt_questions']),
+                    ['cbt_exams.view', 'courses.view_assigned', 'results.enter', 'results.modify', 'attendance.take', 'attendance.view_history', 'dashboard.view', 'id_cards.request']
+                ),
             ],
             'Academic Secretary' => [
                 'description' => 'Coordinate academic record keeping',
-                'permissions' => ['manage_registrations', 'generate_reports', 'view_attendance_history'],
+                'permissions' => array_merge(
+                    $crud(['registrations']),
+                    ['reports.generate', 'attendance.view_history', 'cbt_data.sync', 'cbt_sync.view', 'cbt_sync.manage_tokens', 'cbt_results.view', 'cbt_results.review', 'students.change_status', 'registrations.print_form', 'registrations.print_exam_card', 'dashboard.view', 'id_cards.request']
+                ),
             ],
             'Admission Officer' => [
                 'description' => 'Process student admissions',
-                'permissions' => ['view_applications', 'approve_admissions', 'create_student_records', 'manage_application_forms', 'enroll_applicants'],
+                'permissions' => array_merge(
+                    $crud(['application_forms']),
+                    ['students.create', 'applications.view', 'applications.approve', 'applicants.enroll', 'applications.notify', 'applications.print_letter', 'applications.print_receipt', 'dashboard.view', 'id_cards.request']
+                ),
             ],
             'Accountant' => [
                 'description' => 'Institutional financial management',
-                'permissions' => ['view_payments', 'record_payments', 'manage_invoices', 'manage_attendance_payments', 'view_attendance_history'],
+                'permissions' => array_merge(
+                    $crud(['payments', 'invoices']),
+                    ['attendance_payments.process', 'attendance.view_history', 'invoices.generate', 'invoices.cancel', 'invoices.print_report', 'payments.verify', 'applications.print_receipt', 'dashboard.view', 'id_cards.request']
+                ),
             ],
             'Student' => [
                 'description' => 'Access personal academic features',
-                'permissions' => ['view_personal_results', 'view_personal_registrations', 'view_own_attendance'],
+                'permissions' => [
+                    'results.view_personal', 'registrations.view_personal', 'attendance.view_own',
+                    'applications.print_letter', 'applications.print_receipt',
+                    'registrations.print_form', 'registrations.print_exam_card',
+                    'invoices.view_personal', 'students.view_lecturers',
+                    'dashboard.view', 'id_cards.request',
+                ],
             ],
         ];
 

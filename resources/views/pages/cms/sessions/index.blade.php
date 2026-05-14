@@ -14,8 +14,15 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
     public int|string|null $deletingId = null;
     public int|string|null $togglingId = null;
 
+    public function mount(): void
+    {
+        Gate::authorize('academic_sessions.view');
+    }
+
     public function createSession(): void
     {
+        Gate::authorize('academic_sessions.create');
+
         if (auth()->user()->institution_id) {
             abort(403, 'Only Super Admins can manage global academic sessions.');
         }
@@ -51,6 +58,8 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
 
     public function confirmToggleStatus(): void
     {
+        Gate::authorize('academic_sessions.edit');
+
         if (auth()->user()->institution_id) {
             abort(403, 'Unauthorized.');
         }
@@ -88,6 +97,8 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
 
     public function confirmDelete(): void
     {
+        Gate::authorize('academic_sessions.delete');
+
         if (auth()->user()->institution_id) {
             abort(403, 'Unauthorized.');
         }
@@ -198,10 +209,14 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
                                     @if (!auth()->user()->institution_id)
                                         <td class="px-4 py-4 text-right">
                                             <div class="flex items-center justify-end gap-2">
+                                                @can('academic_sessions.edit')
                                                 <flux:button size="sm" variant="ghost" :icon="$session->status === 'active' ? 'lock-closed' : 'lock-open'" 
                                                     x-on:click="$wire.togglingId = {{ $session->id }}; $flux.modal('toggle-session-status').show()" />
+                                                @endcan
+                                                @can('academic_sessions.delete')
                                                 <flux:button size="sm" variant="ghost" icon="trash" 
                                                     x-on:click="$wire.deletingId = {{ $session->id }}; $flux.modal('delete-session').show()" />
+                                                @endcan
                                             </div>
                                         </td>
                                     @endif
@@ -239,18 +254,22 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
                                 @endif
                             </div>
 
-                            @if (!auth()->user()->institution_id)
-                                <div class="flex items-center justify-end gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-700">
-                                    <flux:button size="sm" variant="ghost" :icon="$session->status === 'active' ? 'lock-closed' : 'lock-open'" 
-                                        x-on:click="$wire.togglingId = {{ $session->id }}; $flux.modal('toggle-session-status').show()">
-                                        {{ $session->status === 'active' ? __('Close') : __('Activate') }}
-                                    </flux:button>
-                                    <flux:button size="sm" variant="ghost" icon="trash" 
-                                        x-on:click="$wire.deletingId = {{ $session->id }}; $flux.modal('delete-session').show()">
-                                        {{ __('Delete') }}
-                                    </flux:button>
-                                </div>
-                            @endif
+                                @if (!auth()->user()->institution_id)
+                                    <div class="flex items-center justify-end gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-700">
+                                        @can('academic_sessions.edit')
+                                        <flux:button size="sm" variant="ghost" :icon="$session->status === 'active' ? 'lock-closed' : 'lock-open'" 
+                                            x-on:click="$wire.togglingId = {{ $session->id }}; $flux.modal('toggle-session-status').show()">
+                                            {{ $session->status === 'active' ? __('Close') : __('Activate') }}
+                                        </flux:button>
+                                        @endcan
+                                        @can('academic_sessions.delete')
+                                        <flux:button size="sm" variant="ghost" icon="trash" 
+                                            x-on:click="$wire.deletingId = {{ $session->id }}; $flux.modal('delete-session').show()">
+                                            {{ __('Delete') }}
+                                        </flux:button>
+                                        @endcan
+                                    </div>
+                                @endif
                         </flux:card>
                     @empty
                         <div class="p-8 text-center text-zinc-500 dark:text-zinc-400 border border-dashed rounded-xl">

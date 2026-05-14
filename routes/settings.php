@@ -27,5 +27,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::livewire('settings/system', 'pages::settings.⚡system')
         ->name('settings.system')
-        ->middleware('can:manage_system');
+        ->middleware('can:system.manage');
+
+    Route::livewire('settings/roles', 'pages::settings.⚡roles')
+        ->name('settings.roles')
+        ->middleware('can:roles.view');
+
+    Route::livewire('settings/addons', 'pages::settings.⚡addons')
+        ->name('settings.addons')
+        ->middleware('can:institutions.view');
 });

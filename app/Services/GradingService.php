@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Course;
 use App\Models\CourseRegistration;
+use App\Models\Department;
 use App\Models\Result;
 use App\Models\Student;
 use Illuminate\Support\Collection;
@@ -29,19 +30,35 @@ class GradingService
      *
      * @return array{grade: string, point: float, remark: string}
      */
-    public function resolveGrade(float $totalScore): array
+    public function resolveGrade(float $totalScore, ?Department $department = null): array
     {
-        foreach ($this->gradingScale as $scale) {
-            if ($totalScore >= $scale['min']) {
+        $scale = $this->getGradingScale($department);
+
+        foreach ($scale as $level) {
+            if ($totalScore >= $level['min']) {
                 return [
-                    'grade' => $scale['grade'],
-                    'point' => $scale['point'],
-                    'remark' => $scale['point'] > 0 ? 'pass' : 'fail',
+                    'grade' => $level['grade'],
+                    'point' => $level['point'],
+                    'remark' => $level['point'] > 0 ? 'pass' : 'fail',
                 ];
             }
         }
 
         return ['grade' => 'F', 'point' => 0.0, 'remark' => 'fail'];
+    }
+
+    /**
+     * Get the grading scale to use. Fallback to default if no department scale is found.
+     *
+     * @return array<int, array{min: int, grade: string, point: float}>
+     */
+    protected function getGradingScale(?Department $department = null): array
+    {
+        if ($department && $department->gradingSystem) {
+            return $department->gradingSystem->scale;
+        }
+
+        return $this->gradingScale;
     }
 
     /**
@@ -147,8 +164,10 @@ class GradingService
      */
     public function grade(Result $result): Result
     {
+        $result->loadMissing('student.program.department.gradingSystem');
+
         $result->total_score = $result->ca_score + $result->exam_score;
-        $graded = $this->resolveGrade($result->total_score);
+        $graded = $this->resolveGrade($result->total_score, $result->student?->program?->department);
 
         $result->grade = $graded['grade'];
         $result->grade_point = $graded['point'];
@@ -164,12 +183,12 @@ class GradingService
      *
      * @return array{total: float, grade: string, grade_point: float, remark: string}
      */
-    public static function calculateGrades(float $caScore, float $examScore): array
+    public static function calculateGrades(float $caScore, float $examScore, ?Department $department = null): array
     {
         $totalScore = $caScore + $examScore;
 
         $instance = new self;
-        $graded = $instance->resolveGrade($totalScore);
+        $graded = $instance->resolveGrade($totalScore, $department);
 
         return [
             'total' => $totalScore,

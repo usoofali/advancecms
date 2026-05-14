@@ -16,6 +16,8 @@ new #[Layout('layouts.app')] #[Title('Institutions')] class extends Component
 
     public function mount(): void
     {
+        Gate::authorize('institutions.view');
+
         if (auth()->user()->institution_id) {
             abort(403, 'Unauthorized. Only Super Admins can manage institutions.');
         }
@@ -28,6 +30,8 @@ new #[Layout('layouts.app')] #[Title('Institutions')] class extends Component
 
     public function confirmDelete(): void
     {
+        Gate::authorize('institutions.delete');
+
         if (! $this->deletingId) {
             return;
         }
@@ -64,9 +68,11 @@ new #[Layout('layouts.app')] #[Title('Institutions')] class extends Component
                 <flux:heading size="xl">{{ __('Institutions') }}</flux:heading>
                 <flux:subheading>{{ __('Manage academic institutions') }}</flux:subheading>
             </div>
+            @can('institutions.create')
             <flux:button icon="plus" variant="primary" :href="route('cms.institutions.create')" wire:navigate>
                 {{ __('Add Institution') }}
             </flux:button>
+            @endcan
         </div>
 
         <div class="flex items-center gap-4">
@@ -117,8 +123,12 @@ new #[Layout('layouts.app')] #[Title('Institutions')] class extends Component
                             </td>
                             <td class="px-4 py-4 text-right">
                                 <div class="flex items-center justify-end gap-2">
+                                    @can('institutions.edit')
                                     <flux:button size="sm" variant="ghost" icon="pencil" :href="route('cms.institutions.edit', $institution)" wire:navigate />
+                                    @endcan
+                                    @can('institutions.delete')
                                     <flux:button size="sm" variant="ghost" icon="trash" x-on:click="$wire.deletingId = {{ $institution->id }}; $flux.modal('delete-institution').show()" />
+                                    @endcan
                                 </div>
                             </td>
                         </tr>

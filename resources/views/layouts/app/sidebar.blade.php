@@ -181,7 +181,7 @@
                         </flux:sidebar.item>
                     @endcanany
 
-                    @canany(['courses.view', 'courses.view_dept'])
+                    @canany(['courses.allocate', 'courses.view_dept'])
                         <flux:sidebar.item icon="clipboard-document-check" :href="route('cms.courses.allocations')"
                             :current="request()->routeIs('cms.courses.allocations')" wire:navigate>
                             {{ __('Manage Allocations') }}

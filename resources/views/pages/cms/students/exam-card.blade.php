@@ -58,7 +58,7 @@ new #[Layout('layouts.app')] #[Title('Examination Card')] class extends Componen
         $session = null;
         $semester = null;
         $canAccess = true;
-        $missingInvoice = null;
+        $missingInvoices = collect();
         $cbtPin = null;
 
         if ($this->student && $this->session_id && $this->semester_id) {
@@ -115,7 +115,7 @@ new #[Layout('layouts.app')] #[Title('Examination Card')] class extends Componen
             'session' => $session,
             'semester' => $semester,
             'canAccess' => $canAccess,
-            'missingInvoice' => $missingInvoice,
+            'missingInvoices' => $missingInvoices,
             'cbtPin' => $cbtPin,
         ];
     }

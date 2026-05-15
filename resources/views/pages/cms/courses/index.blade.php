@@ -41,7 +41,7 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
         }
 
         $staff = Staff::where('email', $user->email)->first();
-        
+
         if ($staff) {
             $this->hodDepartmentIds = Department::where('hod_id', $staff->id)->pluck('id')->toArray();
             if (!empty($this->hodDepartmentIds)) {
@@ -110,7 +110,7 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
 
         if ($this->importedCount > 0) {
             $this->dispatch('notify', [
-                'type'    => 'success',
+                'type' => 'success',
                 'message' => "{$this->importedCount} course(s) imported successfully.",
             ]);
         }
@@ -120,7 +120,7 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
     {
         Gate::authorize('courses.delete');
 
-        if (! $this->deletingId) {
+        if (!$this->deletingId) {
             return;
         }
 
@@ -128,7 +128,7 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
         if ($course) {
             $course->delete();
             $this->dispatch('notify', [
-                'type'    => 'success',
+                'type' => 'success',
                 'message' => 'Course deleted successfully.',
             ]);
         }
@@ -155,7 +155,7 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
                 ->when($this->isHod && !$this->departmentId, fn($q) => $q->whereIn('department_id', $this->hodDepartmentIds))
                 ->get(),
             'levels' => Course::query()
-                ->when($institutionId, fn ($q) => $q->where('institution_id', $institutionId))
+                ->when($institutionId, fn($q) => $q->where('institution_id', $institutionId))
                 ->when($this->isHod, fn($q) => $q->whereIn('department_id', $this->hodDepartmentIds))
                 ->distinct()
                 ->orderBy('level')
@@ -165,15 +165,15 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
             'semesters' => [1 => '1st Semester', 2 => '2nd Semester'],
             'courses' => Course::query()
                 ->with('department.institution')
-                ->when($institutionId, fn ($q) => $q->where('institution_id', $institutionId))
+                ->when($institutionId, fn($q) => $q->where('institution_id', $institutionId))
                 ->when($this->isHod && !$this->departmentId, fn($q) => $q->whereIn('department_id', $this->hodDepartmentIds))
-                ->when($this->departmentId, fn ($q) => $q->where('department_id', $this->departmentId))
-                ->when($this->programId, fn ($q) => $q->where('program_id', $this->programId))
-                ->when($this->level, fn ($q) => $q->where('level', $this->level))
-                ->when($this->semester, fn ($q) => $q->where('semester', $this->semester))
+                ->when($this->departmentId, fn($q) => $q->where('department_id', $this->departmentId))
+                ->when($this->programId, fn($q) => $q->where('program_id', $this->programId))
+                ->when($this->level, fn($q) => $q->where('level', $this->level))
+                ->when($this->semester, fn($q) => $q->where('semester', $this->semester))
                 ->when($this->search, function ($q) {
                     $q->where(fn($sq) => $sq->where('title', 'like', "%{$this->search}%")
-                      ->orWhere('course_code', 'like', "%{$this->search}%"));
+                        ->orWhere('course_code', 'like', "%{$this->search}%"));
                 })
                 ->latest()
                 ->paginate(15),
@@ -182,192 +182,198 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
 }; ?>
 
 <div class="flex h-full w-full flex-1 flex-col gap-4">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-                <flux:heading size="xl">{{ __('Courses') }}</flux:heading>
-                <flux:subheading>{{ __('Manage course offerings') }}</flux:subheading>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-                @can('courses.export')
-                <flux:button icon="arrow-down-tray" wire:click="export" class="flex-1 sm:flex-none">{{ __('Export CSV') }}</flux:button>
-                @endcan
-                @can('courses.import')
-                <flux:button icon="arrow-up-tray" x-on:click="$flux.modal('import-courses').show()" class="flex-1 sm:flex-none">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <flux:heading size="xl">{{ __('Courses') }}</flux:heading>
+            <flux:subheading>{{ __('Manage course offerings') }}</flux:subheading>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            @can('courses.export')
+                <flux:button icon="arrow-down-tray" wire:click="export" class="flex-1 sm:flex-none">{{ __('Export CSV') }}
+                </flux:button>
+            @endcan
+            @can('courses.import')
+                <flux:button icon="arrow-up-tray" x-on:click="$flux.modal('import-courses').show()"
+                    class="flex-1 sm:flex-none">
                     {{ __('Import CSV') }}
                 </flux:button>
-                @endcan
-                @can('courses.create')
-                <flux:button icon="plus" variant="primary" :href="route('cms.courses.create')" wire:navigate class="w-full sm:w-auto">
+            @endcan
+            @can('courses.create')
+                <flux:button icon="plus" variant="primary" :href="route('cms.courses.create')" wire:navigate
+                    class="w-full sm:w-auto">
                     {{ __('Add Course') }}
                 </flux:button>
-                @endcan
-            </div>
+            @endcan
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+        <div class="md:col-span-2">
+            <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass"
+                :placeholder="__('Search courses by title or code...')" />
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
-            <div class="md:col-span-2">
-                <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search courses by title or code...')" />
-            </div>
+        @if(!auth()->user()->institution_id)
+            <flux:select wire:model.live="institutionId" :label="__('Institution')">
+                <option value="">{{ __('All Institutions') }}</option>
+                @foreach($institutions as $institution)
+                    <option value="{{ $institution->id }}">{{ $institution->acronym }}</option>
+                @endforeach
+            </flux:select>
+        @endif
 
-            @if(!auth()->user()->institution_id)
-                <flux:select wire:model.live="institutionId" :label="__('Institution')">
-                    <option value="">{{ __('All Institutions') }}</option>
-                    @foreach($institutions as $institution)
-                        <option value="{{ $institution->id }}">{{ $institution->acronym }}</option>
-                    @endforeach
-                </flux:select>
-            @endif
-
-            @if(!$this->isHod || count($this->hodDepartmentIds) > 1)
+        @if(!$this->isHod || count($this->hodDepartmentIds) > 1)
             <flux:select wire:model.live="departmentId" :label="__('Department')">
                 <option value="">{{ $this->isHod ? __('All My Departments') : __('All Departments') }}</option>
                 @foreach($departments as $dept)
                     <option value="{{ $dept->id }}">{{ $dept->name }}</option>
                 @endforeach
             </flux:select>
+        @endif
+
+        <flux:select wire:model.live="programId" :label="__('Program')" :disabled="!$departmentId">
+            <option value="">{{ __('All Programs') }}</option>
+            @foreach($programs as $prog)
+                <option value="{{ $prog->id }}">{{ $prog->name }}</option>
+            @endforeach
+        </flux:select>
+
+        <flux:select wire:model.live="level" :label="__('Level')">
+            <option value="">{{ __('All Levels') }}</option>
+            @foreach($levels as $lvl)
+                <option value="{{ $lvl }}">{{ $lvl }}L</option>
+            @endforeach
+        </flux:select>
+
+        <flux:select wire:model.live="semester" :label="__('Semester')">
+            <option value="">{{ __('All Semesters') }}</option>
+            @foreach($semesters as $val => $label)
+                <option value="{{ $val }}">{{ $label }}</option>
+            @endforeach
+        </flux:select>
+    </div>
+
+    <flux:table :paginate="$courses">
+        <flux:table.columns>
+            <flux:table.column>{{ __('Code') }}</flux:table.column>
+            <flux:table.column>{{ __('Title') }}</flux:table.column>
+            <flux:table.column class="text-center">{{ __('Units') }}</flux:table.column>
+            <flux:table.column class="text-center">{{ __('Level') }}</flux:table.column>
+            <flux:table.column class="text-center">{{ __('Semester') }}</flux:table.column>
+            <flux:table.column class="hidden lg:table-cell">{{ __('Department') }}</flux:table.column>
+            @canany(['courses.edit', 'courses.delete'])
+                <flux:table.column class="text-right">{{ __('Actions') }}</flux:table.column>
+            @endcanany
+        </flux:table.columns>
+
+        <flux:table.rows>
+            @forelse ($courses as $course)
+                <flux:table.row wire:key="{{ $course->id }}">
+                    <flux:table.cell class="font-medium font-mono uppercase">
+                        <a href="{{ route('cms.courses.show', $course) }}" wire:navigate
+                            class="text-blue-600 dark:text-blue-400 hover:underline font-black">
+                            {{ $course->course_code }}
+                        </a>
+                    </flux:table.cell>
+                    <flux:table.cell class="text-sm">
+                        <a href="{{ route('cms.courses.show', $course) }}" wire:navigate
+                            class="text-zinc-900 dark:text-zinc-100 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors">
+                            {{ $course->title }}
+                        </a>
+                    </flux:table.cell>
+                    <flux:table.cell class="text-center font-mono">
+                        {{ $course->credit_unit }}
+                    </flux:table.cell>
+                    <flux:table.cell class="text-center font-mono">
+                        {{ $course->level }}L
+                    </flux:table.cell>
+                    <flux:table.cell class="text-center">
+                        {{ $course->semester == 1 ? '1st' : '2nd' }}
+                    </flux:table.cell>
+                    <flux:table.cell class="hidden lg:table-cell">
+                        <div class="text-sm font-medium">{{ $course->department->name }}</div>
+                        <div class="text-xs text-zinc-500 mt-0.5">{{ $course->department->institution->acronym }}</div>
+                    </flux:table.cell>
+                    <flux:table.cell class="text-right">
+                        <div class="flex items-center justify-end gap-2">
+                            @can('courses.edit')
+                                <flux:button size="sm" variant="ghost" icon="pencil"
+                                    :href="route('cms.courses.edit', $course)" wire:navigate />
+                            @endcan
+                            @can('courses.delete')
+                                <flux:button size="sm" variant="ghost" icon="trash"
+                                    x-on:click="$wire.deletingId = {{ $course->id }}; $flux.modal('delete-course').show()" />
+                            @endcan
+                        </div>
+                    </flux:table.cell>
+                </flux:table.row>
+            @empty
+                <flux:table.row>
+                    <flux:table.cell colspan="7" class="text-center text-zinc-500 dark:text-zinc-400">
+                        {{ __('No courses found.') }}
+                    </flux:table.cell>
+                </flux:table.row>
+            @endforelse
+        </flux:table.rows>
+    </flux:table>
+
+
+    {{-- Import Modal --}}
+    <flux:modal name="import-courses" variant="filled" class="min-w-[28rem]">
+        <form wire:submit="import" class="space-y-6">
+            <div>
+                <flux:heading size="lg">{{ __('Import Courses from CSV') }}</flux:heading>
+                <flux:subheading>
+                    {{ __('Upload a CSV file to bulk import course records.') }}
+                    <a href="/templates/courses-import-template.csv" class="text-accent underline" download>
+                        {{ __('Download template') }}
+                    </a>
+                </flux:subheading>
+            </div>
+
+            <flux:input type="file" wire:model="importFile" accept=".csv,text/csv" :label="__('CSV File')" />
+            <flux:error name="importFile" />
+
+            @if (!empty($importFailures))
+                <div
+                    class="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 p-4 space-y-1 max-h-48 overflow-y-auto">
+                    <p class="text-sm font-medium text-red-700 dark:text-red-400">{{ count($importFailures) }}
+                        {{ __('row(s) failed:') }}</p>
+                    @foreach ($importFailures as $failure)
+                        <p class="text-xs text-red-600 dark:text-red-500">{{ $failure }}</p>
+                    @endforeach
+                </div>
             @endif
 
-            <flux:select wire:model.live="programId" :label="__('Program')" :disabled="!$departmentId">
-                <option value="">{{ __('All Programs') }}</option>
-                @foreach($programs as $prog)
-                    <option value="{{ $prog->id }}">{{ $prog->name }}</option>
-                @endforeach
-            </flux:select>
+            <div class="flex gap-2">
+                <flux:spacer />
+                <flux:modal.close>
+                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                </flux:modal.close>
+                <flux:button type="submit" variant="primary" wire:loading.attr="disabled">
+                    {{ __('Import') }}
+                </flux:button>
+            </div>
+        </form>
+    </flux:modal>
 
-            <flux:select wire:model.live="level" :label="__('Level')">
-                <option value="">{{ __('All Levels') }}</option>
-                @foreach($levels as $lvl)
-                    <option value="{{ $lvl }}">{{ $lvl }}L</option>
-                @endforeach
-            </flux:select>
+    {{-- Delete Modal --}}
+    <flux:modal name="delete-course" variant="filled" class="min-w-[22rem]">
+        <form wire:submit="confirmDelete" class="space-y-6">
+            <div>
+                <flux:heading size="lg">{{ __('Delete Course?') }}</flux:heading>
+                <flux:subheading>
+                    {{ __('This action cannot be undone. All student registrations and results associated with this course will be permanently removed.') }}
+                </flux:subheading>
+            </div>
 
-            <flux:select wire:model.live="semester" :label="__('Semester')">
-                <option value="">{{ __('All Semesters') }}</option>
-                @foreach($semesters as $val => $label)
-                    <option value="{{ $val }}">{{ $label }}</option>
-                @endforeach
-            </flux:select>
-        </div>
-
-        <div class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
-            <table class="w-full text-left border-collapse">
-                <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700">
-                    <tr>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Code') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Title') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-center">{{ __('Units') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-center">{{ __('Level') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-center">{{ __('Semester') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 hidden lg:table-cell font-normal text-xs text-zinc-500">{{ __('Department') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-right">{{ __('Actions') }}</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                    @forelse ($courses as $course)
-                        <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors" wire:key="{{ $course->id }}">
-                            <td class="px-4 py-4 font-medium font-mono text-sm uppercase">
-                                <a href="{{ route('cms.courses.show', $course) }}" wire:navigate
-                                   class="text-blue-600 dark:text-blue-400 hover:underline font-black">
-                                    {{ $course->course_code }}
-                                </a>
-                            </td>
-                            <td class="px-4 py-4 text-sm">
-                                <a href="{{ route('cms.courses.show', $course) }}" wire:navigate
-                                   class="text-zinc-900 dark:text-zinc-100 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors">
-                                    {{ $course->title }}
-                                </a>
-                            </td>
-                            <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400 text-center font-mono">
-                                {{ $course->credit_unit }}
-                            </td>
-                            <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400 text-center font-mono">
-                                {{ $course->level }}L
-                            </td>
-                            <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400 text-center">
-                                {{ $course->semester == 1 ? '1st' : '2nd' }}
-                            </td>
-                            <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400 hidden lg:table-cell">
-                                <div class="text-sm font-medium">{{ $course->department->name }}</div>
-                                <div class="text-xs text-zinc-500 mt-0.5">{{ $course->department->institution->acronym }}</div>
-                            </td>
-                            <td class="px-4 py-4 text-right">
-                                <div class="flex items-center justify-end gap-2">
-                                    @can('courses.edit')
-                                    <flux:button size="sm" variant="ghost" icon="pencil" :href="route('cms.courses.edit', $course)" wire:navigate />
-                                    @endcan
-                                    @can('courses.delete')
-                                    <flux:button size="sm" variant="ghost" icon="trash" x-on:click="$wire.deletingId = {{ $course->id }}; $flux.modal('delete-course').show()" />
-                                    @endcan
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="px-4 py-12 text-center text-zinc-500 dark:text-zinc-400">
-                                {{ __('No courses found.') }}
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        <div class="mt-4">{{ $courses->links() }}</div>
-
-        {{-- Import Modal --}}
-        <flux:modal name="import-courses" variant="filled" class="min-w-[28rem]">
-            <form wire:submit="import" class="space-y-6">
-                <div>
-                    <flux:heading size="lg">{{ __('Import Courses from CSV') }}</flux:heading>
-                    <flux:subheading>
-                        {{ __('Upload a CSV file to bulk import course records.') }}
-                        <a href="/templates/courses-import-template.csv" class="text-accent underline" download>
-                            {{ __('Download template') }}
-                        </a>
-                    </flux:subheading>
-                </div>
-
-                <flux:input type="file" wire:model="importFile" accept=".csv,text/csv" :label="__('CSV File')" />
-                <flux:error name="importFile" />
-
-                @if (!empty($importFailures))
-                    <div class="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 p-4 space-y-1 max-h-48 overflow-y-auto">
-                        <p class="text-sm font-medium text-red-700 dark:text-red-400">{{ count($importFailures) }} {{ __('row(s) failed:') }}</p>
-                        @foreach ($importFailures as $failure)
-                            <p class="text-xs text-red-600 dark:text-red-500">{{ $failure }}</p>
-                        @endforeach
-                    </div>
-                @endif
-
-                <div class="flex gap-2">
-                    <flux:spacer />
-                    <flux:modal.close>
-                        <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
-                    </flux:modal.close>
-                    <flux:button type="submit" variant="primary" wire:loading.attr="disabled">
-                        {{ __('Import') }}
-                    </flux:button>
-                </div>
-            </form>
-        </flux:modal>
-
-        {{-- Delete Modal --}}
-        <flux:modal name="delete-course" variant="filled" class="min-w-[22rem]">
-            <form wire:submit="confirmDelete" class="space-y-6">
-                <div>
-                    <flux:heading size="lg">{{ __('Delete Course?') }}</flux:heading>
-                    <flux:subheading>
-                        {{ __('This action cannot be undone. All student registrations and results associated with this course will be permanently removed.') }}
-                    </flux:subheading>
-                </div>
-
-                <div class="flex gap-2">
-                    <flux:spacer />
-                    <flux:modal.close>
-                        <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
-                    </flux:modal.close>
-                    <flux:button type="submit" variant="danger">{{ __('Delete') }}</flux:button>
-                </div>
-            </form>
-        </flux:modal>
+            <div class="flex gap-2">
+                <flux:spacer />
+                <flux:modal.close>
+                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                </flux:modal.close>
+                <flux:button type="submit" variant="danger">{{ __('Delete') }}</flux:button>
+            </div>
+        </form>
+    </flux:modal>
 </div>

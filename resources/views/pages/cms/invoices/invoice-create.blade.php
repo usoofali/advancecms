@@ -91,6 +91,11 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
         $this->semester_id = null;
     }
 
+    public function updatedAcademicSessionId(): void
+    {
+        $this->semester_id = null;
+    }
+
     public function addItem()
     {
         $this->items[] = ['item_name' => '', 'amount' => ''];
@@ -258,7 +263,7 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
 
                 <flux:field>
                     <flux:label>Academic Session</flux:label>
-                    <flux:select wire:model="academic_session_id" required>
+                    <flux:select wire:model.live="academic_session_id" required>
                         @foreach(\App\Models\AcademicSession::all() as $session)
                         <flux:select.option :value="$session->id">{{ $session->name }}</flux:select.option>
                         @endforeach

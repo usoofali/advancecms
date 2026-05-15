@@ -98,15 +98,17 @@ class RbacSeeder extends Seeder
 
         // Generate CRUD permissions
         foreach ($crudModels as $model) {
-            $permissions["{$model}.view"] = "View {$model}";
-            $permissions["{$model}.create"] = "Create {$model}";
-            $permissions["{$model}.edit"] = "Edit {$model}";
-            $permissions["{$model}.delete"] = "Delete {$model}";
+            $modelName = str_replace('_', ' ', $model);
+            $permissions["{$model}.view"] = "View and list {$modelName} records";
+            $permissions["{$model}.create"] = "Create new {$modelName} records";
+            $permissions["{$model}.edit"] = "Modify existing {$modelName} records";
+            $permissions["{$model}.delete"] = "Delete {$modelName} records from the system";
         }
 
         foreach ($permissions as $name => $desc) {
             Permission::updateOrCreate(
-                ['permission_name' => $name]
+                ['permission_name' => $name],
+                ['description' => $desc]
             );
         }
 

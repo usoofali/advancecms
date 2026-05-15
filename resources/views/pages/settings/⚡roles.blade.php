@@ -237,11 +237,13 @@ new #[Title('Role Management')] class extends Component {
                             </flux:heading>
                             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                                 @foreach ($permissions as $permission)
-                                    <div class="group flex items-center justify-between p-3 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
-                                        <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                                            {{ Str::after($permission->permission_name, '.') }}
-                                        </span>
-                                    </div>
+                                    <flux:tooltip :content="$permission->description ?? __('No description')">
+                                        <div class="group flex items-center justify-between p-3 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
+                                            <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                                                {{ Str::after($permission->permission_name, '.') }}
+                                            </span>
+                                        </div>
+                                    </flux:tooltip>
                                 @endforeach
                             </div>
                         </div>
@@ -281,9 +283,11 @@ new #[Title('Role Management')] class extends Component {
                             </flux:text>
                             <div class="flex flex-wrap gap-1.5">
                                 @foreach ($permissions as $permission)
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800">
-                                        {{ Str::after($permission->permission_name, '.') }}
-                                    </span>
+                                    <flux:tooltip :content="$permission->description ?? __('No description')">
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800 cursor-default">
+                                            {{ Str::after($permission->permission_name, '.') }}
+                                        </span>
+                                    </flux:tooltip>
                                 @endforeach
                             </div>
                         </div>
@@ -332,12 +336,14 @@ new #[Title('Role Management')] class extends Component {
                             </flux:heading>
                             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                                 @foreach ($permissions as $permission)
-                                    <label class="group flex items-center gap-2 cursor-pointer p-2 rounded-lg border border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                                        <input type="checkbox" wire:model="selectedPermissions" value="{{ $permission->permission_name }}" class="rounded border-zinc-300 text-primary-600 shadow-sm focus:ring-primary-500 dark:border-zinc-700 dark:bg-zinc-900 cursor-pointer">
-                                        <span class="text-xs text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">
-                                            {{ Str::after($permission->permission_name, '.') }}
-                                        </span>
-                                    </label>
+                                    <flux:tooltip :content="$permission->description ?? __('No description')">
+                                        <label class="group flex items-center gap-2 cursor-pointer p-2 rounded-lg border border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors w-full">
+                                            <input type="checkbox" wire:model="selectedPermissions" value="{{ $permission->permission_name }}" class="rounded border-zinc-300 text-primary-600 shadow-sm focus:ring-primary-500 dark:border-zinc-700 dark:bg-zinc-900 cursor-pointer">
+                                            <span class="text-xs text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">
+                                                {{ Str::after($permission->permission_name, '.') }}
+                                            </span>
+                                        </label>
+                                    </flux:tooltip>
                                 @endforeach
                             </div>
                             @if (!$loop->last)

@@ -6,7 +6,7 @@ use App\Models\Applicant;
 use App\Models\ApplicantCredential;
 use App\Models\Payment;
 use App\Models\Receipt;
-use App\Services\OPayService;
+use App\Services\PaystackService;
 use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\WithFileUploads;
@@ -25,6 +25,14 @@ class ApplicantPortal extends Component
     {
         $this->application_number = $application_number;
         $this->applicant = Applicant::where('application_number', $application_number)->firstOrFail();
+
+        $studentInvoice = $this->applicant->studentInvoices()->latest()->first();
+        if ($this->applicant->admission_status === 'admitted' && ! $this->applicant->enrolled_at) {
+            if ($studentInvoice && in_array($studentInvoice->status, ['paid', 'partial'])) {
+                app(\App\Services\AdmissionService::class)->enrollApplicant($this->applicant);
+                $this->applicant->refresh();
+            }
+        }
 
         $this->ensureApplicantHasReceipt();
     }
@@ -54,7 +62,7 @@ class ApplicantPortal extends Component
         }
     }
 
-    public function retryPayment(OPayService $opayService)
+    public function retryPayment(PaystackService $paystackService)
     {
         if (! $this->applicant->institution->isAdmissionActive()) {
             $this->dispatch('notify', [
@@ -65,7 +73,7 @@ class ApplicantPortal extends Component
             return null;
         }
 
-        $initData = $opayService->initializeApplicationPayment($this->applicant, $this->applicant->applicationForm);
+        $initData = $paystackService->initializeApplicationPayment($this->applicant, $this->applicant->applicationForm);
 
         if ($initData && isset($initData['checkout_url'])) {
             return redirect()->away($initData['checkout_url']);
@@ -79,7 +87,7 @@ class ApplicantPortal extends Component
         return null;
     }
 
-    public function payAdmissionFee(OPayService $opayService)
+    public function payAdmissionFee(PaystackService $paystackService)
     {
         if (! $this->applicant->institution->isAdmissionActive()) {
             $this->dispatch('notify', [
@@ -128,10 +136,10 @@ class ApplicantPortal extends Component
         Payment::where('student_invoice_id', $studentInvoice->id)
             ->where('applicant_id', $this->applicant->id)
             ->where('status', 'pending')
-            ->where('payment_method', 'opay')
+            ->where('payment_method', 'paystack')
             ->delete();
 
-        $initData = $opayService->initializeAdmissionPayment($this->applicant, $studentInvoice, $amountToPay);
+        $initData = $paystackService->initializeAdmissionPayment($this->applicant, $studentInvoice, $amountToPay);
 
         if ($initData && isset($initData['checkout_url'])) {
             return redirect()->away($initData['checkout_url']);

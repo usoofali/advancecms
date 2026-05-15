@@ -1,24 +1,25 @@
 <?php
 
 use App\Http\Controllers\ExportFilteredResultsController;
-use App\Http\Controllers\OPayController;
+use App\Http\Controllers\PaystackController;
 use App\Livewire\Pages\Admissions\ApplicantPortal;
 use App\Livewire\Pages\Admissions\Apply;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/login')->name('home');
 
-// OPay Webhook, Return & Cancel
-Route::post('opay/callback', [OPayController::class, 'handleCallback'])->name('opay.callback');
-Route::get('opay/return', [OPayController::class, 'handleReturn'])->name('opay.return');
-Route::get('opay/cancel', [OPayController::class, 'handleCancel'])->name('opay.cancel');
-Route::get('opay/applicant/return', [OPayController::class, 'handleApplicantReturn'])->name('opay.applicant.return');
-Route::get('opay/applicant/cancel', [OPayController::class, 'handleApplicantCancel'])->name('opay.applicant.cancel');
+// Paystack Webhook, Return & Cancel
+Route::post('paystack/webhook', [PaystackController::class, 'handleWebhook'])->name('paystack.webhook');
+Route::get('paystack/return', [PaystackController::class, 'handleReturn'])->name('paystack.return');
+Route::get('paystack/cancel', [PaystackController::class, 'handleCancel'])->name('paystack.cancel');
+Route::get('paystack/applicant/return', [PaystackController::class, 'handleApplicantReturn'])->name('paystack.applicant.return');
+Route::get('paystack/applicant/cancel', [PaystackController::class, 'handleApplicantCancel'])->name('paystack.applicant.cancel');
 
 // Public Guest Admission Flow
 Route::get('/apply', Apply::class)->name('apply');
 Route::get('/applicant/portal/{application_number}', ApplicantPortal::class)->name('applicant.portal');
 Route::livewire('/applicant/admission-letter/{applicant:application_number}', 'pages::cms.admissions.print-admission-letter')->name('applicant.admission-letter');
+Route::livewire('/applicant/notification-letter/{applicant:application_number}', 'pages::cms.admissions.print-admission-notification')->name('applicant.notification-letter');
 Route::livewire('/applicant/invoice/{studentInvoice}/print', 'pages::cms.invoices.print-invoice')->name('applicant.invoice.print');
 Route::livewire('/applicant/receipt/{receipt:receipt_number}/print', 'pages::cms.admissions.print-application-receipt')->name('applicant.receipt.print');
 Route::livewire('/setup', 'pages::⚡setup')->name('setup');

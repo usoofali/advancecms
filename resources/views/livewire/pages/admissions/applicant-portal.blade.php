@@ -125,11 +125,11 @@
                         </div>
 
                         <flux:button variant="primary" class="w-full mb-3" icon="document-text"
-                            href="{{ route('applicant.admission-letter', $applicant) }}" target="_blank">
+                            href="{{ route($applicant->enrolled_at ? 'applicant.admission-letter': 'applicant.notification-letter', $applicant) }}" target="_blank">
                             @if($applicant->enrolled_at)
-                            {{ __('Print Offer of Admission') }}
+                                 {{ __('Print Offer of Admission') }}
                             @else
-                            {{ __('Print Admission Notification') }}
+                                 {{ __('Print Admission Notification') }}
                             @endif
                         </flux:button>
 
@@ -364,10 +364,36 @@
                                 class="mt-8 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
                                 <strong class="block text-green-800 dark:text-green-300 font-medium mb-1">{{
                                     __('Congratulations!') }}</strong>
+                                
+                                @if($applicant->enrolled_at)
                                 <span class="text-green-700 dark:text-green-400 text-sm">
-                                    {{ __('You have been offered admission. Check your email for your admission letter
-                                    and login credentials.') }}
+                                    {{ __('You have been offered admission. You can view your admission letter below.') }}
                                 </span>
+
+                                <div class="mt-4 pt-4 border-t border-green-200/50 dark:border-green-800/50">
+                                    <flux:button size="sm" variant="primary" icon="document-text" href="{{ route('applicant.admission-letter', $applicant) }}" target="_blank">
+                                        {{ __('View Admission Letter') }}
+                                    </flux:button>
+                                </div>
+
+                                <div class="mt-4 pt-4 border-t border-green-200/50 dark:border-green-800/50">
+                                    <p class="text-green-800 dark:text-green-300 font-medium mb-2">{{ __('Student Portal Login Credentials') }}</p>
+                                    <div class="space-y-1 text-green-700 dark:text-green-400 text-sm">
+                                        <p><strong>{{ __('Email:') }}</strong> {{ $applicant->email }}</p>
+                                        <p><strong>{{ __('Password:') }}</strong> 12345678</p>
+                                        <p class="mt-2 text-xs italic opacity-80">{{ __('Please change your password after your first login.') }}</p>
+                                    </div>
+                                    <div class="mt-3">
+                                        <flux:button size="sm" variant="subtle" href="{{ route('login') }}" target="_blank">
+                                            {{ __('Go to Login Page') }}
+                                        </flux:button>
+                                    </div>
+                                </div>
+                                @else
+                                <span class="text-green-700 dark:text-green-400 text-sm">
+                                    {{ __('You have been offered admission. Please pay your admission fees below (minimum 50%) to officially enroll, generate your admission letter, and receive your login credentials.') }}
+                                </span>
+                                @endif
                             </div>
                             @endif
                         </div>

@@ -44,31 +44,8 @@ class AdmissionService
                     ELSE 4 END")
                 ->first();
 
-            // Fallback for backward compatibility or if not configured properly
             if (! $invoice) {
-                $invoice = Invoice::firstOrCreate(
-                    [
-                        'institution_id' => $applicant->institution_id,
-                        'academic_session_id' => $applicant->applicationForm->academic_session_id,
-                        'category' => Invoice::CATEGORY_ADMISSION,
-                        'level' => 100,
-                    ],
-                    [
-                        'title' => 'Admission & 100L Registration Fees',
-                        'due_date' => now()->addMonth(),
-                        'target_type' => 'student',
-                        'status' => 'published',
-                        'created_by' => auth()->id() ?? 1,
-                    ]
-                );
-
-                // Ensure it has a default amount if newly created
-                if ($invoice->items()->count() === 0) {
-                    $invoice->items()->create([
-                        'item_name' => 'Tuition & Registration Fees',
-                        'amount' => 150000.00,
-                    ]);
-                }
+                throw new \Exception("No admission invoice template found for the applicant's program. Please create and publish an Admission Invoice template before admitting applicants.");
             }
 
             StudentInvoice::updateOrCreate(

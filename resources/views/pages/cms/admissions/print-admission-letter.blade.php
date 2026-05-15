@@ -18,9 +18,7 @@ new #[Title('Admission Letter')] #[Layout('layouts.guest')] class extends Compon
 
     public function mount(Applicant $applicant): void
     {
-        Gate::authorize('applications.print_letter');
-
-        if (auth()->user()->hasRole('Student') && auth()->user()->email !== $applicant->email) {
+        if (auth()->check() && auth()->user()->hasRole('Student') && auth()->user()->email !== $applicant->email) {
             abort(403, 'Unauthorized. You can only view your own admission letter.');
         }
 
@@ -29,8 +27,22 @@ new #[Title('Admission Letter')] #[Layout('layouts.guest')] class extends Compon
         }
 
         $this->applicant = $applicant->load(['institution', 'program', 'applicationForm.academicSession']);
+        
+        $studentInvoice = $this->applicant->studentInvoices()->latest()->first();
+        if (!$this->applicant->enrolled_at && $studentInvoice && in_array($studentInvoice->status, ['paid', 'partial'])) {
+            app(\App\Services\AdmissionService::class)->enrollApplicant($this->applicant);
+            $this->applicant->refresh();
+        }
+
+        if (!$this->applicant->enrolled_at) {
+            abort(403, 'You must pay your admission fees (minimum 50%) to officially enroll and access your admission letter.');
+        }
+
         $this->student = Student::where('email', $applicant->email)->first();
-        $this->letter = AdmissionLetterPayload::fromApplicant($this->applicant, $this->student);
+        $this->student->load(['institution', 'program.department']);
+        $this->letter = AdmissionLetterPayload::fromStudent($this->student);
+        $this->letter['back_url'] = route('applicant.portal', ['application_number' => $applicant->application_number]);
+        $this->letter['back_label'] = '← ' . __('Back to Portal');
     }
 }; ?>
 

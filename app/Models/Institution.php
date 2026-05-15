@@ -29,6 +29,7 @@ class Institution extends Model
         'admission_end_date',
         'established_year',
         'addons',
+        'meta',
     ];
 
     /**

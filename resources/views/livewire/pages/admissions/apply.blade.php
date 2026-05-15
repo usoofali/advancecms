@@ -1,7 +1,7 @@
 @use('App\Models\Institution')
 <div>
-    <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-zinc-100 dark:bg-zinc-900">
-        <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white dark:bg-zinc-800 shadow-md overflow-hidden sm:rounded-lg">
+    <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-zinc-100 dark:bg-zinc-900 pb-12">
+        <div class="w-full sm:max-w-4xl mt-6 px-6 py-8 bg-white dark:bg-zinc-800 shadow-md overflow-hidden sm:rounded-lg">
 
             @if($showConfirmation)
                 {{-- ── Step 2: Email Sent Confirmation ── --}}
@@ -54,71 +54,107 @@
             @else
                 {{-- ── Step 1: Application Form ── --}}
                 <div class="mb-6 text-center">
-                    <flux:heading size="xl">{{ __('Purchase Application Form') }}</flux:heading>
-                    <flux:subheading>{{ __('Start your admission journey today.') }}</flux:subheading>
+                    <flux:heading size="xl">{{ $mode === 'apply' ? __('Purchase Application Form') : __('Resume Application') }}</flux:heading>
+                    <flux:subheading>{{ $mode === 'apply' ? __('Start your admission journey today.') : __('Continue where you left off.') }}</flux:subheading>
                 </div>
 
-                <form wire:submit="submit" class="space-y-6">
-                    {{-- Institution & Program Selection --}}
-                    <div class="space-y-4 shadow-sm border border-zinc-200 dark:border-zinc-700 rounded-lg p-4">
-                        <flux:heading size="lg">{{ __('Academic Details') }}</flux:heading>
-                        <flux:select wire:model.live="institution_id" :label="__('Select Institution')">
-                            <flux:select.option value="">{{ __('Choose an institution...') }}</flux:select.option>
-                            @foreach($institutions as $inst)
-                                <flux:select.option :value="$inst->id">{{ $inst->name }}</flux:select.option>
-                            @endforeach
-                        </flux:select>
+                <div class="flex items-center justify-center gap-2 mb-6 p-1 bg-zinc-200 dark:bg-zinc-700/50 rounded-lg">
+                    <button wire:click="setMode('apply')" type="button" class="flex-1 py-1.5 px-3 text-sm font-medium rounded-md transition-all {{ $mode === 'apply' ? 'bg-white dark:bg-zinc-600 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white' }}">New Application</button>
+                    <button wire:click="setMode('resume')" type="button" class="flex-1 py-1.5 px-3 text-sm font-medium rounded-md transition-all {{ $mode === 'resume' ? 'bg-white dark:bg-zinc-600 shadow-sm text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white' }}">Resume</button>
+                </div>
 
-                        @if($institution_id)
-                            <flux:select wire:model.live="program_id" :label="__('Select Program')">
+                @if($mode === 'apply')
+                <div class="space-y-6">
+                    {{-- Cards Grid --}}
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        @forelse($forms as $form)
+                            <flux:card class="flex flex-col h-full border border-zinc-200 dark:border-zinc-700 hover:border-blue-500 dark:hover:border-blue-500 transition-colors shadow-sm group">
+                                <div class="flex-1 space-y-4">
+                                    @if($form->institution?->logo_url)
+                                        <div class="w-12 h-12 bg-white dark:bg-zinc-800 rounded-lg flex items-center justify-center p-1 border border-zinc-100 dark:border-zinc-700">
+                                            <img src="{{ $form->institution->logo_url }}" alt="{{ $form->institution->name }}" class="max-w-full max-h-full object-contain rounded-md" />
+                                        </div>
+                                    @else
+                                        <div class="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center text-blue-600 dark:text-blue-400">
+                                            <flux:icon.document-text class="size-6" />
+                                        </div>
+                                    @endif
+                                    <div>
+                                        <flux:heading size="lg" class="group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{{ $form->name }}</flux:heading>
+                                        <flux:text size="sm" class="text-zinc-500 mt-1">{{ $form->institution?->name }}</flux:text>
+                                        <flux:text size="sm" class="text-zinc-400 mt-0.5">{{ $form->academicSession?->name ?? 'Current Session' }}</flux:text>
+                                    </div>
+                                    <div class="pt-2">
+                                        <flux:text weight="bold" class="text-2xl text-zinc-900 dark:text-white">₦{{ number_format($form->amount, 2) }}</flux:text>
+                                    </div>
+                                </div>
+                                <div class="pt-6 mt-auto">
+                                    <flux:button variant="primary" class="w-full" wire:click="selectForm({{ $form->id }})">
+                                        {{ __('Purchase Form') }}
+                                    </flux:button>
+                                </div>
+                            </flux:card>
+                            @empty
+                            <div class="col-span-full py-8 text-center text-zinc-500 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700">
+                                <flux:icon.inbox class="size-8 mx-auto mb-3 text-zinc-400" />
+                                <p>{{ __('No application forms available at the moment.') }}</p>
+                            </div>
+                            @endforelse
+                    </div>
+                </div>
+
+                {{-- Purchase Form Modal --}}
+                <flux:modal name="purchase-form" class="min-w-[400px]">
+                    <form wire:submit="submit" class="space-y-6">
+                        <div>
+                            <flux:heading size="lg">{{ __('Complete Purchase') }}</flux:heading>
+                            <flux:subheading>{{ __('Provide your details to continue.') }}</flux:subheading>
+                        </div>
+
+                        <div class="space-y-4">
+                            <flux:select wire:model.live="program_id" :label="__('Select Program')" required>
                                 <flux:select.option value="">{{ __('Choose a program...') }}</flux:select.option>
                                 @foreach($programs as $prog)
                                     <flux:select.option :value="$prog->id">{{ $prog->name }} ({{ $prog->acronym }})</flux:select.option>
                                 @endforeach
                             </flux:select>
 
-                            <flux:select wire:model="application_form_id" :label="__('Select Application Form')">
-                                <flux:select.option value="">{{ __('Choose a form...') }}</flux:select.option>
-                                @foreach($forms as $form)
-                                    <flux:select.option :value="$form->id">{{ $form->name }} (₦{{ number_format($form->amount, 2) }})</flux:select.option>
-                                @endforeach
-                            </flux:select>
-                        @endif
+                            <flux:input wire:model="full_name" :label="__('Full Name')" placeholder="John Doe" required />
 
-                        @if($institution_id && !Institution::find($institution_id)?->isAdmissionActive())
-                            <div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm flex items-start gap-2">
-                                <flux:icon.exclamation-circle class="size-5 shrink-0" />
-                                <div>
-                                    <p class="font-bold">{{ __('Admissions Closed') }}</p>
-                                    <p>{{ __('New applications are not being accepted for this institution at this time.') }}</p>
-                                </div>
-                            </div>
-                        @endif
-                    </div>
-
-                    {{-- Personal Information --}}
-                    <div class="space-y-4 shadow-sm border border-zinc-200 dark:border-zinc-700 rounded-lg p-4">
-                        <flux:heading size="lg">{{ __('Personal Details') }}</flux:heading>
-                        <flux:input wire:model="full_name" :label="__('Full Name')" placeholder="John Doe" required />
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <flux:input wire:model="email" type="email" :label="__('Email Address')" placeholder="john@example.com" required />
+                            
                             <flux:input wire:model="phone" :label="__('Phone Number')" placeholder="08012345678" required />
                         </div>
-                    </div>
 
+                        <div class="flex items-center justify-end gap-3">
+                            <flux:modal.close>
+                                <flux:button variant="ghost" type="button">{{ __('Cancel') }}</flux:button>
+                            </flux:modal.close>
+                            <flux:button type="submit" variant="primary" wire:loading.attr="disabled">
+                                <span wire:loading.remove wire:target="submit">{{ __('Proceed to Payment') }}</span>
+                                <span wire:loading wire:target="submit">{{ __('Processing...') }}</span>
+                            </flux:button>
+                        </div>
+                    </form>
+                </flux:modal>
+                @else
+                <form wire:submit="resumeApplication" class="space-y-6">
+                    <div class="space-y-4 shadow-sm border border-zinc-200 dark:border-zinc-700 rounded-lg p-4">
+                        <flux:heading size="lg">{{ __('Applicant Details') }}</flux:heading>
+                        <p class="text-sm text-zinc-500 mb-4">{{ __('Enter the email address and phone number you used during your initial application to resume your session.') }}</p>
+                        
+                        <flux:input wire:model="resumeEmail" type="email" :label="__('Email Address')" placeholder="john@example.com" required />
+                        <flux:input wire:model="resumePhone" :label="__('Phone Number')" placeholder="08012345678" required />
+                    </div>
+                    
                     <div class="flex items-center justify-end mt-4">
-                        <flux:button type="submit" variant="primary" class="w-full" wire:loading.attr="disabled"
-                            :disabled="$institution_id && !Institution::find($institution_id)?->isAdmissionActive()">
-                            <span wire:loading.remove wire:target="submit">
-                                {{ __('Proceed to Payment') }}
-                            </span>
-                            <span wire:loading wire:target="submit">
-                                {{ __('Processing...') }}
-                            </span>
+                        <flux:button type="submit" variant="primary" class="w-full" wire:loading.attr="disabled">
+                            <span wire:loading.remove wire:target="resumeApplication">{{ __('Resume Application') }}</span>
+                            <span wire:loading wire:target="resumeApplication">{{ __('Searching...') }}</span>
                         </flux:button>
                     </div>
                 </form>
+                @endif
             @endif
 
         </div>

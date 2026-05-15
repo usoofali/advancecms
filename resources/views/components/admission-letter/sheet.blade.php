@@ -6,7 +6,7 @@
 ])
 
 @php
-    $l = $letter;
+$l = $letter;
 @endphp
 
 {{-- Screen wrapper (not printed) --}}
@@ -20,17 +20,20 @@
 
         <div class="flex items-center gap-4 px-8 pt-5 pb-4 border-b-2 border-[#1a3c6b]">
             @if (!empty($l['institution_logo_path']))
-                <img src="{{ asset('storage/'.$l['institution_logo_path']) }}" alt="Logo"
+                <img src="{{ asset('storage/' . $l['institution_logo_path']) }}" alt="Logo"
                     class="h-16 w-16 object-contain flex-shrink-0">
             @else
                 <div class="h-16 w-16 rounded-full bg-[#1a3c6b] flex items-center justify-center flex-shrink-0">
                     <span class="text-2xl font-bold text-white">{{ substr($l['institution_name'], 0, 1) }}</span>
-                </div>
+                </div> 
             @endif
             <div class="flex-1 text-center">
                 <h1 class="text-[14pt] font-extrabold uppercase tracking-widest text-[#1a3c6b]">
                     {{ $l['institution_name'] }}
                 </h1>
+                @if($l['institution_meta'])
+                    {!! $l['institution_meta'] !!}
+                @endif
                 <p class="text-[8.5pt] text-zinc-500 mt-0.5">
                     {{ $l['institution_address'] ?? __('Address Not Set') }}
                 </p>

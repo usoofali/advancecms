@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
  *
  * @phpstan-type LetterArray array{
  *     institution_name: string,
+ *     institution_meta: string|null,
  *     institution_logo_path: string|null,
  *     institution_address: string|null,
  *     institution_email: string|null,
@@ -266,6 +267,7 @@ final class AdmissionLetterPayload
     ): array {
         return [
             'institution_name' => $institution->name,
+            'institution_meta' => $institution->meta,
             'institution_logo_path' => $institution->logo_path,
             'institution_address' => $institution->address,
             'institution_email' => $institution->email,

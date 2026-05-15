@@ -19,6 +19,7 @@ new #[Layout('layouts.app')] #[Title('Edit Institution')] class extends Componen
     public ?string $phone = '';
     public ?string $established_year = '';
     public string $status = 'active';
+    public ?string $meta = '';
     public $logo;
 
     public function mount(Institution $institution): void
@@ -38,6 +39,7 @@ new #[Layout('layouts.app')] #[Title('Edit Institution')] class extends Componen
         $this->phone = $institution->phone ?? '';
         $this->established_year = $institution->established_year ? (string) $institution->established_year : '';
         $this->status = $institution->status;
+        $this->meta = $institution->meta ?? '';
     }
 
     public function save(): void
@@ -53,6 +55,7 @@ new #[Layout('layouts.app')] #[Title('Edit Institution')] class extends Componen
             'phone'                => ['nullable', 'string', 'max:30'],
             'established_year'     => ['nullable', 'integer', 'min:1800', 'max:' . date('Y')],
             'status'               => ['required', 'in:active,inactive'],
+            'meta'                 => ['nullable', 'string'],
             'logo'                 => ['nullable', 'image', 'max:1024'],
         ]);
 
@@ -122,6 +125,8 @@ new #[Layout('layouts.app')] #[Title('Edit Institution')] class extends Componen
                             <flux:select.option value="active">{{ __('Active') }}</flux:select.option>
                             <flux:select.option value="inactive">{{ __('Inactive') }}</flux:select.option>
                         </flux:select>
+                        
+                        <flux:textarea wire:model="meta" :label="__('Meta Information')" :placeholder="__('Additional metadata or JSON configuration')" rows="3" />
                     </div>
                 </flux:fieldset>
 

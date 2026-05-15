@@ -6218,6 +6218,7 @@ namespace App\Models {
      * @property string|null $phone
      * @property string|null $logo_path
      * @property string|null $email
+     * @property string|null $meta
      * @property string|null $address
      * @property string|null $acronym
      * @property float $default_allowance
@@ -6237,6 +6238,7 @@ namespace App\Models {
      * @method static \Illuminate\Database\Eloquent\Builder<Institution>|Institution whereDefaultAllowance($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Institution>|Institution whereAcronym($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Institution>|Institution whereAddress($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Institution>|Institution whereMeta($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Institution>|Institution whereEmail($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Institution>|Institution whereLogoPath($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Institution>|Institution wherePhone($value)

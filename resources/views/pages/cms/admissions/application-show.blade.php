@@ -29,11 +29,12 @@ new #[Title('Review Application')] #[Layout('layouts.app')] class extends Compon
             $admissionService->admit($this->applicant);
 
             session()->flash('success', 'Applicant admitted successfully! Admission letter and fees invoice have been generated.');
+            return redirect()->route('cms.admissions.index');
         } catch (\Exception $e) {
-            session()->flash('error', 'Failed to admit applicant: '.$e->getMessage());
+            $this->js('$flux.modal("admit-modal").close()');
+            $this->dispatch('notify', ['type' => 'error', 'message' => 'Failed to admit applicant: '.$e->getMessage()]);
+            return;
         }
-
-        return redirect()->route('cms.admissions.index');
     }
 
     public function rejectApplicant(AdmissionService $admissionService)
@@ -48,11 +49,12 @@ new #[Title('Review Application')] #[Layout('layouts.app')] class extends Compon
             $admissionService->reject($this->applicant, $this->rejectionReason);
 
             session()->flash('success', 'Applicant rejected and notified with reason.');
+            return redirect()->route('cms.admissions.index');
         } catch (\Exception $e) {
-            session()->flash('error', 'Failed to reject applicant: '.$e->getMessage());
+            $this->js('$flux.modal("reject-modal").close()');
+            $this->dispatch('notify', ['type' => 'error', 'message' => 'Failed to reject applicant: '.$e->getMessage()]);
+            return;
         }
-
-        return redirect()->route('cms.admissions.index');
     }
 
     public function enrollApplicant(AdmissionService $admissionService)
@@ -401,6 +403,17 @@ new #[Title('Review Application')] #[Layout('layouts.app')] class extends Compon
                                 <div class="flex-1">
                                     <div class="text-sm font-medium">{{ __('Secondary Document') }}</div>
                                     <div class="text-xs text-zinc-500">{{ __('Optional Supporting Doc') }}</div>
+                                </div>
+                                <flux:icon.eye class="w-4 h-4 text-zinc-400" />
+                            </a>
+                            @endif
+
+                            @if($credentials->retrainee_document_path)
+                            <a href="{{ Storage::url($credentials->retrainee_document_path) }}" target="_blank" class="flex items-center gap-3 p-3 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+                                <flux:icon.paper-clip class="w-5 h-5 text-zinc-400" />
+                                <div class="flex-1">
+                                    <div class="text-sm font-medium">{{ __('Retrainee Document') }}</div>
+                                    <div class="text-xs text-zinc-500">{{ __('Professional Certification') }}</div>
                                 </div>
                                 <flux:icon.eye class="w-4 h-4 text-zinc-400" />
                             </a>

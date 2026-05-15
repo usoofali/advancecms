@@ -5,8 +5,7 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Layout('layouts.guest')] #[Title('Print Official Invoice')] class extends Component
-{
+new #[Layout('layouts.guest')] #[Title('Print Official Invoice')] class extends Component {
     public StudentInvoice $studentInvoice;
 
     public function mount(StudentInvoice $studentInvoice)
@@ -20,10 +19,13 @@ new #[Layout('layouts.guest')] #[Title('Print Official Invoice')] class extends 
     <div class="max-w-3xl mx-auto border-2 border-zinc-200 p-6 rounded-lg shadow-sm">
         <div class="flex flex-col items-center mb-2 border-b-2 border-black pb-2">
             @if($studentInvoice->institution?->logo_url)
-            <img src="{{ $studentInvoice->institution->logo_url }}" alt="{{ $studentInvoice->institution->name }} Logo"
-                class="h-16 mb-2 object-contain">
+                <img src="{{ $studentInvoice->institution->logo_url }}" alt="{{ $studentInvoice->institution->name }} Logo"
+                    class="h-16 mb-2 object-contain">
             @endif
             <h1 class="text-2xl font-bold uppercase">{{ $studentInvoice->institution->name ?? config('app.name') }}</h1>
+            @if($studentInvoice->institution?->meta)
+                {!! $studentInvoice->institution->meta !!}
+            @endif
             <p class="text-[10px] text-zinc-600 uppercase text-center max-w-md">{{ $studentInvoice->institution->address
                 }}</p>
             <p class="text-[10px] text-zinc-600 uppercase font-bold mt-1">
@@ -35,7 +37,7 @@ new #[Layout('layouts.guest')] #[Title('Print Official Invoice')] class extends 
                 <span class="text-zinc-600 uppercase">Invoice No: <span class="text-black">#INV-{{ $studentInvoice->id
                         }}</span></span>
                 <span class="text-zinc-600 uppercase">Date Issued: <span class="text-black">{{
-                        $studentInvoice->created_at?->format('d/m/Y') }}</span></span>
+    $studentInvoice->created_at?->format('d/m/Y') }}</span></span>
             </div>
         </div>
 
@@ -66,7 +68,8 @@ new #[Layout('layouts.guest')] #[Title('Print Official Invoice')] class extends 
                     </span>
                 </div>
                 <div class="flex border-b border-zinc-100 pb-1">
-                    <span class="w-36 text-zinc-500 uppercase text-[10px] font-bold tracking-tight">Level / Status:</span>
+                    <span class="w-36 text-zinc-500 uppercase text-[10px] font-bold tracking-tight">Level /
+                        Status:</span>
                     <span class="flex-1 uppercase font-bold text-sm">
                         @if($studentInvoice->student)
                             {{ $studentInvoice->student->currentLevel($studentInvoice->invoice->academicSession) }} LEVEL
@@ -97,11 +100,11 @@ new #[Layout('layouts.guest')] #[Title('Print Official Invoice')] class extends 
                 </thead>
                 <tbody class="divide-y divide-zinc-100">
                     @foreach($studentInvoice->invoice->items as $item)
-                    <tr>
-                        <td class="py-1 text-sm font-medium">{{ $item->item_name }}</td>
-                        <td class="py-1 text-right font-medium text-zinc-900">₦{{ number_format($item->amount, 2) }}
-                        </td>
-                    </tr>
+                        <tr>
+                            <td class="py-1 text-sm font-medium">{{ $item->item_name }}</td>
+                            <td class="py-1 text-right font-medium text-zinc-900">₦{{ number_format($item->amount, 2) }}
+                            </td>
+                        </tr>
                     @endforeach
                 </tbody>
                 <tfoot>
@@ -115,26 +118,28 @@ new #[Layout('layouts.guest')] #[Title('Print Official Invoice')] class extends 
             </table>
         </div>
 
-        @if($studentInvoice->invoice->account_name || $studentInvoice->invoice->account_number ||
-        $studentInvoice->invoice->bank_name)
-        <div class="mb-2 p-3 bg-zinc-50 border border-zinc-200 rounded">
-            <h3 class="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-2">Payment Information (Bank
-                Transfer)</h3>
-            <div class="grid grid-cols-3 gap-4">
-                <div>
-                    <span class="block text-[9px] text-zinc-400 uppercase font-bold">Bank Name</span>
-                    <span class="text-xs font-semibold">{{ $studentInvoice->invoice->bank_name }}</span>
-                </div>
-                <div>
-                    <span class="block text-[9px] text-zinc-400 uppercase font-bold">Account Name</span>
-                    <span class="text-xs font-semibold">{{ $studentInvoice->invoice->account_name }}</span>
-                </div>
-                <div>
-                    <span class="block text-[9px] text-zinc-400 uppercase font-bold">Account Number</span>
-                    <span class="text-sm font-mono font-bold">{{ $studentInvoice->invoice->account_number }}</span>
+        @if(
+                $studentInvoice->invoice->account_name || $studentInvoice->invoice->account_number ||
+                $studentInvoice->invoice->bank_name
+            )
+            <div class="mb-2 p-3 bg-zinc-50 border border-zinc-200 rounded">
+                <h3 class="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mb-2">Payment Information (Bank
+                    Transfer)</h3>
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <span class="block text-[9px] text-zinc-400 uppercase font-bold">Bank Name</span>
+                        <span class="text-xs font-semibold">{{ $studentInvoice->invoice->bank_name }}</span>
+                    </div>
+                    <div>
+                        <span class="block text-[9px] text-zinc-400 uppercase font-bold">Account Name</span>
+                        <span class="text-xs font-semibold">{{ $studentInvoice->invoice->account_name }}</span>
+                    </div>
+                    <div>
+                        <span class="block text-[9px] text-zinc-400 uppercase font-bold">Account Number</span>
+                        <span class="text-sm font-mono font-bold">{{ $studentInvoice->invoice->account_number }}</span>
+                    </div>
                 </div>
             </div>
-        </div>
         @endif
 
         <div class="mt-3 pt-4 text-center border-t border-zinc-100">
@@ -149,11 +154,11 @@ new #[Layout('layouts.guest')] #[Title('Print Official Invoice')] class extends 
 
                 <div class="flex flex-col items-center">
                     @php
-                    $identifier = $studentInvoice->student ? $studentInvoice->student->matric_number : $studentInvoice->applicant->application_number;
-                    $qrData = "Invoice: #INV-{$studentInvoice->id}\n"
-                    . "Holder: {$identifier}\n"
-                    . "Total: ₦" . number_format($studentInvoice->total_amount, 2) . "\n"
-                    . "Status: {$studentInvoice->status}";
+                        $identifier = $studentInvoice->student ? $studentInvoice->student->matric_number : $studentInvoice->applicant->application_number;
+                        $qrData = "Invoice: #INV-{$studentInvoice->id}\n"
+                            . "Holder: {$identifier}\n"
+                            . "Total: ₦" . number_format($studentInvoice->total_amount, 2) . "\n"
+                            . "Status: {$studentInvoice->status}";
                     @endphp
                     <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={{ urlencode($qrData) }}"
                         alt="Verification QR Code" class="size-20 border border-zinc-100 p-1 bg-white">
@@ -200,12 +205,14 @@ new #[Layout('layouts.guest')] #[Title('Print Official Invoice')] class extends 
 
     <div class="mt-10 no-print flex justify-center gap-4">
         <flux:button variant="primary" icon="printer" onclick="window.print()">Print This Invoice</flux:button>
-        
+
         @auth
             <flux:button variant="ghost" icon="arrow-left" href="{{ url()->previous() }}">Go Back</flux:button>
         @else
             @if($studentInvoice->applicant)
-                <flux:button variant="ghost" icon="arrow-left" href="{{ route('applicant.portal', $studentInvoice->applicant->application_number) }}">Back to Portal</flux:button>
+                <flux:button variant="ghost" icon="arrow-left"
+                    href="{{ route('applicant.portal', $studentInvoice->applicant->application_number) }}">Back to Portal
+                </flux:button>
             @endif
         @endauth
     </div>

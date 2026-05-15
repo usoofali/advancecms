@@ -35,11 +35,10 @@ return [
         ],
     ],
 
-    'opay' => [
-        'merchant_id' => env('OPAY_MERCHANT_ID'),
-        'public_key' => env('OPAY_PUBLIC_KEY'),
-        'secret_key' => env('OPAY_SECRET_KEY'),
-        'mode' => env('OPAY_MODE', 'sandbox'), // sandbox or live
+    'paystack' => [
+        'public_key' => env('PAYSTACK_PUBLIC_KEY'),
+        'secret_key' => env('PAYSTACK_SECRET_KEY'),
+        'payment_url' => env('PAYSTACK_PAYMENT_URL', 'https://api.paystack.co'),
     ],
 
 ];

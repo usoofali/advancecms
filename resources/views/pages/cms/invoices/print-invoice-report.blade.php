@@ -78,6 +78,9 @@ new #[Layout('layouts.guest')] #[Title('Invoice Report')] class extends Componen
                 <h1 class="text-2xl font-black uppercase tracking-tight text-zinc-800 leading-none mb-1">
                     {{ $institution?->name ?? config('app.institution_name', 'Institution Name') }}
                 </h1>
+                @if($institution?->meta)
+                    {!! $institution->meta !!}
+                @endif
                 <div class="text-xs text-zinc-500 font-medium space-y-0.5">
                     <p>{{ $institution?->address ?? config('app.institution_address', 'Address Line') }}</p>
                     <p class="flex items-center gap-3">

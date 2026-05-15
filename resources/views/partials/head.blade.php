@@ -13,7 +13,7 @@
 <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
 
 @if (file_exists(public_path('build/manifest.json')))
-    <link rel="stylesheet" href="{{ asset('build/assets/app-Cnqnnf2g.css') }}">
+    <link rel="stylesheet" href="{{ asset('build/assets/app-CLiDDa23.css') }}">
     <script type="module" src="{{ asset('build/assets/app-l0sNRNKZ.js') }}"></script>
 @else
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -21,13 +21,26 @@
 @fluxAppearance
 <style>
     :root {
-        --color-accent: {{ config('theme.accent') }};
-        --color-accent-content: {{ config('theme.accent_content') }};
-        --color-accent-foreground: {{ config('theme.accent_foreground') }};
+        --color-accent:
+            {{ config('theme.accent') }}
+        ;
+        --color-accent-content:
+            {{ config('theme.accent_content') }}
+        ;
+        --color-accent-foreground:
+            {{ config('theme.accent_foreground') }}
+        ;
     }
+
     .dark {
-        --color-accent: {{ config('theme.dark_accent') }};
-        --color-accent-content: {{ config('theme.dark_accent_content') }};
-        --color-accent-foreground: {{ config('theme.dark_accent_foreground') }};
+        --color-accent:
+            {{ config('theme.dark_accent') }}
+        ;
+        --color-accent-content:
+            {{ config('theme.dark_accent_content') }}
+        ;
+        --color-accent-foreground:
+            {{ config('theme.dark_accent_foreground') }}
+        ;
     }
 </style>

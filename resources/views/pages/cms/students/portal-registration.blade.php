@@ -14,7 +14,7 @@ use Livewire\Component;
 new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Component {
     public int|string $student_id = '';
     public int|string $session_id = '';
-    public array $selected_courses = [];
+    public $selected_courses = [];
     public int|string $institution_id = '';
 
     public function mount(): void
@@ -115,6 +115,22 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
             return;
         }
 
+        // Check credit unit limit
+        $registeredUnits = CourseRegistration::where('student_id', $this->student_id)
+            ->where('academic_session_id', $this->session_id)
+            ->with('course')
+            ->get()
+            ->sum(fn($r) => $r->course->credit_unit);
+            
+        $selectedUnits = Course::whereIn('id', $this->selected_courses)->sum('credit_unit');
+        $totalUnits = $registeredUnits + $selectedUnits;
+        $maxUnits = $student?->program?->department?->max_session_units ?? 24;
+
+        if ($totalUnits > $maxUnits) {
+            $this->addError('selected_courses', "Maximum allowed session load is {$maxUnits} units. Your current selection totals {$totalUnits} units.");
+            return;
+        }
+
         $carryoverIds = $allCarryovers->pluck('id')->toArray();
         $newlyRegistered = 0;
         $alreadyRegistered = 0;
@@ -208,7 +224,7 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
 
     public function render(): \Illuminate\View\View
     {
-        $student = $this->student_id ? Student::with('program')->find($this->student_id) : null;
+        $student = $this->student_id ? Student::with('program.department')->find($this->student_id) : null;
         $availableCourses = collect();
         $registeredCourses = collect();
         $carryoverCourses = collect();
@@ -436,8 +452,9 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
                         </div>
                         <div class="border-t border-zinc-100 dark:border-zinc-800 pt-2 flex justify-between items-center text-sm">
                             <span class="font-bold text-zinc-700 dark:text-zinc-300">{{ __('Total Session Load') }}</span>
-                            <span class="font-bold font-mono text-lg {{ $totalSessionUnits > 24 ? 'text-red-600' : 'text-zinc-900 dark:text-white' }}">
-                                {{ $totalSessionUnits }} / 24
+                            @php $maxUnits = $student?->program?->department?->max_session_units ?? 24; @endphp
+                            <span class="font-bold font-mono text-lg {{ $totalSessionUnits > $maxUnits ? 'text-red-600' : 'text-zinc-900 dark:text-white' }}">
+                                {{ $totalSessionUnits }} / {{ $maxUnits }}
                             </span>
                         </div>
                     </div>

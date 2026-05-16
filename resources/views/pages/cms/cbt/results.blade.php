@@ -231,7 +231,7 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
-            <flux:select wire:model.live="filter_exam_id" placeholder="{{ __('Choose Examination...') }}" class="min-w-[350px]">
+            <flux:select wire:model.live="filter_exam_id" placeholder="{{ __('Choose Examination...') }}" class="w-full md:min-w-[350px]">
                 <flux:select.option value="">{{ __('--- All Exams ---') }}</flux:select.option>
                 @foreach($exams as $exam)
                     <flux:select.option :value="$exam->id">{{ $exam->course->course_code }} - {{ $exam->title }} ({{ $exam->exam_date->format('M d, Y') }})</flux:select.option>
@@ -653,7 +653,7 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
     @endif
 
     {{-- Batch Approval Confirmation Modal --}}
-    <flux:modal name="approve-all-confirmation" wire:model="showApproveAllModal" class="min-w-[400px]">
+    <flux:modal name="approve-all-confirmation" wire:model="showApproveAllModal" class="w-full max-w-md">
         <div class="space-y-6">
             <div>
                 <flux:heading size="lg">{{ __('Finalize Batch Results') }}</flux:heading>

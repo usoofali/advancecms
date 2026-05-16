@@ -235,7 +235,7 @@ new #[Layout('layouts.app')] #[Title('CBT Connectivity & Sync')] class extends C
     </div>
 
     {{-- Token Generation Modal --}}
-    <flux:modal wire:model="showTokenModal" class="md:w-[500px]">
+    <flux:modal wire:model="showTokenModal" class="w-full max-w-lg">
         <div class="space-y-6">
             @if($generatedToken)
                 <div class="text-center">

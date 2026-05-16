@@ -19,6 +19,7 @@ class Department extends Model
         'name',
         'faculty',
         'description',
+        'max_session_units',
         'status',
         'grading_system_id',
     ];

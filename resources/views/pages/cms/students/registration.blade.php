@@ -15,8 +15,8 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
     public int|string $student_id = '';
     public int|string $session_id = '';
     public string $student_search = '';
-    public array $selected_courses = [];
-    public array $courses_to_drop = [];
+    public $selected_courses = [];
+    public $courses_to_drop = [];
     public int|string $institution_id = '';
 
     public function mount(): void
@@ -92,7 +92,8 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
             );
             $allCarryovers = $allCarryovers->merge($semCarryovers);
         }
-        $missingCarryovers = $allCarryovers->whereNotIn('id', $this->selected_courses);
+        $selectedIds = collect($this->selected_courses)->map(fn($id) => (int) $id)->toArray();
+        $missingCarryovers = $allCarryovers->whereNotIn('id', $selectedIds);
 
         if ($missingCarryovers->isNotEmpty()) {
             $this->addError('selected_courses', 'You must include all mandatory carryover courses: ' .
@@ -226,7 +227,11 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
 
                 $carryoverIds = $semCarryovers->pluck('id');
 
-                $carryoverCourses = $carryoverCourses->merge($semCarryovers->map(fn($c) => array_merge($c->toArray(), ['semester_name' => $semName])));
+                $carryoverCourses = $carryoverCourses->merge($semCarryovers->map(function($c) use ($semName) {
+                    $arr = $c->toArray();
+                    $arr['semester_name'] = $semName;
+                    return $arr;
+                }));
                 
                 $available = $allLevelCourses
                     ->whereNotIn('id', $registeredCourseIds)
@@ -234,7 +239,11 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
                 
                 $availableCourses = $availableCourses->merge($available->map(fn($c) => array_merge($c->toArray(), ['semester_name' => $semName])));
                 
-                $registeredCourses = $registeredCourses->merge($allLevelCourses->whereIn('id', $registeredCourseIds)->map(fn($c) => array_merge($c->toArray(), ['semester_name' => $semName])));
+                $allRegisteredInSem = Course::query()
+                    ->whereIn('id', $registeredCourseIds)
+                    ->get();
+
+                $registeredCourses = $registeredCourses->merge($allRegisteredInSem->map(fn($c) => array_merge($c->toArray(), ['semester_name' => $semName])));
             }
         }
 
@@ -243,6 +252,7 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
                 ? []
                 : \App\Models\Institution::query()->where('status', 'active')->orderBy('name')->get(),
             'students'          => Student::query()
+                ->with('program.department')
                 ->when($this->institution_id, fn($q) => $q->where('institution_id', $this->institution_id))
                 ->when($this->student_search, function($q) {
                     $q->where(function($sq) {
@@ -343,7 +353,7 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
                             class="flex items-center justify-center w-5 h-5 me-3 rounded border border-red-400 bg-red-500 text-white">
                             <flux:icon.check variant="micro" />
                         </div>
-                        <input type="checkbox" wire:model="selected_courses" value="{{ $course->id }}" class="hidden"
+                        <input type="checkbox" wire:model="selected_courses" value="{{ $course['id'] }}" class="hidden"
                             checked disabled />
                         <div>
                             <div class="font-mono text-sm font-bold text-red-700 dark:text-red-400 uppercase">{{
@@ -404,8 +414,12 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
                 <div class="flex items-center justify-between">
                     <flux:heading size="md">{{ __('Currently Registered') }}</flux:heading>
                     @if (count($registeredCourses) > 0)
+                    @php 
+                        $selectedStudent = $students->firstWhere('id', $this->student_id);
+                        $maxUnits = $selectedStudent?->program?->department?->max_session_units ?? 24;
+                    @endphp
                     <flux:badge color="green" size="sm">
-                        {{ __('Total Units:') }} {{ $registeredCourses->sum('credit_unit') }}
+                        {{ __('Total Units:') }} {{ $registeredCourses->sum('credit_unit') }} / {{ $maxUnits }}
                     </flux:badge>
                     @endif
                 </div>

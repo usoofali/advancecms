@@ -17,6 +17,7 @@ new #[Layout('layouts.app')] #[Title('Add Department')] class extends Component 
     public string $description = '';
     public string $status = 'active';
     public int|string|null $grading_system_id = null;
+    public int $max_session_units = 24;
 
     public function mount(): void
     {
@@ -39,6 +40,7 @@ new #[Layout('layouts.app')] #[Title('Add Department')] class extends Component 
             'description'    => ['nullable', 'string'],
             'status'         => ['required', 'in:active,inactive'],
             'grading_system_id' => ['nullable', 'exists:grading_systems,id'],
+            'max_session_units' => ['required', 'integer', 'min:1', 'max:100'],
         ]);
 
         Department::create($validated);
@@ -108,6 +110,9 @@ new #[Layout('layouts.app')] #[Title('Add Department')] class extends Component 
                     <flux:select.option :value="$system->id">{{ $system->name }}</flux:select.option>
                     @endforeach
                 </flux:select>
+
+                <flux:input type="number" wire:model="max_session_units" :label="__('Max Session Credit Units')"
+                    :description="__('The maximum total credit units a student can register for in an entire academic session.')" />
             </div>
         </flux:fieldset>
 

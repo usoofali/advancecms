@@ -217,20 +217,20 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
 }; ?>
 
 <div class="p-6">
-    <div class="flex items-center justify-between mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
             <flux:heading size="xl">{{ __('Questions Bank') }}</flux:heading>
             <flux:subheading>{{ __('Manage question banks and answers for institutional CBT exams.') }}</flux:subheading>
         </div>
         @if($selectedExamId)
-            <div class="flex items-center gap-2">
-            @can('cbt_questions.import')
-                <flux:button icon="arrow-up-tray" variant="subtle" wire:click="$set('showImportModal', true)">{{ __('Import CSV') }}</flux:button>
-            @endcan
-            @can('cbt_questions.create')
-                <flux:button variant="primary" icon="plus" wire:click="$set('showModal', true)">{{ __('New Question') }}</flux:button>
-            @endcan
-        </div>
+            <div class="flex flex-wrap items-center gap-2">
+                @can('cbt_questions.import')
+                    <flux:button icon="arrow-up-tray" variant="subtle" wire:click="$set('showImportModal', true)" class="flex-1 sm:flex-none">{{ __('Import CSV') }}</flux:button>
+                @endcan
+                @can('cbt_questions.create')
+                    <flux:button variant="primary" icon="plus" wire:click="$set('showModal', true)" class="flex-1 sm:flex-none">{{ __('New Question') }}</flux:button>
+                @endcan
+            </div>
         @endif
     </div>
 
@@ -348,7 +348,7 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
     @endif
 
     {{-- Add/Edit Modal --}}
-    <flux:modal wire:model="showModal" class="md:w-[850px]">
+    <flux:modal wire:model="showModal" class="w-full max-w-4xl">
         <form wire:submit="save" class="space-y-6">
             <div>
                 <flux:heading size="lg">{{ $editingId ? __('Update Question') : __('Create New Question') }}</flux:heading>
@@ -396,7 +396,7 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
     </flux:modal>
 
     {{-- Import Modal --}}
-    <flux:modal wire:model="showImportModal" class="md:w-[500px]">
+    <flux:modal wire:model="showImportModal" class="w-full max-w-lg">
         <form wire:submit="importCsv" class="space-y-6">
             <div>
                 <flux:heading size="lg">{{ __('Import Question Bank') }}</flux:heading>

@@ -187,19 +187,21 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
 }; ?>
 
 <div class="p-6">
-    <div class="flex items-center justify-between mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
             <flux:heading size="xl">{{ __('CBT Examinations') }}</flux:heading>
             <flux:subheading>{{ __('Configure rules and manage the lifecycle of institutional exams.') }}</flux:subheading>
         </div>
         @can('cbt_exams.create')
-            <flux:button variant="primary" icon="plus" wire:click="$set('showModal', true)">{{ __('New Examination') }}</flux:button>
+            <div class="flex-shrink-0">
+                <flux:button variant="primary" icon="plus" wire:click="$set('showModal', true)">{{ __('New Examination') }}</flux:button>
+            </div>
         @endcan
     </div>
 
-    <div class="mb-8 flex items-center gap-4">
-        <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" placeholder="{{ __('Search exams by title or course code...') }}" class="max-w-md" />
-        <flux:spacer />
+    <div class="mb-8 flex flex-col md:flex-row md:items-center gap-4">
+        <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" placeholder="{{ __('Search exams by title or course code...') }}" class="w-full md:max-w-md" />
+        <flux:spacer class="hidden md:block" />
         <div class="flex items-center gap-2">
             <flux:badge color="zinc" variant="outline">{{ $exams->total() }} {{ __('Total Exams') }}</flux:badge>
         </div>
@@ -305,7 +307,7 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
         {{ $exams->links() }}
     </div>
 
-    <flux:modal wire:model="showModal" class="md:w-[750px]">
+    <flux:modal wire:model="showModal" class="w-full max-w-2xl">
         <form wire:submit="save" class="space-y-6">
             <div class="flex items-center gap-4">
                 <div class="size-12 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
@@ -319,7 +321,7 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
 
 
 
-            <div class="grid grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <flux:select label="{{ __('Academic Session') }}" wire:model.live="academic_session_id">
                     <option value="">{{ __('Select Session') }}</option>
                     @foreach ($sessions as $session)
@@ -335,7 +337,7 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
                     <flux:heading size="sm" class="uppercase tracking-widest text-zinc-500 font-bold">{{ __('Course Selection Cascade') }}</flux:heading>
                 </div>
                 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <flux:select label="{{ __('Program') }}" wire:model.live="filter_program_id">
                         <option value="">{{ __('All Programs') }}</option>
                         @foreach ($programs as $program)
@@ -358,7 +360,7 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
                 </flux:select>
             </div>
 
-            <div class="grid grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <flux:input type="number" label="{{ __('Duration (Mins)') }}" wire:model="duration_minutes" />
                 <flux:input type="number" label="{{ __('Target Questions') }}" wire:model="total_questions" />
                 <div class="flex flex-col justify-end pb-2 px-2">
@@ -366,7 +368,7 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4 pt-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
                 <flux:card class="flex items-center gap-4 p-4">
                     <flux:checkbox wire:model="randomize_questions" />
                     <div>

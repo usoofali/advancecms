@@ -164,8 +164,13 @@ class GradingService
             return collect();
         }
 
+        $semester = \App\Models\Semester::find($semesterId);
+
         return Course::whereIn('id', $pendingCarryoverIds)
             ->where('institution_id', $institutionId)
+            ->when($semester, function ($query) use ($semester) {
+                return $query->where('semester', $semester->name === 'first' ? 1 : 2);
+            })
             ->get();
     }
 

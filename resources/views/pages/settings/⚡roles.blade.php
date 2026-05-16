@@ -23,7 +23,7 @@ new #[Title('Role Management')] class extends Component {
     public ?int $roleEditingId = null;
     public string $roleName = '';
     public string $roleDescription = '';
-    public array $selectedPermissions = [];
+    public $selectedPermissions = [];
     public ?int $rolePendingDeleteId = null;
     public string $rolePendingDeleteName = '';
     public ?int $viewingRoleId = null;

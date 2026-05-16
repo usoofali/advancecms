@@ -210,7 +210,7 @@ new #[Layout('layouts.app')] #[Title('Course Form')] class extends Component
             </div>
             <div class="text-center space-y-8">
                 <div class="border-t border-zinc-300 dark:border-zinc-600 pt-1.5">
-                    <p class="font-bold uppercase text-[9px] tracking-widest">{{ __('HOD Signature, Stamp & Date') }}
+                    <p class="font-bold uppercase text-[9px] tracking-widest">{{ __('Academic Secretary Signature, Stamp & Date') }}
                     </p>
                     @if ($regStatus?->status === 'closed')
                     <div

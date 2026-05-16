@@ -385,12 +385,12 @@ new #[Layout('layouts.app')] #[Title('Examination Card')] class extends Componen
                                 {{-- Watermark stamp indicator --}}
                                 <div
                                     class="absolute inset-0 flex items-center justify-center opacity-10 font-bold uppercase outline-2 outline -rotate-12 text-[10px] text-zinc-500">
-                                    HOD OFFICIAL STAMP
+                                    ACADEMIC SECRETARY OFFICIAL STAMP
                                 </div>
                             </div>
                             <span
                                 class="font-bold uppercase text-[8px] tracking-widest block text-zinc-600 print:text-black">Level
-                                Coordinator / HOD Sign & Date</span>
+                                Coordinator Sign & Date</span>
                         </div>
                     </div>
                 </div>

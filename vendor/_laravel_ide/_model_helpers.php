@@ -7618,12 +7618,14 @@ namespace App\Models {
      *
      * @property \Illuminate\Support\Carbon|null $updated_at
      * @property \Illuminate\Support\Carbon|null $created_at
+     * @property string|null $description
      * @property string $permission_name
      * @property int $permission_id
      * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Role> $roles
      * @property-read int|null $roles_count
      * @method static \Illuminate\Database\Eloquent\Builder<Permission>|Permission wherePermissionId($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Permission>|Permission wherePermissionName($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Permission>|Permission whereDescription($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Permission>|Permission whereCreatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Permission>|Permission whereUpdatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Permission>|Permission newModelQuery()
@@ -10428,6 +10430,7 @@ namespace App\Models {
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student newModelQuery()
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student newQuery()
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student query()
+     * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student atLevel(string|int $level, \App\Models\AcademicSession $session) {@see App\Models\Student::scopeAtLevel()}
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student select(mixed $columns)
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student selectSub(\Closure|\Illuminate\Database\Query\Builder|\Illuminate\Database\Eloquent\Builder<mixed>|string $query, string $as)
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student selectExpression(\Illuminate\Contracts\Database\Query\Expression|string $expression, string $as)

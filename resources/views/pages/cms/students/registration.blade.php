@@ -14,7 +14,6 @@ use Livewire\Component;
 new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Component {
     public int|string $student_id = '';
     public int|string $session_id = '';
-    public int|string $semester_id = '';
     public string $student_search = '';
     public array $selected_courses = [];
     public array $courses_to_drop = [];
@@ -31,7 +30,40 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
 
     public function updatedSessionId(): void
     {
-        $this->semester_id = '';
+        $this->selected_courses = [];
+        $this->syncCarryovers();
+    }
+
+    public function updatedStudentId(): void
+    {
+        $this->selected_courses = [];
+        $this->syncCarryovers();
+    }
+
+    protected function syncCarryovers(): void
+    {
+        if ($this->student_id && $this->session_id && $this->session_id !== 'null') {
+            $student = Student::find($this->student_id);
+            $semesters = Semester::where('academic_session_id', $this->session_id)->get();
+            
+            $allCarryoverIds = [];
+            foreach ($semesters as $sem) {
+                $carryovers = app(GradingService::class)->getCarryoverCourses(
+                    $student,
+                    (int) $this->institution_id,
+                    (int) $this->session_id,
+                    (int) $sem->id
+                );
+                $allCarryoverIds = array_merge($allCarryoverIds, $carryovers->pluck('id')->toArray());
+            }
+
+            $carryoverIds = collect($allCarryoverIds)->unique()->map(fn($id) => (string) $id)->toArray();
+            
+            $this->selected_courses = collect($this->selected_courses)
+                ->merge($carryoverIds)
+                ->unique()
+                ->toArray();
+        }
     }
 
     public function register(): void
@@ -41,34 +73,26 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
         $this->validate([
             'student_id'       => ['required', 'exists:students,id'],
             'session_id'       => ['required', 'exists:academic_sessions,id'],
-            'semester_id'      => ['required', 'exists:semesters,id'],
             'selected_courses' => ['required', 'array', 'min:1'],
         ]);
 
-        // Check if registration is locked
-        $isClosed = false;
-        if ($this->session_id && $this->semester_id) {
-            $regStatus = RegistrationStatus::where('student_id', $this->student_id)
-                ->where('academic_session_id', $this->session_id)
-                ->where('semester_id', $this->semester_id)
-                ->first();
-            $isClosed = $regStatus && $regStatus->isClosed();
-        }
-
-        if ($isClosed) {
-            $this->addError('selected_courses', 'Registration is closed for this student/semester.');
-            return;
-        }
+        // Admin view: We don't block registration even if closed, but we keep the status for awareness
 
         // Verify all mandatory carryover courses are included
         $student = Student::find($this->student_id);
-        $carryoverCourses = app(GradingService::class)->getCarryoverCourses(
-            $student,
-            (int) $this->institution_id,
-            (int) $this->session_id,
-            (int) $this->semester_id
-        );
-        $missingCarryovers = $carryoverCourses->whereNotIn('id', $this->selected_courses);
+        $semesters = Semester::where('academic_session_id', $this->session_id)->get();
+        
+        $allCarryovers = collect();
+        foreach ($semesters as $sem) {
+            $semCarryovers = app(GradingService::class)->getCarryoverCourses(
+                $student,
+                (int) $this->institution_id,
+                (int) $this->session_id,
+                (int) $sem->id
+            );
+            $allCarryovers = $allCarryovers->merge($semCarryovers);
+        }
+        $missingCarryovers = $allCarryovers->whereNotIn('id', $this->selected_courses);
 
         if ($missingCarryovers->isNotEmpty()) {
             $this->addError('selected_courses', 'You must include all mandatory carryover courses: ' .
@@ -77,17 +101,25 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
             return;
         }
 
-        $carryoverIds = $carryoverCourses->pluck('id')->toArray();
+        $carryoverIds = $allCarryovers->pluck('id')->toArray();
         $newlyRegistered = 0;
         $alreadyRegistered = 0;
 
-        foreach ($this->selected_courses as $courseId) {
+        $courses = Course::whereIn('id', $this->selected_courses)->get();
+
+        foreach ($courses as $course) {
+            $targetSem = Semester::where('academic_session_id', $this->session_id)
+                ->where('name', $course->semester == 1 ? 'first' : 'second')
+                ->first();
+
+            if (!$targetSem) continue;
+
             $exists = CourseRegistration::query()
                 ->where('institution_id', $this->institution_id)
                 ->where('student_id', $this->student_id)
-                ->where('course_id', $courseId)
+                ->where('course_id', $course->id)
                 ->where('academic_session_id', $this->session_id)
-                ->where('semester_id', $this->semester_id)
+                ->where('semester_id', $targetSem->id)
                 ->exists();
 
             if ($exists) {
@@ -96,17 +128,18 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
                 CourseRegistration::create([
                     'institution_id'      => $this->institution_id,
                     'student_id'          => $this->student_id,
-                    'course_id'           => $courseId,
+                    'course_id'           => $course->id,
                     'academic_session_id' => $this->session_id,
-                    'semester_id'         => $this->semester_id,
+                    'semester_id'         => $targetSem->id,
                     'status'              => 'registered',
-                    'is_carryover'        => in_array($courseId, $carryoverIds),
+                    'is_carryover'        => in_array($course->id, $carryoverIds),
                 ]);
                 $newlyRegistered++;
             }
         }
 
         $this->reset(['selected_courses']);
+        $this->syncCarryovers();
 
         if ($newlyRegistered > 0) {
             $this->dispatch('notify', [
@@ -130,34 +163,20 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
         $this->validate([
             'student_id'      => ['required', 'exists:students,id'],
             'session_id'      => ['required', 'exists:academic_sessions,id'],
-            'semester_id'     => ['required', 'exists:semesters,id'],
             'courses_to_drop' => ['required', 'array', 'min:1'],
         ]);
 
-        // Check if registration is locked
-        $isClosed = false;
-        if ($this->session_id && $this->semester_id) {
-            $regStatus = RegistrationStatus::where('student_id', $this->student_id)
-                ->where('academic_session_id', $this->session_id)
-                ->where('semester_id', $this->semester_id)
-                ->first();
-            $isClosed = $regStatus && $regStatus->isClosed();
-        }
-
-        if ($isClosed) {
-            $this->addError('courses_to_drop', 'Registration is closed for this student/semester.');
-            return;
-        }
+        // Admin view: We don't block dropping even if closed
 
         $dropped = CourseRegistration::query()
             ->where('institution_id', $this->institution_id)
             ->where('student_id', $this->student_id)
             ->where('academic_session_id', $this->session_id)
-            ->where('semester_id', $this->semester_id)
             ->whereIn('course_id', $this->courses_to_drop)
             ->delete();
 
         $this->reset(['courses_to_drop']);
+        $this->syncCarryovers();
 
         if ($dropped > 0) {
             $this->dispatch('notify', [
@@ -175,43 +194,48 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
         $carryoverCourses = collect();
         $currentLevel = null;
 
-        if ($student && $this->semester_id) {
+        if ($student && $this->session_id && $this->session_id !== 'null') {
             $session = AcademicSession::find($this->session_id);
-            $semester = Semester::find($this->semester_id);
-
             $currentLevel = $student->currentLevel($session);
+            $semesters = Semester::where('academic_session_id', $this->session_id)->get();
 
-            $allLevelCourses = Course::query()
-                ->where('institution_id', $this->institution_id)
-                ->where('program_id', $student->program_id)
-                ->where('level', $currentLevel)
-                ->where('semester', $semester->name === 'first' ? 1 : 2)
-                ->get();
+            foreach ($semesters as $semester) {
+                $semName = $semester->name === 'first' ? '1st' : '2nd';
+                
+                $allLevelCourses = Course::query()
+                    ->where('institution_id', $this->institution_id)
+                    ->where('program_id', $student->program_id)
+                    ->where('level', $currentLevel)
+                    ->where('semester', $semester->name === 'first' ? 1 : 2)
+                    ->get();
 
-            $registeredCourseIds = CourseRegistration::query()
-                ->where('institution_id', $this->institution_id)
-                ->where('student_id', $this->student_id)
-                ->where('academic_session_id', $this->session_id)
-                ->where('semester_id', $this->semester_id)
-                ->pluck('course_id')
-                ->toArray();
+                $registeredCourseIds = CourseRegistration::query()
+                    ->where('institution_id', $this->institution_id)
+                    ->where('student_id', $this->student_id)
+                    ->where('academic_session_id', $this->session_id)
+                    ->where('semester_id', $semester->id)
+                    ->pluck('course_id')
+                    ->toArray();
 
-            // Detect mandatory carryover courses not yet registered
-            $carryoverCourses = app(GradingService::class)->getCarryoverCourses(
-                $student,
-                (int) $this->institution_id,
-                (int) $this->session_id,
-                (int) $this->semester_id
-            );
+                $semCarryovers = app(GradingService::class)->getCarryoverCourses(
+                    $student,
+                    (int) $this->institution_id,
+                    (int) $this->session_id,
+                    (int) $semester->id
+                );
 
-            $carryoverIds = $carryoverCourses->pluck('id');
+                $carryoverIds = $semCarryovers->pluck('id');
 
-            // Available = level courses excluding registered and carryovers
-            $availableCourses = $allLevelCourses
-                ->whereNotIn('id', $registeredCourseIds)
-                ->whereNotIn('id', $carryoverIds->all());
-
-            $registeredCourses = $allLevelCourses->whereIn('id', $registeredCourseIds);
+                $carryoverCourses = $carryoverCourses->merge($semCarryovers->map(fn($c) => array_merge($c->toArray(), ['semester_name' => $semName])));
+                
+                $available = $allLevelCourses
+                    ->whereNotIn('id', $registeredCourseIds)
+                    ->whereNotIn('id', $carryoverIds->all());
+                
+                $availableCourses = $availableCourses->merge($available->map(fn($c) => array_merge($c->toArray(), ['semester_name' => $semName])));
+                
+                $registeredCourses = $registeredCourses->merge($allLevelCourses->whereIn('id', $registeredCourseIds)->map(fn($c) => array_merge($c->toArray(), ['semester_name' => $semName])));
+            }
         }
 
         return view('pages.cms.students.registration', [
@@ -230,16 +254,15 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
                 ->orderBy('last_name')
                 ->limit(50)
                 ->get(),
-            'sessions'          => AcademicSession::query()->where('status', 'active')->get(),
+            'sessions'          => AcademicSession::query()->orderByDesc('name')->get(),
             'semesters'         => $this->session_id ? Semester::where('academic_session_id', $this->session_id)->get() : [],
             'carryoverCourses'  => $carryoverCourses,
             'availableCourses'  => $availableCourses,
             'registeredCourses' => $registeredCourses,
             'currentLevel'      => $currentLevel,
-            'isClosed'          => ($this->student_id && $this->session_id && $this->semester_id)
+            'isClosed'          => ($this->student_id && $this->session_id && $this->session_id !== 'null')
                                     ? RegistrationStatus::where('student_id', $this->student_id)
                                         ->where('academic_session_id', $this->session_id)
-                                        ->where('semester_id', $this->semester_id)
                                         ->where('status', 'closed')
                                         ->exists()
                                     : false,
@@ -289,24 +312,16 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
                 <flux:select.option :value="$session->id">{{ $session->name }}</flux:select.option>
                 @endforeach
             </flux:select>
-
-            <flux:select wire:model.live="semester_id" :label="__('Semester')" required :disabled="!$session_id">
-                <flux:select.option value="null">{{ __('Select semester...') }}</flux:select.option>
-                @foreach ($semesters as $semester)
-                <flux:select.option :value="$semester->id">{{ ucfirst($semester->name) }}</flux:select.option>
-                @endforeach
-            </flux:select>
         </div>
 
         @if ($isClosed)
         <div class="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3 text-red-700">
             <flux:icon.lock-closed class="size-5" />
-            <div class="text-sm font-semibold uppercase tracking-tight">{{ __('Registration is closed and verified for
-                this student.') }}</div>
+            <div class="text-sm font-semibold uppercase tracking-tight">{{ __('Student registration is locked/verified, but you can still make administrative changes.') }}</div>
         </div>
         @endif
 
-        @if ($student_id && $semester_id)
+        @if ($student_id && $session_id && $session_id !== 'null')
         <div class="space-y-8">
             <!-- Carryover Courses Section -->
             @if ($carryoverCourses->isNotEmpty())
@@ -322,7 +337,7 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     @foreach ($carryoverCourses as $course)
-                    <label
+                    <label wire:key="carryover-{{ $course['id'] }}"
                         class="flex items-center p-4 border rounded-lg bg-red-50/30 dark:bg-red-900/10 border-red-200 dark:border-red-900/30">
                         <div
                             class="flex items-center justify-center w-5 h-5 me-3 rounded border border-red-400 bg-red-500 text-white">
@@ -331,18 +346,13 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
                         <input type="checkbox" wire:model="selected_courses" value="{{ $course->id }}" class="hidden"
                             checked disabled />
                         <div>
-                            <div class="font-mono text-sm font-bold text-red-700 dark:text-red-400">{{
-                                $course->course_code }}</div>
-                            <div class="text-xs text-red-600/80 dark:text-red-500/80">{{ $course->title }} ({{
-                                $course->credit_unit }} units)</div>
+                            <div class="font-mono text-sm font-bold text-red-700 dark:text-red-400 uppercase">{{
+                                $course['course_code'] }}</div>
+                            <div class="text-xs text-red-600/80 dark:text-red-500/80">{{ $course['title'] }} ({{
+                                $course['credit_unit'] }} units)</div>
+                            <div class="text-[10px] mt-1 font-bold uppercase text-red-500/70 italic">{{ $course['semester_name'] }} Semester</div>
                         </div>
                     </label>
-                    {{-- We need to ensure these are in the selected_courses array on component load if not already --}}
-                    @php
-                    if(!in_array($course->id, $selected_courses)) {
-                    $selected_courses[] = $course->id;
-                    }
-                    @endphp
                     @endforeach
                 </div>
             </div>
@@ -361,13 +371,13 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     @forelse ($availableCourses as $course)
-                    <label
+                    <label wire:key="available-{{ $course['id'] }}"
                         class="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors border-zinc-200 dark:border-zinc-700">
-                        <flux:checkbox wire:model="selected_courses" :value="$course->id" class="me-3" />
+                        <flux:checkbox wire:model.live="selected_courses" :value="$course['id']" class="me-3" />
                         <div>
-                            <div class="font-medium font-mono text-sm uppercase">{{ $course->course_code }}</div>
-                            <div class="text-sm">{{ $course->title }}</div>
-                            <div class="text-xs text-zinc-500">{{ $course->credit_unit }} {{ __('Units') }}</div>
+                            <div class="font-medium font-mono text-sm uppercase">{{ $course['course_code'] }}</div>
+                            <div class="text-sm">{{ $course['title'] }}</div>
+                            <div class="text-xs text-zinc-500">{{ $course['credit_unit'] }} {{ __('Units') }} ({{ $course['semester_name'] }})</div>
                         </div>
                     </label>
                     @empty
@@ -379,7 +389,7 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
 
                 @if (count($availableCourses) > 0)
                 <div class="flex flex-col items-end pt-2">
-                    <flux:button variant="primary" wire:click="register" :disabled="$isClosed">
+                    <flux:button variant="primary" wire:click="register">
                         {{ __('Register Selected Courses') }}
                     </flux:button>
                     <flux:error name="selected_courses" class="mt-2" />
@@ -402,15 +412,15 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
 
                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     @forelse ($registeredCourses as $course)
-                    <label
+                    <label wire:key="registered-{{ $course['id'] }}"
                         class="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors border-zinc-200 dark:border-zinc-700">
-                        <flux:checkbox wire:model="courses_to_drop" :value="$course->id" class="me-3" />
+                        <flux:checkbox wire:model.live="courses_to_drop" :value="$course['id']" class="me-3" />
                         <div>
-                            <div class="font-medium font-mono text-sm uppercase">{{ $course->course_code }}</div>
-                            <div class="text-sm">{{ $course->title }}</div>
+                            <div class="font-medium font-mono text-sm uppercase">{{ $course['course_code'] }}</div>
+                            <div class="text-sm">{{ $course['title'] }}</div>
                             <div class="flex gap-2 items-center mt-1">
                                 <flux:badge size="sm" color="green">{{ __('Registered') }}</flux:badge>
-                                <span class="text-xs text-zinc-500">{{ $course->credit_unit }} {{ __('Units') }}</span>
+                                <span class="text-xs text-zinc-500">{{ $course['credit_unit'] }} {{ __('Units') }} ({{ $course['semester_name'] }})</span>
                             </div>
                         </div>
                     </label>
@@ -423,7 +433,7 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
 
                 @if (count($registeredCourses) > 0)
                 <div class="flex flex-col items-end pt-2">
-                    <flux:button variant="danger" wire:click="drop" :disabled="$isClosed">
+                    <flux:button variant="danger" wire:click="drop">
                         {{ __('Drop Selected Courses') }}
                     </flux:button>
                     <flux:error name="courses_to_drop" class="mt-2" />

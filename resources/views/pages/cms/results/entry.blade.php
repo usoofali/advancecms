@@ -36,6 +36,19 @@ use App\Services\GradingService;
         }
     }
 
+    public function updatedSessionId(): void
+    {
+        $this->semester_id = '';
+        $this->course_id = '';
+        $this->loadScores();
+    }
+
+    public function updatedSemesterId(): void
+    {
+        $this->course_id = '';
+        $this->loadScores();
+    }
+
     public function updatedCourseId(): void
     {
         $this->loadScores();
@@ -48,21 +61,63 @@ use App\Services\GradingService;
             return;
         }
 
-        $registrations = CourseRegistration::where('course_id', $this->course_id)
+        $studentIds = CourseRegistration::where('course_id', $this->course_id)
             ->where('semester_id', $this->semester_id)
-            ->get();
+            ->pluck('student_id');
 
-        foreach ($registrations as $reg) {
-            $result = Result::where('student_id', $reg->student_id)
-                ->where('course_id', $this->course_id)
-                ->where('semester_id', $this->semester_id)
-                ->first();
+        $existingResults = Result::whereIn('student_id', $studentIds)
+            ->where('course_id', $this->course_id)
+            ->where('academic_session_id', $this->session_id)
+            ->where('semester_id', $this->semester_id)
+            ->get()
+            ->keyBy('student_id');
 
-            $this->scores[$reg->student_id] = [
-                'ca' => $result?->ca_score ?? 0,
-                'exam' => $result?->exam_score ?? 0,
+        $this->scores = [];
+        foreach ($studentIds as $studentId) {
+            $result = $existingResults->get($studentId);
+            $this->scores[$studentId] = [
+                'ca' => (float) ($result?->ca_score ?? 0),
+                'exam' => (float) ($result?->exam_score ?? 0),
             ];
         }
+    }
+
+    public function saveSingleResult(int|string $studentId, GradingService $gradingService): void
+    {
+        if (!isset($this->scores[$studentId])) {
+            return;
+        }
+
+        $this->validate([
+            "scores.{$studentId}.ca" => ['nullable', 'numeric', 'min:0', 'max:100'],
+            "scores.{$studentId}.exam" => ['nullable', 'numeric', 'min:0', 'max:100'],
+        ]);
+
+        $course = Course::find($this->course_id);
+        if (!$course) {
+            return;
+        }
+
+        // Ensure we save to the correct semester ID based on the course mapping within this session
+        $targetSem = Semester::where('academic_session_id', $this->session_id)
+            ->where('name', $course->semester == 1 ? 'first' : 'second')
+            ->first();
+
+        $result = Result::updateOrCreate(
+            [
+                'student_id'          => $studentId,
+                'course_id'           => $this->course_id,
+                'semester_id'         => $targetSem?->id ?? $this->semester_id,
+            ],
+            [
+                'institution_id'      => $this->institution_id ?: auth()->user()->institution_id,
+                'academic_session_id' => $this->session_id,
+                'ca_score'   => (float) ($this->scores[$studentId]['ca'] ?: 0),
+                'exam_score' => (float) ($this->scores[$studentId]['exam'] ?: 0),
+            ]
+        );
+
+        $gradingService->grade($result);
     }
 
     public function saveResults(GradingService $gradingService): void
@@ -78,21 +133,7 @@ use App\Services\GradingService;
         ]);
 
         foreach ($this->scores as $studentId => $values) {
-            $result = Result::updateOrCreate(
-                [
-                    'student_id'          => $studentId,
-                    'course_id'           => $this->course_id,
-                    'semester_id'         => $this->semester_id,
-                ],
-                [
-                    'institution_id'      => $this->institution_id ?: null,
-                    'academic_session_id' => $this->session_id,
-                    'ca_score'   => $values['ca'],
-                    'exam_score' => $values['exam'],
-                ]
-            );
-
-            $gradingService->grade($result);
+            $this->saveSingleResult($studentId, $gradingService);
         }
 
         $this->dispatch('notify', [
@@ -184,26 +225,19 @@ use App\Services\GradingService;
 
     public function with(): array
     {
-        $activeSession = \App\Models\AcademicSession::where('status', 'active')->first();
+        $selectedSession = $this->session_id ? \App\Models\AcademicSession::find($this->session_id) : null;
         $students = collect();
 
         if ($this->course_id && $this->semester_id) {
             $students = CourseRegistration::with('student.program')
                 ->where('course_id', $this->course_id)
                 ->where('semester_id', $this->semester_id)
-                ->whereHas('student', function ($query) use ($activeSession) {
+                ->whereHas('student', function ($query) use ($selectedSession) {
                     $query->when($this->filter_program, fn($q) => $q->where('program_id', $this->filter_program))
-                        ->when($this->filter_level, function ($q) use ($activeSession) {
-                            if ($activeSession) {
-                                return $q->whereRaw("entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS UNSIGNED) - admission_year) * 100 = ?", [
-                                    $activeSession->name,
-                                    $this->filter_level
-                                ]);
-                            }
-                            return $q->where('entry_level', $this->filter_level);
-                        });
+                        ->when($this->filter_level && $selectedSession, fn($q) => $q->atLevel($this->filter_level, $selectedSession));
                 })
                 ->get()
+                ->sortBy(fn($reg) => $reg->student->matric_number)
                 ->map(fn($reg) => $reg->student);
         }
 
@@ -240,6 +274,12 @@ use App\Services\GradingService;
                               ->where('academic_session_id', $this->session_id)
                               ->where('semester_id', $this->semester_id);
                     });
+                })
+                ->when($this->semester_id, function ($q) {
+                    $semester = Semester::find($this->semester_id);
+                    if ($semester) {
+                        $q->where('semester', $semester->name === 'first' ? 1 : 2);
+                    }
                 })
                 ->orderBy('course_code')
                 ->get(),
@@ -304,7 +344,7 @@ use App\Services\GradingService;
 
             <flux:select wire:model.live="filter_level" :label="__('Level')" :disabled="!$session_id">
                 <flux:select.option value="">{{ __('All Levels') }}</flux:select.option>
-                @foreach ([100, 200, 300, 400, 500, 600] as $lvl)
+                @foreach ([100, 200, 300] as $lvl)
                 <flux:select.option :value="$lvl">{{ $lvl }}</flux:select.option>
                 @endforeach
             </flux:select>
@@ -327,7 +367,8 @@ use App\Services\GradingService;
     </flux:card>
 
     @if ($course_id && count($students) > 0)
-    <flux:card>
+    <div class="space-y-6">
+        <flux:card>
         <div
             class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
             <table class="w-full text-left border-collapse">
@@ -355,30 +396,39 @@ use App\Services\GradingService;
                             {{ $stu->matric_number }}
                         </td>
                         <td class="px-4 py-3">
-                            <flux:input type="number" step="0.5" wire:model="scores.{{ $stu->id }}.ca" size="sm"
+                            <flux:input type="number" step="0.5" wire:model.blur="scores.{{ $stu->id }}.ca" 
+                                wire:change="saveSingleResult({{ $stu->id }})" size="sm"
                                 class="w-24" />
                         </td>
                         <td class="px-4 py-3">
-                            <flux:input type="number" step="0.5" wire:model="scores.{{ $stu->id }}.exam" size="sm"
+                            <flux:input type="number" step="0.5" wire:model.blur="scores.{{ $stu->id }}.exam" 
+                                wire:change="saveSingleResult({{ $stu->id }})" size="sm"
                                 class="w-24" />
                         </td>
                         <td class="px-4 py-3">
                             <div class="font-bold text-zinc-900 dark:text-zinc-100">
-                                {{ ($scores[$stu->id]['ca'] ?? 0) + ($scores[$stu->id]['exam'] ?? 0) }}
+                                {{ (float)(($scores[$stu->id]['ca'] ?? 0) ?: 0) + (float)(($scores[$stu->id]['exam'] ?? 0) ?: 0) }}
                             </div>
                         </td>
                     </tr>
                     @endforeach
                 </tbody>
             </table>
-        </div>
+        </flux:card>
 
-        <div class="flex justify-end mt-8">
-            <flux:button variant="primary" wire:click="saveResults">
-                {{ __('Save & Grade All') }}
-            </flux:button>
+        <div class="sticky bottom-6 p-4 bg-white/90 dark:bg-zinc-900/90 backdrop-blur border border-zinc-200 dark:border-zinc-700 rounded-2xl flex items-center justify-between shadow-xl z-30">
+            <div class="flex items-center gap-2 text-xs text-zinc-500">
+                <flux:icon.check-circle class="size-4 text-green-500" />
+                {{ __('Results are auto-saved as you move between fields.') }}
+            </div>
+
+            <div class="flex items-center gap-3">
+                <flux:button variant="primary" wire:click="saveResults" icon="check">
+                    {{ __('Finalize & Grade All') }}
+                </flux:button>
+            </div>
         </div>
-    </flux:card>
+    </div>
     @elseif ($course_id)
     <div class="p-12 text-center border-2 border-dashed rounded-2xl text-zinc-500">
         {{ __('No students registered for this course in the selected semester.') }}

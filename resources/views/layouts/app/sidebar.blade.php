@@ -98,26 +98,6 @@
                         </flux:sidebar.item>
                     @endcan
 
-                    @can('roles.view')
-                        <flux:sidebar.item icon="shield-check" :href="route('settings.roles')"
-                            :current="request()->routeIs('settings.roles')" wire:navigate>
-                            {{ __('Roles & Permissions') }}
-                        </flux:sidebar.item>
-                    @endcan
-
-                    @can('system.manage_addons')
-                        <flux:sidebar.item icon="puzzle-piece" :href="route('settings.addons')"
-                            :current="request()->routeIs('settings.addons')" wire:navigate>
-                            {{ __('Addon Management') }}
-                        </flux:sidebar.item>
-                    @endcan
-
-                    @can('system.manage')
-                        <flux:sidebar.item icon="cog-6-tooth" :href="route('settings.system')"
-                            :current="request()->routeIs('settings.system')" wire:navigate>
-                            {{ __('System Config') }}
-                        </flux:sidebar.item>
-                    @endcan
                 </flux:sidebar.group>
             @endcanany
 

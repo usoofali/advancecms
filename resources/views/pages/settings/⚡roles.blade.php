@@ -14,6 +14,8 @@ new #[Title('Role Management')] class extends Component {
 
     public string $tab = 'roles';
 
+    public string $search = '';
+    
     // Role state
     public bool $showRoleEditModal = false;
     public bool $showRoleDeleteModal = false;
@@ -34,19 +36,42 @@ new #[Title('Role Management')] class extends Component {
     #[Computed]
     public function roles()
     {
-        return Role::query()->with('permissions')->orderBy('role_name')->get();
+        return Role::query()
+            ->with('permissions')
+            ->when($this->search, function($q) {
+                $q->where('role_name', 'like', "%{$this->search}%")
+                  ->orWhere('description', 'like', "%{$this->search}%");
+            })
+            ->orderBy('role_name')
+            ->get();
     }
 
     #[Computed]
     public function allPermissions()
     {
         return Permission::query()
+            ->when($this->search, function($q) {
+                $q->where('permission_name', 'like', "%{$this->search}%")
+                  ->orWhere('description', 'like', "%{$this->search}%");
+            })
             ->orderBy('permission_name')
             ->get()
             ->groupBy(function ($p) {
                 $parts = explode('.', $p->permission_name);
                 return count($parts) > 1 ? str_replace('_', ' ', $parts[0]) : 'other';
             });
+    }
+
+    public function toggleGroup(string $group): void
+    {
+        $groupPermissions = $this->allPermissions[$group]->pluck('permission_name')->toArray();
+        $allPresent = collect($groupPermissions)->every(fn($p) => in_array($p, $this->selectedPermissions));
+
+        if ($allPresent) {
+            $this->selectedPermissions = array_diff($this->selectedPermissions, $groupPermissions);
+        } else {
+            $this->selectedPermissions = array_unique(array_merge($this->selectedPermissions, $groupPermissions));
+        }
     }
 
     #[Computed]
@@ -144,113 +169,138 @@ new #[Title('Role Management')] class extends Component {
 <section class="w-full">
     @include('partials.settings-heading')
 
-    <flux:heading class="sr-only">{{ __('Role Management') }}</flux:heading>
-
     <x-pages::settings.layout :heading="__('Roles & Permissions')" :subheading="__('Manage system roles and their associated permissions.')">
-        <div class="flex items-center gap-6 border-b border-zinc-200 dark:border-zinc-800 mb-6">
-            <button wire:click="$set('tab', 'roles')" class="flex items-center gap-2 pb-3 text-sm font-medium transition-colors border-b-2 {{ $tab === 'roles' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200' }}">
-                <flux:icon.shield-check class="size-4" />
-                {{ __('Roles') }}
-            </button>
-            <button wire:click="$set('tab', 'permissions')" class="flex items-center gap-2 pb-3 text-sm font-medium transition-colors border-b-2 {{ $tab === 'permissions' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200' }}">
-                <flux:icon.key class="size-4" />
-                {{ __('Permissions') }}
-            </button>
-        </div>
-
-        @if ($tab === 'roles')
-            <div class="space-y-6">
-                @can('roles.create')
-                <div class="flex justify-end">
-                    <flux:button variant="primary" icon="plus" wire:click="openRoleCreateModal">
-                        {{ __('Create Role') }}
-                    </flux:button>
+        <div x-data="{ currentTab: @entangle('tab') }" class="w-full">
+            <div class="flex items-center justify-between mb-6 gap-4 flex-wrap border-b border-zinc-200 dark:border-zinc-800">
+                <div class="flex gap-6">
+                    <button @click="currentTab = 'roles'" :class="currentTab === 'roles' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'" class="flex items-center gap-2 pb-3 text-sm font-medium transition-colors border-b-2">
+                        <flux:icon.shield-check class="size-4" />
+                        {{ __('Roles') }}
+                    </button>
+                    <button @click="currentTab = 'permissions'" :class="currentTab === 'permissions' ? 'border-primary-500 text-primary-600 dark:text-primary-400' : 'border-transparent text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'" class="flex items-center gap-2 pb-3 text-sm font-medium transition-colors border-b-2">
+                        <flux:icon.key class="size-4" />
+                        {{ __('Permissions') }}
+                    </button>
                 </div>
-                @endcan
 
-                <div class="rounded-lg border border-zinc-200 dark:border-zinc-700 overflow-hidden shadow-sm">
-                    <table class="min-w-full divide-y divide-zinc-200 text-sm dark:divide-zinc-700">
-                        <thead class="bg-zinc-50 dark:bg-zinc-800/60">
-                            <tr>
-                                <th scope="col" class="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('Role') }}</th>
-                                <th scope="col" class="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('Permissions') }}</th>
-                                <th scope="col" class="whitespace-nowrap px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">{{ __('Actions') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
-                            @foreach ($this->roles as $role)
-                                <tr wire:key="role-row-{{ $role->role_id }}" class="bg-white dark:bg-zinc-900 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                                    <td class="whitespace-nowrap px-4 py-4 align-middle">
-                                        <div class="flex items-center gap-3">
-                                            <div class="size-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center shrink-0">
-                                                <flux:icon.shield-check class="size-4 text-indigo-500" />
-                                            </div>
-                                            <div class="flex flex-col">
+                <div class="flex items-center gap-3 grow sm:grow-0 mb-3">
+                    <flux:input wire:model.live.debounce.300ms="search" 
+                        icon="magnifying-glass" 
+                        size="sm" 
+                        placeholder="{{ __('Search...') }}"
+                        class="w-full sm:w-64"
+                    />
+                    
+                    <div x-show="currentTab === 'roles'">
+                        @can('roles.create')
+                        <flux:button variant="primary" size="sm" icon="plus" wire:click="openRoleCreateModal">
+                            <span class="hidden sm:inline">{{ __('Create') }}</span>
+                        </flux:button>
+                        @endcan
+                    </div>
+                </div>
+            </div>
+
+            <div x-show="currentTab === 'roles'" class="space-y-6">
+                <div class="rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-900 shadow-sm">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-zinc-50/50 dark:bg-zinc-800/50 border-b border-zinc-200 dark:border-zinc-800">
+                                    <th class="px-4 py-3 text-xs font-bold uppercase tracking-widest text-zinc-500">{{ __('Role') }}</th>
+                                    <th class="px-4 py-3 text-xs font-bold uppercase tracking-widest text-zinc-500 hidden sm:table-cell">{{ __('Description') }}</th>
+                                    <th class="px-4 py-3 text-xs font-bold uppercase tracking-widest text-zinc-500 text-center">{{ __('Permissions') }}</th>
+                                    <th class="px-4 py-3 text-xs font-bold uppercase tracking-widest text-zinc-500"></th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                                @forelse ($this->roles as $role)
+                                    <tr wire:key="role-row-{{ $role->role_id }}" class="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors">
+                                        <td class="px-4 py-4">
+                                            <div class="flex items-center gap-3">
+                                                <div class="size-8 rounded-lg bg-primary-50 dark:bg-primary-900/20 flex items-center justify-center shrink-0">
+                                                    <flux:icon.shield-check class="size-4 text-primary-500" />
+                                                </div>
                                                 <span class="font-semibold text-zinc-900 dark:text-zinc-100 capitalize">
                                                     {{ str_replace('_', ' ', $role->role_name) }}
                                                 </span>
-                                                @if($role->description)
-                                                    <span class="text-xs text-zinc-500">{{ $role->description }}</span>
-                                                @endif
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td class="px-4 py-4 align-middle">
-                                        @php $count = $role->permissions->count(); @endphp
-                                        @if ($count > 0)
-                                            <button type="button"
-                                                wire:click="openRoleViewModal({{ $role->role_id }})"
-                                                class="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200 transition-colors group">
-                                                <flux:icon.key class="size-3.5 opacity-70 group-hover:opacity-100" />
-                                                {{ $count }} {{ Str::plural('permission', $count) }}
+                                        </td>
+
+                                        <td class="px-4 py-4 hidden sm:table-cell">
+                                            <span class="text-xs text-zinc-500">{{ $role->description ?: __('No description') }}</span>
+                                        </td>
+
+                                        <td class="px-4 py-4 text-center">
+                                            @php $count = $role->permissions->count(); @endphp
+                                            <button type="button" wire:click="openRoleViewModal({{ $role->role_id }})" class="hover:opacity-80 transition-opacity">
+                                                <flux:badge size="sm" :color="$count > 0 ? 'primary' : 'zinc'" inset="top bottom">
+                                                    {{ $count }}
+                                                </flux:badge>
                                             </button>
-                                        @else
-                                            <span class="text-zinc-400 italic text-xs">{{ __('No permissions') }}</span>
-                                        @endif
-                                    </td>
-                                    <td class="whitespace-nowrap px-4 py-4 text-end align-middle">
-                                        <div class="flex items-center justify-end gap-1">
-                                            <flux:button size="sm" variant="ghost" icon="eye" wire:click="openRoleViewModal({{ $role->role_id }})" :tooltip="__('View Permissions')" />
-                                            @can('roles.edit')
-                                            <flux:button size="sm" variant="ghost" icon="pencil-square" wire:click="openRoleEditModal({{ $role->role_id }})" :tooltip="__('Edit Role')" />
-                                            @endcan
-                                            @if($role->role_name !== 'Super Admin')
-                                                @can('roles.delete')
-                                                <flux:button size="sm" variant="ghost" icon="trash" color="red" wire:click="openRoleDeleteModal({{ $role->role_id }})" :tooltip="__('Delete Role')" />
-                                                @endcan
-                                            @endif
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+                                        </td>
+
+                                        <td class="px-4 py-4 text-right">
+                                            <flux:dropdown align="end">
+                                                <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" />
+
+                                                <flux:menu>
+                                                    <flux:menu.item icon="eye" wire:click="openRoleViewModal({{ $role->role_id }})">{{ __('View Details') }}</flux:menu.item>
+                                                    
+                                                    @can('roles.edit')
+                                                    <flux:menu.item icon="pencil-square" wire:click="openRoleEditModal({{ $role->role_id }})">{{ __('Edit Role') }}</flux:menu.item>
+                                                    @endcan
+
+                                                    @if($role->role_name !== 'Super Admin')
+                                                        @can('roles.delete')
+                                                        <flux:menu.item icon="trash" variant="danger" wire:click="openRoleDeleteModal({{ $role->role_id }})">{{ __('Delete Role') }}</flux:menu.item>
+                                                        @endcan
+                                                    @endif
+                                                </flux:menu>
+                                            </flux:dropdown>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="4" class="py-12 text-center text-zinc-500">
+                                            {{ __('No roles found.') }}
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        @elseif ($tab === 'permissions')
-            <div class="space-y-6">
-                <div class="space-y-8">
-                    @foreach ($this->allPermissions as $group => $permissions)
-                        <div class="space-y-3">
-                            <flux:heading size="sm" class="uppercase tracking-wider text-zinc-500 font-bold opacity-75">
+
+            <div x-show="currentTab === 'permissions'" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                @forelse ($this->allPermissions as $group => $permissions)
+                    <flux:card class="space-y-4">
+                        <div class="flex items-center justify-between">
+                            <flux:heading size="sm" class="uppercase tracking-wider text-primary-500 font-bold">
                                 {{ $group }}
                             </flux:heading>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                                @foreach ($permissions as $permission)
-                                    <flux:tooltip :content="$permission->description ?? __('No description')">
-                                        <div class="group flex items-center justify-between p-3 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-sm">
-                                            <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                                                {{ Str::after($permission->permission_name, '.') }}
-                                            </span>
-                                        </div>
-                                    </flux:tooltip>
-                                @endforeach
-                            </div>
+                            <flux:badge size="sm" inset="top bottom">{{ $permissions->count() }}</flux:badge>
                         </div>
-                    @endforeach
-                </div>
+
+                        <div class="space-y-1">
+                            @foreach ($permissions as $p)
+                                <div class="flex items-center gap-2 py-1 border-b border-zinc-100 dark:border-zinc-800 last:border-0 group">
+                                    <flux:icon.key class="size-3 text-zinc-400 group-hover:text-primary-500 transition-colors" />
+                                    <span class="text-xs text-zinc-600 dark:text-zinc-400">{{ Str::after($p->permission_name, '.') }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </flux:card>
+                @empty
+                    <div class="col-span-full py-20 text-center">
+                        <flux:icon.key class="size-12 mx-auto mb-4 text-zinc-300" />
+                        <flux:heading size="lg">{{ __('No permissions found') }}</flux:heading>
+                        <flux:subheading>{{ __('Adjust your search to see more results.') }}</flux:subheading>
+                    </div>
+                @endforelse
             </div>
-        @endif
+        </div>
     </x-pages::settings.layout>
 
     {{-- View Role Modal --}}
@@ -325,32 +375,43 @@ new #[Title('Role Management')] class extends Component {
             </div>
 
             <form wire:submit="saveRole" class="space-y-6">
-                <flux:input wire:model="roleName" :label="__('Role Name')" placeholder="{{ __('e.g. Manager') }}" required />
-                <flux:input wire:model="roleDescription" :label="__('Description')" placeholder="{{ __('Brief description of the role') }}" />
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <flux:input wire:model="roleName" :label="__('Role Name')" placeholder="{{ __('e.g. Manager') }}" required />
+                    <flux:input wire:model="roleDescription" :label="__('Description')" placeholder="{{ __('Brief description') }}" />
+                </div>
 
-                <div class="space-y-6">
-                    @foreach ($this->allPermissions as $group => $permissions)
-                        <div class="space-y-3">
-                            <flux:heading size="sm" class="uppercase tracking-wider text-zinc-500 font-bold opacity-75">
-                                {{ $group }}
-                            </flux:heading>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                                @foreach ($permissions as $permission)
-                                    <flux:tooltip :content="$permission->description ?? __('No description')">
-                                        <label class="group flex items-center gap-2 cursor-pointer p-2 rounded-lg border border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors w-full">
-                                            <input type="checkbox" wire:model="selectedPermissions" value="{{ $permission->permission_name }}" class="rounded border-zinc-300 text-primary-600 shadow-sm focus:ring-primary-500 dark:border-zinc-700 dark:bg-zinc-900 cursor-pointer">
-                                            <span class="text-xs text-zinc-700 dark:text-zinc-300 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <flux:heading size="sm">{{ __('Permissions') }}</flux:heading>
+                        <flux:text size="xs" class="text-zinc-500">{{ __('Grouped by module') }}</flux:text>
+                    </div>
+
+                    <div class="space-y-4 max-h-[50vh] overflow-y-auto pr-2 -mr-2">
+                        @foreach ($this->allPermissions as $group => $permissions)
+                            <div class="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 space-y-4">
+                                <div class="flex items-center justify-between">
+                                    <flux:heading size="sm" class="uppercase tracking-wider text-primary-500 font-bold">
+                                        {{ $group }}
+                                    </flux:heading>
+                                    
+                                    <flux:button variant="ghost" size="xs" wire:click="toggleGroup('{{ $group }}')">
+                                        {{ __('Select All') }}
+                                    </flux:button>
+                                </div>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                                    @foreach ($permissions as $permission)
+                                        <label class="group flex items-center gap-2 cursor-pointer p-2 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                                            <flux:checkbox wire:model="selectedPermissions" :value="$permission->permission_name" />
+                                            <span class="text-[11px] font-medium text-zinc-600 dark:text-zinc-400 group-hover:text-primary-500 transition-colors truncate">
                                                 {{ Str::after($permission->permission_name, '.') }}
                                             </span>
                                         </label>
-                                    </flux:tooltip>
-                                @endforeach
+                                    @endforeach
+                                </div>
                             </div>
-                            @if (!$loop->last)
-                                <flux:separator class="mt-4" />
-                            @endif
-                        </div>
-                    @endforeach
+                        @endforeach
+                    </div>
                 </div>
 
                 <div class="flex items-center justify-end gap-3 border-t border-zinc-100 pt-6 dark:border-zinc-800">

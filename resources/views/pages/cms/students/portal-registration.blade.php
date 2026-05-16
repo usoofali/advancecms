@@ -14,14 +14,12 @@ use Livewire\Component;
 new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Component {
     public int|string $student_id = '';
     public int|string $session_id = '';
-    public int|string $semester_id = '';
     public array $selected_courses = [];
-    public array $courses_to_drop = [];
     public int|string $institution_id = '';
 
     public function mount(): void
     {
-        Gate::authorize('registrations.create');
+        Gate::authorize('registrations.view_personal');
 
         $user = auth()->user();
         if ($user->institution_id) {
@@ -32,49 +30,83 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
         $student = Student::where('email', $user->email)->first();
         if ($student) {
             $this->student_id = $student->id;
+            $this->syncCarryovers();
+        }
+    }
+
+    protected function syncCarryovers(): void
+    {
+        if ($this->student_id && $this->session_id && $this->session_id !== 'null') {
+            $student = Student::find($this->student_id);
+            $semesters = Semester::where('academic_session_id', $this->session_id)->get();
+            
+            $allCarryoverIds = [];
+            foreach ($semesters as $sem) {
+                $carryovers = app(GradingService::class)->getCarryoverCourses(
+                    $student,
+                    (int) $this->institution_id,
+                    (int) $this->session_id,
+                    (int) $sem->id
+                );
+                $allCarryoverIds = array_merge($allCarryoverIds, $carryovers->pluck('id')->toArray());
+            }
+
+            $carryoverIds = collect($allCarryoverIds)->unique()->map(fn($id) => (string) $id)->toArray();
+            
+            // Merge carryovers into existing selection, avoiding duplicates
+            $this->selected_courses = collect($this->selected_courses)
+                ->merge($carryoverIds)
+                ->unique()
+                ->toArray();
         }
     }
 
     public function updatedSessionId(): void
     {
-        $this->semester_id = '';
+        $this->selected_courses = [];
+        $this->syncCarryovers();
     }
 
     public function register(): void
     {
-        Gate::authorize('registrations.create');
+        Gate::authorize('registrations.view_personal');
 
         $this->validate([
             'student_id'       => ['required', 'exists:students,id'],
             'session_id'       => ['required', 'exists:academic_sessions,id'],
-            'semester_id'      => ['required', 'exists:semesters,id'],
             'selected_courses' => ['required', 'array', 'min:1'],
         ]);
 
-        // Check if registration is locked
+        // Check if registration is locked for the session
         $isClosed = false;
-        if ($this->session_id && $this->semester_id) {
-            $regStatus = RegistrationStatus::where('student_id', $this->student_id)
+        if ($this->session_id) {
+            $isClosed = RegistrationStatus::where('student_id', $this->student_id)
                 ->where('academic_session_id', $this->session_id)
-                ->where('semester_id', $this->semester_id)
-                ->first();
-            $isClosed = $regStatus && $regStatus->isClosed();
+                ->where('status', 'closed')
+                ->exists();
         }
 
         if ($isClosed) {
-            $this->addError('selected_courses', 'Registration is closed for this semester. Please contact your HOD.');
+            $this->addError('selected_courses', 'Registration is closed for this academic session. Please contact your HOD.');
             return;
         }
 
-        // Verify all mandatory carryover courses are included
         $student = Student::find($this->student_id);
-        $carryoverCourses = app(GradingService::class)->getCarryoverCourses(
-            $student,
-            (int) $this->institution_id,
-            (int) $this->session_id,
-            (int) $this->semester_id
-        );
-        $missingCarryovers = $carryoverCourses->whereNotIn('id', $this->selected_courses);
+        $semesters = Semester::where('academic_session_id', $this->session_id)->get();
+        
+        $allCarryovers = collect();
+        foreach ($semesters as $sem) {
+            $semCarryovers = app(GradingService::class)->getCarryoverCourses(
+                $student,
+                (int) $this->institution_id,
+                (int) $this->session_id,
+                (int) $sem->id
+            );
+            $allCarryovers = $allCarryovers->merge($semCarryovers);
+        }
+        
+        $selectedIds = collect($this->selected_courses)->map(fn($id) => (int) $id)->toArray();
+        $missingCarryovers = $allCarryovers->whereNotIn('id', $selectedIds);
 
         if ($missingCarryovers->isNotEmpty()) {
             $this->addError('selected_courses', 'You must include all mandatory carryover courses: ' .
@@ -83,17 +115,25 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
             return;
         }
 
-        $carryoverIds = $carryoverCourses->pluck('id')->toArray();
+        $carryoverIds = $allCarryovers->pluck('id')->toArray();
         $newlyRegistered = 0;
         $alreadyRegistered = 0;
 
-        foreach ($this->selected_courses as $courseId) {
+        $courses = Course::whereIn('id', $this->selected_courses)->get();
+
+        foreach ($courses as $course) {
+            $targetSem = Semester::where('academic_session_id', $this->session_id)
+                ->where('name', $course->semester == 1 ? 'first' : 'second')
+                ->first();
+
+            if (!$targetSem) continue;
+
             $exists = CourseRegistration::query()
                 ->where('institution_id', $this->institution_id)
                 ->where('student_id', $this->student_id)
-                ->where('course_id', $courseId)
+                ->where('course_id', $course->id)
                 ->where('academic_session_id', $this->session_id)
-                ->where('semester_id', $this->semester_id)
+                ->where('semester_id', $targetSem->id)
                 ->exists();
 
             if ($exists) {
@@ -102,17 +142,18 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
                 CourseRegistration::create([
                     'institution_id'      => $this->institution_id,
                     'student_id'          => $this->student_id,
-                    'course_id'           => $courseId,
+                    'course_id'           => $course->id,
                     'academic_session_id' => $this->session_id,
-                    'semester_id'         => $this->semester_id,
+                    'semester_id'         => $targetSem->id,
                     'status'              => 'registered',
-                    'is_carryover'        => in_array($courseId, $carryoverIds),
+                    'is_carryover'        => in_array($course->id, $carryoverIds),
                 ]);
                 $newlyRegistered++;
             }
         }
 
         $this->reset(['selected_courses']);
+        $this->syncCarryovers();
 
         if ($newlyRegistered > 0) {
             $this->dispatch('notify', [
@@ -129,46 +170,38 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
         }
     }
 
-    public function drop(): void
+    public function drop(int|string $registrationId): void
     {
-        Gate::authorize('registrations.delete');
+        Gate::authorize('registrations.view_personal');
 
-        $this->validate([
-            'student_id'      => ['required', 'exists:students,id'],
-            'session_id'      => ['required', 'exists:academic_sessions,id'],
-            'semester_id'     => ['required', 'exists:semesters,id'],
-            'courses_to_drop' => ['required', 'array', 'min:1'],
-        ]);
-
-        // Check if registration is locked
+        // Check if registration is locked for the session
         $isClosed = false;
-        if ($this->session_id && $this->semester_id) {
-            $regStatus = RegistrationStatus::where('student_id', $this->student_id)
+        if ($this->session_id) {
+            $isClosed = RegistrationStatus::where('student_id', $this->student_id)
                 ->where('academic_session_id', $this->session_id)
-                ->where('semester_id', $this->semester_id)
-                ->first();
-            $isClosed = $regStatus && $regStatus->isClosed();
+                ->where('status', 'closed')
+                ->exists();
         }
 
         if ($isClosed) {
-            $this->addError('courses_to_drop', 'Registration is closed for this semester. Please contact your HOD.');
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'Registration is closed for this academic session.',
+            ]);
             return;
         }
 
         $dropped = CourseRegistration::query()
             ->where('institution_id', $this->institution_id)
             ->where('student_id', $this->student_id)
-            ->where('academic_session_id', $this->session_id)
-            ->where('semester_id', $this->semester_id)
-            ->whereIn('course_id', $this->courses_to_drop)
+            ->where('id', $registrationId)
             ->delete();
 
-        $this->reset(['courses_to_drop']);
-
         if ($dropped > 0) {
+            $this->syncCarryovers();
             $this->dispatch('notify', [
                 'type' => 'success',
-                'message' => "Successfully dropped {$dropped} course(s).",
+                'message' => "Successfully dropped the course.",
             ]);
         }
     }
@@ -188,61 +221,69 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
                 ->sortByDesc('name')
             : collect();
 
-        // Detect level as soon as session is picked
+        // Detect level and load courses as soon as session is picked
         if ($student && $this->session_id && $this->session_id !== 'null') {
             $session = AcademicSession::find($this->session_id);
             if ($session) {
                 $currentLevel = $student->currentLevel($session);
+                $semesters = Semester::where('academic_session_id', $this->session_id)->get();
                 
-                if ($this->semester_id && $this->semester_id !== 'null') {
-                    $semester = Semester::find($this->semester_id);
-                    if ($semester) {
-                        $allLevelCourses = Course::query()
-                            ->where('institution_id', $this->institution_id)
-                            ->where('program_id', $student->program_id)
-                            ->where('level', $currentLevel)
-                            ->where('semester', $semester->name === 'first' ? 1 : 2)
-                            ->get();
+                foreach ($semesters as $semester) {
+                    $semName = $semester->name === 'first' ? '1st' : '2nd';
+                    
+                    $allLevelCourses = Course::query()
+                        ->where('institution_id', $this->institution_id)
+                        ->where('program_id', $student->program_id)
+                        ->where('level', $currentLevel)
+                        ->where('semester', $semester->name === 'first' ? 1 : 2)
+                        ->get();
 
-                        $registeredCourseIds = CourseRegistration::query()
-                            ->where('institution_id', $this->institution_id)
-                            ->where('student_id', $this->student_id)
-                            ->where('academic_session_id', $this->session_id)
-                            ->where('semester_id', $this->semester_id)
-                            ->pluck('course_id')
-                            ->toArray();
+                    $registeredInSem = CourseRegistration::query()
+                        ->where('institution_id', $this->institution_id)
+                        ->where('student_id', $this->student_id)
+                        ->where('academic_session_id', $this->session_id)
+                        ->where('semester_id', $semester->id)
+                        ->with('course')
+                        ->get();
 
-                        $carryoverCourses = app(GradingService::class)->getCarryoverCourses(
-                            $student,
-                            (int) $this->institution_id,
-                            (int) $this->session_id,
-                            (int) $this->semester_id
-                        );
+                    $registeredIds = $registeredInSem->pluck('course_id')->toArray();
 
-                        $carryoverIds = $carryoverCourses->pluck('id');
+                    $semCarryovers = app(GradingService::class)->getCarryoverCourses(
+                        $student,
+                        (int) $this->institution_id,
+                        (int) $this->session_id,
+                        (int) $semester->id
+                    );
 
-                        $availableCourses = $allLevelCourses
-                            ->whereNotIn('id', $registeredCourseIds)
-                            ->whereNotIn('id', $carryoverIds->all());
+                    $carryoverIds = $semCarryovers->pluck('id');
 
-                        $registeredCourses = $allLevelCourses->whereIn('id', $registeredCourseIds);
-                    }
+                    $carryoverCourses = $carryoverCourses->merge($semCarryovers->map(fn($c) => array_merge($c->toArray(), ['semester_name' => $semName])));
+                    
+                    $available = $allLevelCourses
+                        ->whereNotIn('id', $registeredIds)
+                        ->whereNotIn('id', $carryoverIds->all());
+                    
+                    $availableCourses = $availableCourses->merge($available->map(fn($c) => array_merge($c->toArray(), ['semester_name' => $semName])));
+                    
+                    $registeredCourses = $registeredCourses->merge($registeredInSem->map(fn($r) => [
+                        'id' => $r->id,
+                        'course' => $r->course,
+                        'semester_name' => $semName
+                    ]));
                 }
             }
         }
 
         return view('pages.cms.students.portal-registration', [
             'sessions'          => $sessions,
-            'semesters'         => ($this->session_id && $this->session_id !== 'null') ? Semester::where('academic_session_id', $this->session_id)->get() : [],
             'carryoverCourses'  => $carryoverCourses,
             'availableCourses'  => $availableCourses,
             'registeredCourses' => $registeredCourses,
             'currentLevel'      => $currentLevel,
             'student'           => $student,
-            'isClosed'          => ($this->student_id && $this->session_id && $this->session_id !== 'null' && $this->semester_id && $this->semester_id !== 'null') 
+            'isClosed'          => ($this->student_id && $this->session_id && $this->session_id !== 'null') 
                                     ? RegistrationStatus::where('student_id', $this->student_id)
                                         ->where('academic_session_id', $this->session_id)
-                                        ->where('semester_id', $this->semester_id)
                                         ->where('status', 'closed')
                                         ->exists()
                                     : false,
@@ -250,11 +291,11 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
     }
 }; ?>
 
-<div class="mx-auto max-w-4xl">
+<div class="mx-auto max-w-5xl">
     <div class="mb-8 items-center justify-between flex">
         <div>
-            <flux:heading size="xl">{{ __('My Registrations') }}</flux:heading>
-            <flux:subheading>{{ __('Manage your course enrollments for the academic semester') }}</flux:subheading>
+            <flux:heading size="xl">{{ __('Academic Registration') }}</flux:heading>
+            <flux:subheading>{{ __('Manage your course enrollments for the entire academic session') }}</flux:subheading>
         </div>
     </div>
 
@@ -268,157 +309,186 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
         </div>
     </flux:card>
     @else
-    <flux:card class="space-y-8">
-        <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <flux:select wire:model.live="session_id" :label="__('Academic Session')" required>
-                <flux:select.option value="null">{{ __('Select session...') }}</flux:select.option>
-                @foreach ($sessions as $session)
-                <flux:select.option :value="$session->id">{{ $session->name }}</flux:select.option>
-                @endforeach
-            </flux:select>
+    <div class="space-y-6">
+        <flux:card class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                <flux:select wire:model.live="session_id" :label="__('Academic Session')">
+                    <option value="null">{{ __('Select session...') }}</option>
+                    @foreach ($sessions as $session)
+                    <option value="{{ $session->id }}">{{ $session->name }}</option>
+                    @endforeach
+                </flux:select>
 
-            <flux:select wire:model.live="semester_id" :label="__('Semester')" required :disabled="!$session_id">
-                <flux:select.option value="null">{{ __('Select semester...') }}</flux:select.option>
-                @foreach ($semesters as $semester)
-                <flux:select.option :value="$semester->id">{{ ucfirst($semester->name) }}</flux:select.option>
-                @endforeach
-            </flux:select>
-        </div>
+                @if ($currentLevel)
+                <div class="flex items-center gap-2 pb-2">
+                    <span class="text-sm text-zinc-500">{{ __('Current Level:') }}</span>
+                    <flux:badge color="blue" size="sm">{{ $currentLevel }} Level</flux:badge>
+                </div>
+                @endif
+            </div>
+        </flux:card>
 
+        @if ($session_id && $session_id !== 'null')
         @if ($isClosed)
-        <div class="p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3 text-red-700">
+        <div
+            class="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 rounded-xl flex items-center gap-3 text-red-700 dark:text-red-400">
             <flux:icon.lock-closed class="size-5" />
-            <div class="text-sm font-semibold uppercase tracking-tight">{{ __('Your registration for this semester is
+            <div class="text-sm font-semibold uppercase tracking-tight">{{ __('Your registration for this session is
                 locked and verified.') }}</div>
         </div>
         @endif
 
-        @if ($semester_id)
-        <div class="space-y-8">
-            <!-- Carryover Courses Section -->
-            @if ($carryoverCourses->isNotEmpty())
-            <div class="space-y-4">
-                <div class="flex items-center justify-between">
-                    <flux:heading size="md" class="text-red-600 dark:text-red-400">
-                        {{ __('Mandatory Carryover Courses') }}
-                    </flux:heading>
-                    <flux:badge color="red" size="sm" inset="top bottom">
-                        {{ __('Action Required') }}
-                    </flux:badge>
-                </div>
-
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    @foreach ($carryoverCourses as $course)
-                    <label
-                        class="flex items-center p-4 border rounded-lg bg-red-50/30 dark:bg-red-900/10 border-red-200 dark:border-red-900/30">
-                        <div
-                            class="flex items-center justify-center w-5 h-5 me-3 rounded border border-red-400 bg-red-500 text-white">
-                            <flux:icon.check variant="micro" />
-                        </div>
-                        <input type="checkbox" wire:model="selected_courses" value="{{ $course->id }}" class="hidden"
-                            checked disabled />
-                        <div>
-                            <div class="font-mono text-sm font-bold text-red-700 dark:text-red-400 text-uppercase">{{
-                                $course->course_code }}</div>
-                            <div class="text-xs text-red-600/80 dark:text-red-500/80">{{ $course->title }} ({{
-                                $course->credit_unit }} units)</div>
-                        </div>
-                    </label>
-                    {{-- Ensure carryover courses are in selected_courses --}}
-                    @php
-                    if(!in_array($course->id, $selected_courses)) {
-                    $selected_courses[] = $course->id;
-                    }
-                    @endphp
-                    @endforeach
-                </div>
-            </div>
-            @endif
-
-            <!-- Available Courses Section -->
-            <div class="space-y-4">
-                <div class="flex items-center justify-between">
-                    <flux:heading size="md">{{ __('Available Courses') }}</flux:heading>
-                    @if ($currentLevel)
-                    <flux:badge color="blue" size="sm">
-                        {{ __('Level') }} {{ $currentLevel }}
-                    </flux:badge>
-                    @endif
-                </div>
-
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    @forelse ($availableCourses as $course)
-                    <label
-                        class="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors border-zinc-200 dark:border-zinc-700">
-                        <flux:checkbox wire:model="selected_courses" :value="$course->id" class="me-3" />
-                        <div>
-                            <div class="font-medium font-mono text-sm uppercase">{{ $course->course_code }}</div>
-                            <div class="text-sm">{{ $course->title }}</div>
-                            <div class="text-xs text-zinc-500">{{ $course->credit_unit }} {{ __('Units') }}</div>
-                        </div>
-                    </label>
-                    @empty
-                    <div class="col-span-full p-8 text-center border-2 border-dashed rounded-xl text-zinc-500">
-                        {{ __('No more recommended courses available to register for this semester.') }}
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {{-- Left: Registration Columns --}}
+            <div class="lg:col-span-2 space-y-8">
+                {{-- Mandatory Carryovers --}}
+                @if ($carryoverCourses->isNotEmpty())
+                <div class="space-y-4">
+                    <div class="flex items-center gap-2 text-red-600 dark:text-red-400">
+                        <flux:icon.exclamation-triangle variant="mini" />
+                        <flux:heading size="lg">{{ __('Mandatory Carryover Courses') }}</flux:heading>
                     </div>
-                    @endforelse
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        @foreach ($carryoverCourses as $courseData)
+                        <label wire:key="carryover-{{ $courseData['id'] }}"
+                            class="flex items-center p-4 border rounded-lg bg-red-50/30 dark:bg-red-900/10 border-red-200 dark:border-red-900/30">
+                            <div
+                                class="flex items-center justify-center w-5 h-5 me-3 rounded border border-red-400 bg-red-500 text-white">
+                                <flux:icon.check variant="micro" />
+                            </div>
+                            <div>
+                                <div class="font-mono text-sm font-bold text-red-700 dark:text-red-400 text-uppercase">{{
+                                    $courseData['course_code'] }}</div>
+                                <div class="text-xs text-zinc-600 dark:text-zinc-400">{{ $courseData['title'] }}</div>
+                                <div class="text-[10px] mt-1 font-bold uppercase text-red-500/70 italic">{{
+                                    $courseData['semester_name'] }} Semester ({{ $courseData['credit_unit'] }} units)
+                                </div>
+                            </div>
+                        </label>
+                        @endforeach
+                    </div>
                 </div>
+                @endif
 
-                @if (count($availableCourses) > 0)
-                <div class="flex flex-col items-end pt-2">
-                    <flux:button variant="primary" wire:click="register" :disabled="$isClosed">
+                {{-- Available Courses grouped by Semester --}}
+                @php
+                $availableBySemester = $availableCourses->groupBy('semester_name');
+                @endphp
+
+                @foreach (['1st', '2nd'] as $semName)
+                @php $semCourses = $availableBySemester->get($semName, collect()); @endphp
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-2">
+                        <flux:heading size="lg">{{ $semName }} Semester Available Courses</flux:heading>
+                        <flux:badge size="sm" color="zinc" inset="top bottom">{{ $semCourses->count() }} Available
+                        </flux:badge>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-3">
+                        @forelse ($semCourses as $courseData)
+                        <label wire:key="available-{{ $courseData['id'] }}"
+                            class="flex items-center p-4 border rounded-xl bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 hover:border-blue-500 dark:hover:border-blue-400 transition-all cursor-pointer group shadow-sm has-[:checked]:border-blue-600 has-[:checked]:bg-blue-50/30 dark:has-[:checked]:bg-blue-900/10">
+                            <flux:checkbox wire:model.live="selected_courses" :value="$courseData['id']" class="me-3"
+                                :disabled="$isClosed" />
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between">
+                                    <div class="font-mono text-sm font-bold text-zinc-900 dark:text-white uppercase">{{
+                                        $courseData['course_code'] }}</div>
+                                    <div class="text-xs font-bold text-blue-600 dark:text-blue-400">{{
+                                        $courseData['credit_unit'] }} Units</div>
+                                </div>
+                                <div class="text-sm text-zinc-600 dark:text-zinc-400">{{ $courseData['title'] }}</div>
+                            </div>
+                        </label>
+                        @empty
+                        <div
+                            class="p-8 text-center border-2 border-dashed rounded-2xl border-zinc-200 dark:border-zinc-800 text-zinc-400 text-sm">
+                            {{ __('No additional courses available for this semester.') }}
+                        </div>
+                        @endforelse
+                    </div>
+                </div>
+                @endforeach
+
+            </div>
+
+            {{-- Right Column: Summary & Registered --}}
+            <div class="space-y-6">
+                <flux:card class="sticky top-6">
+                    <flux:heading size="lg" class="mb-4">{{ __('Session Summary') }}</flux:heading>
+
+                    @php
+                    $registeredBySemester = $registeredCourses->groupBy('semester_name');
+                    $registeredUnits = $registeredCourses->sum(fn($r) => $r['course']->credit_unit);
+                    $selectedCoursesModels = \App\Models\Course::whereIn('id', $this->selected_courses)->get();
+                    $selectedUnits = $selectedCoursesModels->sum('credit_unit');
+                    $totalSessionUnits = $registeredUnits + $selectedUnits;
+                    @endphp
+
+                    <div class="space-y-3 mb-6">
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-zinc-500">{{ __('Already Registered') }}</span>
+                            <span class="font-bold font-mono">{{ $registeredUnits }} Units</span>
+                        </div>
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-zinc-500">{{ __('Newly Selected') }}</span>
+                            <span class="font-bold font-mono text-blue-600 dark:text-blue-400">+ {{ $selectedUnits }} Units</span>
+                        </div>
+                        <div class="border-t border-zinc-100 dark:border-zinc-800 pt-2 flex justify-between items-center text-sm">
+                            <span class="font-bold text-zinc-700 dark:text-zinc-300">{{ __('Total Session Load') }}</span>
+                            <span class="font-bold font-mono text-lg {{ $totalSessionUnits > 24 ? 'text-red-600' : 'text-zinc-900 dark:text-white' }}">
+                                {{ $totalSessionUnits }} / 24
+                            </span>
+                        </div>
+                    </div>
+
+                    @if (!$isClosed)
+                    <flux:button variant="primary" class="w-full" icon="plus" wire:click="register"
+                        :disabled="count($selected_courses) === 0">
                         {{ __('Register Selected Courses') }}
                     </flux:button>
                     <flux:error name="selected_courses" class="mt-2" />
-                </div>
-                @endif
-            </div>
-
-            <flux:separator />
-
-            <!-- Registered Courses Section -->
-            <div class="space-y-4">
-                <div class="flex items-center justify-between">
-                    <flux:heading size="md">{{ __('Currently Registered') }}</flux:heading>
-                    @if (count($registeredCourses) > 0)
-                    <flux:badge color="green" size="sm">
-                        {{ __('Total Units:') }} {{ $registeredCourses->sum('credit_unit') }}
-                    </flux:badge>
                     @endif
-                </div>
 
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    @forelse ($registeredCourses as $course)
-                    <label
-                        class="flex items-center p-4 border rounded-lg cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors border-zinc-200 dark:border-zinc-700">
-                        <flux:checkbox wire:model="courses_to_drop" :value="$course->id" class="me-3" />
-                        <div>
-                            <div class="font-medium font-mono text-sm uppercase">{{ $course->course_code }}</div>
-                            <div class="text-sm">{{ $course->title }}</div>
-                            <div class="flex gap-2 items-center mt-1">
-                                <flux:badge size="sm" color="green">{{ __('Registered') }}</flux:badge>
-                                <span class="text-xs text-zinc-500">{{ $course->credit_unit }} {{ __('Units') }}</span>
+                    <div class="mt-8 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+                        <flux:heading size="md" class="mb-4">{{ __('Registered Courses') }}</flux:heading>
+
+                        <div class="space-y-6">
+                            @foreach (['1st', '2nd'] as $semName)
+                            @php $semReg = $registeredBySemester->get($semName, collect()); @endphp
+                            <div class="space-y-2">
+                                <div class="text-[10px] font-bold uppercase tracking-widest text-zinc-400">{{ $semName }}
+                                    Semester</div>
+                                <div class="space-y-2">
+                                    @forelse ($semReg as $reg)
+                                    <div wire:key="registered-{{ $reg['id'] }}"
+                                        class="flex items-center justify-between p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700">
+                                        <div class="text-xs font-bold font-mono text-zinc-900 dark:text-white uppercase">
+                                            {{ $reg['course']->course_code }}</div>
+                                        @if (!$isClosed)
+                                        <flux:button variant="ghost" size="sm" icon="trash"
+                                            wire:click="drop({{ $reg['id'] }})" />
+                                        @endif
+                                    </div>
+                                    @empty
+                                    <p class="text-[10px] text-zinc-400 italic px-1">{{ __('None') }}</p>
+                                    @endforelse
+                                </div>
                             </div>
+                            @endforeach
                         </div>
-                    </label>
-                    @empty
-                    <div class="col-span-full p-8 text-center border-2 border-dashed rounded-xl text-zinc-500">
-                        {{ __('No courses registered yet.') }}
                     </div>
-                    @endforelse
-                </div>
-
-                @if (count($registeredCourses) > 0)
-                <div class="flex flex-col items-end pt-2">
-                    <flux:button variant="danger" wire:click="drop" :disabled="$isClosed">
-                        {{ __('Drop Selected Courses') }}
-                    </flux:button>
-                    <flux:error name="courses_to_drop" class="mt-2" />
-                </div>
-                @endif
+                </flux:card>
             </div>
         </div>
+        @else
+        <div class="p-12 text-center border-2 border-dashed rounded-2xl border-zinc-200 dark:border-zinc-800">
+            <flux:icon.calendar class="mx-auto size-12 text-zinc-300 dark:text-zinc-700 mb-4" />
+            <flux:heading size="lg" class="text-zinc-500">{{ __('Select an Academic Session to Begin') }}</flux:heading>
+            <flux:subheading>{{ __('Choose the academic year you wish to manage your course registrations for.') }}
+            </flux:subheading>
+        </div>
         @endif
-    </flux:card>
+    </div>
     @endif
 </div>

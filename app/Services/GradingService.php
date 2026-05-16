@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AcademicSession;
 use App\Models\Course;
 use App\Models\CourseRegistration;
 use App\Models\Department;
@@ -120,7 +121,16 @@ class GradingService
         int $sessionId,
         int $semesterId
     ): Collection {
-        $allResults = $student->results()->with('course')->get();
+        $targetSession = AcademicSession::find($sessionId);
+
+        $allResults = $student->results()
+            ->whereHas('academicSession', function ($query) use ($targetSession) {
+                if ($targetSession) {
+                    $query->where('start_date', '<', $targetSession->start_date);
+                }
+            })
+            ->with('course')
+            ->get();
 
         // Courses the student has failed at least once
         $failedCourseIds = $allResults

@@ -184,6 +184,19 @@ class Student extends Model
         return $this->entry_level + ($yearsElapsed * 100);
     }
 
+    /**
+     * Scope a query to students who are at a specific level in a given session.
+     */
+    public function scopeAtLevel($query, int|string $level, AcademicSession $session)
+    {
+        $sessionStartYear = (int) explode('/', $session->name)[0];
+
+        return $query->whereRaw('entry_level + (? - admission_year) * 100 = ?', [
+            $sessionStartYear,
+            (int) $level,
+        ]);
+    }
+
     public function attendanceRecords(): HasMany
     {
         return $this->hasMany(AttendanceRecord::class);

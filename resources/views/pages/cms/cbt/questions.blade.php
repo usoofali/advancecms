@@ -162,6 +162,7 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
 
     public function edit($id): void
     {
+        Gate::authorize('cbt_questions.edit');
         $question = CbtQuestion::with('options')->findOrFail($id);
         $this->editingId = $question->id;
         $this->question_text = $question->question_text;

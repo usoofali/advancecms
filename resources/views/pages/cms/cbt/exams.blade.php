@@ -143,6 +143,7 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
 
     public function toggleStatus($id): void
     {
+        Gate::authorize('cbt_exams.edit');
         $exam = CbtExam::findOrFail($id);
         $newStatus = $exam->status === 'active' ? 'draft' : 'active';
         $exam->update(['status' => $newStatus]);

@@ -68,6 +68,7 @@ class RbacSeeder extends Seeder
             'cbt_results.mass_action' => 'Perform batch approval or rejection of examination results',
             'cbt_sync.view' => 'Monitor CBT connectivity and sync logs',
             'cbt_sync.manage_tokens' => 'Generate and revoke Lab access tokens',
+            'cbt_questions.import' => 'Bulk import questions from CSV into an examination bank',
 
             // New Granular Permissions
             'applications.notify' => 'Issue admission notifications for walk-in candidates',
@@ -161,7 +162,7 @@ class RbacSeeder extends Seeder
                         'students.view_dept', 'courses.view_dept', 'results.view_dept',
                         'registration_status.update', 'attendance.view_history',
                         'cbt_results.view', 'cbt_results.review', 'cbt_results.approve', 'cbt_results.reject', 'cbt_results.mass_action',
-                        'cbt_sync.view', 'students.export',
+                        'cbt_sync.view', 'cbt_data.sync', 'cbt_questions.import', 'students.export',
                         'courses.allocate', 'courses.revoke_allocation', 'courses.export',
                         'results.export', 'invoices.manage_students',
                         'dashboard.view', 'id_cards.request',
@@ -172,7 +173,7 @@ class RbacSeeder extends Seeder
                 'description' => 'Academic instruction and result entry',
                 'permissions' => array_merge(
                     $crud(['cbt_questions']),
-                    ['cbt_exams.view', 'courses.view_assigned', 'results.enter', 'results.modify', 'attendance.take', 'attendance.view_history', 'dashboard.view', 'id_cards.request']
+                    ['cbt_exams.view', 'cbt_questions.import', 'courses.view_assigned', 'results.enter', 'results.modify', 'attendance.take', 'attendance.view_history', 'dashboard.view', 'id_cards.request']
                 ),
             ],
             'Academic Secretary' => [

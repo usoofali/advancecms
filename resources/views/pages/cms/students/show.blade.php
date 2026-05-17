@@ -389,7 +389,7 @@ new #[Layout('layouts.app')] #[Title('Student Profile')] class extends Component
                 <flux:subheading>{{ __('Modify the current administrative status of :name.', ['name' => $student->full_name]) }}</flux:subheading>
             </div>
 
-            <flux:select wire:model="newStatus" :label="__('New Status')">
+            <flux:select wire:model.live="newStatus" :label="__('New Status')">
                 <flux:select.option value="active">{{ __('Active') }}</flux:select.option>
                 <flux:select.option value="graduated">{{ __('Graduated') }}</flux:select.option>
                 <flux:select.option value="suspended">{{ __('Suspended') }}</flux:select.option>

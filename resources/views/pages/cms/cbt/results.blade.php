@@ -156,9 +156,31 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
 
     protected function getResultsQuery()
     {
-        $instId = auth()->user()->institution_id;
-        $query = CbtResultStaging::whereHas('exam', function ($q) use ($instId) {
-            $q->where('institution_id', $instId);
+        $user = auth()->user();
+        $instId = $user->institution_id;
+        $isSuperAdmin = $user->hasRole('Super Admin');
+        $isInstAdmin = $user->hasRole('Institutional Admin');
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', \App\Models\Department::class),
+            $user->getScopedModelIds('Academic Secretary', \App\Models\Department::class),
+            $user->getScopedModelIds('Exam Officer', \App\Models\Department::class)
+        ));
+        $isRestrictedLecturer = !$isSuperAdmin && !$isInstAdmin && empty($scopedDeptIds);
+
+        $query = CbtResultStaging::whereHas('exam', function ($q) use ($instId, $isRestrictedLecturer, $user, $scopedDeptIds) {
+            $q->where('institution_id', $instId)
+                ->when($isRestrictedLecturer, function ($sq) use ($user) {
+                    $sq->whereIn('course_id', function ($sub) use ($user) {
+                        $sub->select('course_id')
+                            ->from('course_allocations')
+                            ->where('user_id', $user->id);
+                    });
+                })
+                ->when(!empty($scopedDeptIds), function ($sq) use ($scopedDeptIds) {
+                    $sq->whereHas('course', function ($cq) use ($scopedDeptIds) {
+                        $cq->whereIn('department_id', $scopedDeptIds);
+                    });
+                });
         });
 
         if ($this->filter_exam_id) {
@@ -170,8 +192,18 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
 
     public function with(): array
     {
-        $instId = auth()->user()->institution_id;
+        $user = auth()->user();
+        $instId = $user->institution_id;
         $stagingQuery = $this->getResultsQuery();
+        
+        $isSuperAdmin = $user->hasRole('Super Admin');
+        $isInstAdmin = $user->hasRole('Institutional Admin');
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', \App\Models\Department::class),
+            $user->getScopedModelIds('Academic Secretary', \App\Models\Department::class),
+            $user->getScopedModelIds('Exam Officer', \App\Models\Department::class)
+        ));
+        $isRestrictedLecturer = !$isSuperAdmin && !$isInstAdmin && empty($scopedDeptIds);
 
         // Analytics
         $totalResults = (clone $stagingQuery)->count();
@@ -210,7 +242,20 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
 
         return [
             'results' => $stagingQuery->with(['student', 'exam.course'])->latest()->paginate(20),
-            'exams' => \App\Models\CbtExam::where('institution_id', $instId)->with('course')->get(),
+            'exams' => \App\Models\CbtExam::where('institution_id', $instId)
+                ->when($isRestrictedLecturer, function ($q) use ($user) {
+                    $q->whereIn('course_id', function ($sub) use ($user) {
+                        $sub->select('course_id')
+                            ->from('course_allocations')
+                            ->where('user_id', $user->id);
+                    });
+                })
+                ->when(!empty($scopedDeptIds), function ($q) use ($scopedDeptIds) {
+                    $q->whereHas('course', function ($cq) use ($scopedDeptIds) {
+                        $cq->whereIn('department_id', $scopedDeptIds);
+                    });
+                })
+                ->with('course')->get(),
             'stats' => [
                 'total' => $totalResults,
                 'avg' => round($avgScore, 1),

@@ -161,7 +161,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('exams', 'pages::cms.cbt.exams')->name('exams')->middleware('can:cbt_exams.view');
             Route::livewire('questions', 'pages::cms.cbt.questions')->name('questions')->middleware('can:cbt_questions.view');
             Route::livewire('sync', 'pages::cms.cbt.sync')->name('sync')->middleware('can:cbt_data.sync');
-            Route::livewire('results', 'pages::cms.cbt.results')->name('results')->middleware('can:cbt_results.approve');
+            Route::livewire('results', 'pages::cms.cbt.results')->name('results')->middleware('can:cbt_results.view');
         });
     });
 });

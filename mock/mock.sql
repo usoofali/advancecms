@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: May 05, 2026 at 07:27 AM
+-- Generation Time: May 17, 2026 at 04:08 PM
 -- Server version: 10.11.13-MariaDB-0ubuntu0.24.04.1
 -- PHP Version: 8.2.30
 
@@ -71,6 +71,7 @@ INSERT INTO `dept` (`id`, `name`, `code`) VALUES
 
 CREATE TABLE `exams` (
   `id` int(11) NOT NULL,
+  `cms_uuid` varchar(100) DEFAULT NULL,
   `code` varchar(11) NOT NULL,
   `title` varchar(255) NOT NULL,
   `dept` int(11) NOT NULL,
@@ -97,14 +98,18 @@ CREATE TABLE `exam_session` (
   `user_id` int(11) NOT NULL,
   `username` varchar(255) NOT NULL,
   `exam` int(11) NOT NULL,
+  `attempt_number` int(11) NOT NULL DEFAULT 1,
+  `attempt_type` enum('normal','resit') NOT NULL DEFAULT 'normal',
   `started_at` datetime DEFAULT NULL,
   `stop_at` datetime DEFAULT NULL,
   `submit_status` tinyint(4) DEFAULT 0,
   `total_score` int(11) DEFAULT 0,
-  `percent_score` int(11) NOT NULL,
-  `total_questions` int(11) NOT NULL,
-  `attempted` int(11) NOT NULL,
-  `ca_score` decimal(5,2) DEFAULT NULL
+  `percent_score` int(11) DEFAULT 0,
+  `total_questions` int(11) DEFAULT 0,
+  `attempted` int(11) DEFAULT 0,
+  `ca_score` decimal(5,2) DEFAULT NULL,
+  `is_synced` tinyint(1) DEFAULT 0,
+  `synced_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- --------------------------------------------------------
@@ -148,6 +153,21 @@ CREATE TABLE `question` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `sync_logs`
+--
+
+CREATE TABLE `sync_logs` (
+  `id` int(11) NOT NULL,
+  `type` varchar(20) NOT NULL,
+  `status` varchar(20) NOT NULL,
+  `message` text DEFAULT NULL,
+  `details` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`details`)),
+  `created_at` datetime DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `users`
 --
 
@@ -160,6 +180,13 @@ CREATE TABLE `users` (
   `level` varchar(55) NOT NULL,
   `role` varchar(11) NOT NULL DEFAULT 'student'
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+--
+-- Dumping data for table `users`
+--
+
+INSERT INTO `users` (`user_id`, `username`, `password`, `fullname`, `dept`, `level`, `role`) VALUES
+(1, 'admin', '1234567', 'ICT Office', 1, '100', 'admin');
 
 --
 -- Indexes for dumped tables
@@ -181,7 +208,8 @@ ALTER TABLE `dept`
 -- Indexes for table `exams`
 --
 ALTER TABLE `exams`
-  ADD PRIMARY KEY (`id`);
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `cms_uuid` (`cms_uuid`);
 
 --
 -- Indexes for table `exam_session`
@@ -200,6 +228,12 @@ ALTER TABLE `exam_setting`
 --
 ALTER TABLE `question`
   ADD PRIMARY KEY (`question_id`);
+
+--
+-- Indexes for table `sync_logs`
+--
+ALTER TABLE `sync_logs`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `users`
@@ -248,10 +282,16 @@ ALTER TABLE `question`
   MODIFY `question_id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `sync_logs`
+--
+ALTER TABLE `sync_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

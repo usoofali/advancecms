@@ -4,6 +4,8 @@ use App\Models\Course;
 use App\Models\Department;
 use App\Models\Institution;
 use App\Models\Program;
+use App\Models\Role;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -32,6 +34,10 @@ new #[Layout('layouts.app')] #[Title('Edit Course')] class extends Component
     public int $semester = 1;
 
     public string $status = 'active';
+
+    // Scoped Role Assignment properties
+    public int|string|null $assign_user_id = null;
+    public int|string|null $assign_role_id = null;
 
     public function mount(Course $course): void
     {
@@ -111,7 +117,51 @@ new #[Layout('layouts.app')] #[Title('Edit Course')] class extends Component
                 ->when($this->department_id && $this->department_id !== 'null', fn ($q) => $q->where('department_id', $this->department_id))
                 ->orderBy('name')
                 ->get(),
+            'allUsers' => \App\Models\User::where('institution_id', $this->course->institution_id)
+                ->whereHas('staff')
+                ->with('roles')
+                ->orderBy('name')
+                ->get(),
+            'allRoles' => Role::where('role_name', '!=', 'Super Admin')->orderBy('role_name')->get(),
+            'assignedUsers' => DB::table('model_user_roles')
+                ->join('users', 'model_user_roles.user_id', '=', 'users.id')
+                ->join('roles', 'model_user_roles.role_id', '=', 'roles.role_id')
+                ->where('model_type', $this->course->getMorphClass())
+                ->where('model_id', $this->course->id)
+                ->select('users.id as user_id', 'users.name as user_name', 'roles.role_id', 'roles.role_name')
+                ->get(),
         ];
+    }
+
+    public function assignRole(): void
+    {
+        Gate::authorize('courses.assign_roles');
+
+        $this->validate([
+            'assign_user_id' => ['required', 'exists:users,id'],
+            'assign_role_id' => ['required', 'exists:roles,role_id'],
+        ]);
+
+        $user = \App\Models\User::findOrFail($this->assign_user_id);
+        $role = Role::where('role_id', $this->assign_role_id)->firstOrFail();
+
+        $user->assignScopedRole($role->role_name, $this->course);
+
+        $this->assign_user_id = null;
+        $this->assign_role_id = null;
+
+        $this->dispatch('notify', ['type' => 'success', 'message' => 'Role assigned successfully.']);
+    }
+
+    public function removeAssignedRole(int $userId, int $roleId): void
+    {
+        Gate::authorize('courses.assign_roles');
+
+        $user = \App\Models\User::findOrFail($userId);
+        $role = Role::findOrFail($roleId);
+
+        $user->removeScopedRole($role->role_name, $this->course);
+        $this->dispatch('notify', ['type' => 'success', 'message' => 'Role assignment removed.']);
     }
 }; ?>
 
@@ -199,5 +249,63 @@ new #[Layout('layouts.app')] #[Title('Edit Course')] class extends Component
             <flux:button type="submit" variant="primary">{{ __('Update Course') }}</flux:button>
         </div>
     </form>
+
+    @can('courses.assign_roles')
+    <div class="mt-8 border-t border-zinc-200 dark:border-zinc-800 pt-8">
+        <flux:heading size="lg" class="mb-4">{{ __('Assigned Scoped Roles') }}</flux:heading>
+        <flux:subheading class="mb-6">{{ __('Dynamically assign users to specific roles strictly for this course.') }}</flux:subheading>
+
+        <div class="bg-zinc-50 dark:bg-zinc-900 rounded-xl p-6 border border-zinc-200 dark:border-zinc-800 mb-6">
+            <form wire:submit="assignRole" class="flex flex-col sm:flex-row items-end gap-4">
+                <div class="flex-1 w-full">
+                    <flux:select wire:model="assign_user_id" :label="__('User')" searchable required>
+                        <flux:select.option value="">{{ __('Search or select user...') }}</flux:select.option>
+                        @foreach ($allUsers as $u)
+                            <flux:select.option :value="$u->id">
+                                {{ $u->name }} @if($u->roles->isNotEmpty()) ({{ $u->roles->pluck('role_name')->implode(', ') }}) @endif
+                            </flux:select.option>
+                        @endforeach
+                    </flux:select>
+                </div>
+                <div class="flex-1 w-full">
+                    <flux:select wire:model="assign_role_id" :label="__('Role')" searchable required>
+                        <flux:select.option value="">{{ __('Search or select role...') }}</flux:select.option>
+                        @foreach ($allRoles as $r)
+                            <flux:select.option :value="$r->role_id">{{ $r->role_name }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+                </div>
+                <flux:button type="submit" variant="primary">{{ __('Assign') }}</flux:button>
+            </form>
+        </div>
+
+        <flux:table>
+            <flux:table.columns>
+                <flux:table.column>{{ __('User') }}</flux:table.column>
+                <flux:table.column>{{ __('Role') }}</flux:table.column>
+                <flux:table.column class="text-right">{{ __('Actions') }}</flux:table.column>
+            </flux:table.columns>
+            <flux:table.rows>
+                @forelse ($assignedUsers as $assignment)
+                    <flux:table.row>
+                        <flux:table.cell class="font-medium">{{ $assignment->user_name }}</flux:table.cell>
+                        <flux:table.cell>
+                            <flux:badge color="indigo" size="sm">{{ $assignment->role_name }}</flux:badge>
+                        </flux:table.cell>
+                        <flux:table.cell class="text-right">
+                            <flux:button size="sm" variant="danger" icon="trash" wire:click="removeAssignedRole({{ $assignment->user_id }}, {{ $assignment->role_id }})" />
+                        </flux:table.cell>
+                    </flux:table.row>
+                @empty
+                    <flux:table.row>
+                        <flux:table.cell colspan="3" class="text-center text-zinc-500">
+                            {{ __('No users are explicitly assigned roles for this course.') }}
+                        </flux:table.cell>
+                    </flux:table.row>
+                @endforelse
+            </flux:table.rows>
+        </flux:table>
+    </div>
+    @endcan
 </div>
 </div>

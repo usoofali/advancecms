@@ -34,6 +34,7 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
     public string $bank_name = '';
 
     public array $items = [['item_name' => '', 'amount' => '']];
+    public array $scopedDepartmentIds = [];
 
     public function mount(?Invoice $invoice = null): void
     {
@@ -60,6 +61,34 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
         } else {
             $this->academic_session_id = AcademicSession::first()?->id;
             $this->due_date = now()->addMonth()->format('Y-m-d');
+        }
+
+        $user = Auth::user();
+
+        // 1. Check polymorphic scoped roles
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', Department::class),
+            $user->getScopedModelIds('Academic Secretary', Department::class),
+            $user->getScopedModelIds('Accountant', Department::class)
+        ));
+
+        if (!empty($scopedDeptIds)) {
+            $this->scopedDepartmentIds = $scopedDeptIds;
+            if (!$this->department_id && count($scopedDeptIds) === 1) {
+                $this->department_id = $scopedDeptIds[0];
+            }
+        } else {
+            // 2. Fallback: Legacy HOD check
+            $staff = \App\Models\Staff::where('email', $user->email)->first();
+            if ($staff) {
+                $deptIds = Department::where('hod_id', $staff->id)->pluck('id')->toArray();
+                if (!empty($deptIds)) {
+                    $this->scopedDepartmentIds = $deptIds;
+                    if (!$this->department_id && count($deptIds) === 1) {
+                        $this->department_id = $deptIds[0];
+                    }
+                }
+            }
         }
     }
 
@@ -134,6 +163,7 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
                 Rule::exists('departments', 'id')->where(
                     fn ($q) => $q->where('institution_id', $effectiveInstitutionId)
                 ),
+                !empty($this->scopedDepartmentIds) ? Rule::in($this->scopedDepartmentIds) : null,
             ],
             'program_id' => [
                 'nullable',
@@ -342,7 +372,9 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
                 $effectiveInstitutionId = $this->effectiveInstitutionId();
                 $departmentSelectDisabled = auth()->user()->hasRole('Super Admin') && ! $invoice && ! $effectiveInstitutionId;
                 $departmentsForInstitution = $effectiveInstitutionId
-                    ? Department::query()->where('institution_id', $effectiveInstitutionId)->orderBy('name')->get()
+                    ? Department::query()->where('institution_id', $effectiveInstitutionId)
+                        ->when(!empty($this->scopedDepartmentIds), fn($q) => $q->whereIn('id', $this->scopedDepartmentIds))
+                        ->orderBy('name')->get()
                     : collect();
             @endphp
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-zinc-100 dark:border-zinc-800">

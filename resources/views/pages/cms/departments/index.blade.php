@@ -12,10 +12,33 @@ new #[Layout('layouts.app')] #[Title('Departments')] class extends Component {
 
     public string $search = '';
     public int|string|null $deletingId = null;
+    public array $scopedDepartmentIds = [];
 
     public function mount(): void
     {
         Gate::authorize('departments.view');
+
+        $user = auth()->user();
+
+        // 1. Check new polymorphic scoped roles
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', Department::class),
+            $user->getScopedModelIds('Academic Secretary', Department::class)
+        ));
+
+        if (!empty($scopedDeptIds)) {
+            $this->scopedDepartmentIds = $scopedDeptIds;
+            return;
+        }
+
+        // 2. Fallback: Legacy hod_id check
+        $staff = \App\Models\Staff::where('email', $user->email)->first();
+        if ($staff) {
+            $deptIds = Department::where('hod_id', $staff->id)->pluck('id')->toArray();
+            if (!empty($deptIds)) {
+                $this->scopedDepartmentIds = $deptIds;
+            }
+        }
     }
 
     public function updatingSearch(): void
@@ -48,6 +71,7 @@ new #[Layout('layouts.app')] #[Title('Departments')] class extends Component {
             'departments' => Department::query()
                 ->with(['institution', 'hod'])
                 ->when(auth()->user()->institution_id, fn ($q) => $q->where('institution_id', auth()->user()->institution_id))
+                ->when(!empty($this->scopedDepartmentIds), fn ($q) => $q->whereIn('id', $this->scopedDepartmentIds))
                 ->when($this->search, fn ($q) => $q->where('name', 'like', "%{$this->search}%")
                     ->orWhere('faculty', 'like', "%{$this->search}%"))
                 ->latest()

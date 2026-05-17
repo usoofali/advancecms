@@ -41,8 +41,30 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
             abort(403, 'Unauthorized.');
         }
 
-        if (auth()->user()->institution_id) {
-            $this->institution_id = auth()->user()->institution_id;
+        $user = auth()->user();
+
+        if ($user->institution_id) {
+            $this->institution_id = $user->institution_id;
+        }
+
+        // Check if user has a scoped role for specific departments (new polymorphic system)
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', \App\Models\Department::class),
+            $user->getScopedModelIds('Academic Secretary', \App\Models\Department::class)
+        ));
+
+        if (!empty($scopedDeptIds)) {
+            $this->department_id = $scopedDeptIds[0];
+            return;
+        }
+
+        // Fallback: Legacy check via hod_id column
+        $staff = \App\Models\Staff::where('email', $user->email)->first();
+        if ($staff) {
+            $hodDept = \App\Models\Department::where('hod_id', $staff->id)->first();
+            if ($hodDept) {
+                $this->department_id = $hodDept->id;
+            }
         }
     }
 

@@ -50,7 +50,19 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
         // Lock to user's institution
         $this->filterInstitution = $user->institution_id;
 
-        // Check if user is HOD of any department
+        // 1. Check if user has a scoped role for a specific department
+        $scopedDeptIds = array_merge(
+            $user->getScopedModelIds('Academic Secretary', \App\Models\Department::class),
+            $user->getScopedModelIds('Head of Department (HOD)', \App\Models\Department::class)
+        );
+
+        if (!empty($scopedDeptIds)) {
+            $this->isHod = true; // Reusing this flag to lock the department dropdown
+            $this->filterDepartment = $scopedDeptIds[0];
+            return;
+        }
+
+        // 2. Fallback: Legacy check for HOD via hod_id column
         $staff = \App\Models\Staff::where('email', $user->email)->first();
         if ($staff) {
             $hodDept = \App\Models\Department::where('hod_id', $staff->id)->first();

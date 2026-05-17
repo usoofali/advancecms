@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\HasRoleScopes;
 use Database\Factories\InstitutionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Institution extends Model
 {
     /** @use HasFactory<InstitutionFactory> */
-    use HasFactory;
+    use HasFactory, HasRoleScopes;
 
     protected $fillable = [
         'name',

@@ -3,6 +3,7 @@
 use Database\Seeders\RbacSeeder;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -12,10 +13,10 @@ return new class extends Migration
     public function up(): void
     {
         // We will truncate the role_permissions and permissions tables to prepare for the new granular RBAC
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        Schema::disableForeignKeyConstraints();
         DB::table('role_permissions')->truncate();
         DB::table('permissions')->truncate();
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        Schema::enableForeignKeyConstraints();
 
         // Run the seeder to repopulate roles and permissions
         $seeder = new RbacSeeder;

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\HasRoleScopes;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,7 +11,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class CbtExam extends Model
 {
-    use HasFactory, HasUuids;
+    use HasFactory, HasRoleScopes, HasUuids;
+
+    protected static function booted(): void
+    {
+        static::deleting(function (CbtExam $exam) {
+            $exam->questions->each(function (CbtQuestion $question) {
+                $question->delete();
+            });
+        });
+    }
 
     protected $fillable = [
         'institution_id',

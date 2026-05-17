@@ -3,7 +3,7 @@
 // mock/sync_config.php
 
 return [
-    'cms_url' => 'http://localhost:8000',
-    'api_token' => '2|5qrJHI0zKZgOpw1YTubapRBWHJcTpNVONDXrsOBb9741c832',
+    'cms_url' => 'https://portal.cshtgusau.com',
+    'api_token' => '3|tZawmK8jqB8daTvmEnJEyyH8r2rOS5cXYJMx6WpB243618c5',
     'institution_id' => 1,
 ];

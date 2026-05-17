@@ -21,6 +21,7 @@ new #[Layout('layouts.app')] #[Title('Manage Registrations')] class extends Comp
     public string $program_id = '';
     public string $level = '';
     public string $search = '';
+    public array $scopedDepartmentIds = [];
 
     public function mount(): void
     {
@@ -34,6 +35,34 @@ new #[Layout('layouts.app')] #[Title('Manage Registrations')] class extends Comp
         // Initialize institution for non-super admins
         if (auth()->check() && !auth()->user()->hasRole('Super Admin')) {
             $this->institution_id = auth()->user()->institution_id;
+        }
+
+        $user = auth()->user();
+
+        // 1. Check polymorphic scoped roles
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', Department::class),
+            $user->getScopedModelIds('Academic Secretary', Department::class)
+        ));
+
+        if (!empty($scopedDeptIds)) {
+            $this->scopedDepartmentIds = $scopedDeptIds;
+            if (count($scopedDeptIds) === 1) {
+                $this->department_id = (string) $scopedDeptIds[0];
+            }
+            return;
+        }
+
+        // 2. Fallback: Legacy HOD check
+        $staff = \App\Models\Staff::where('email', $user->email)->first();
+        if ($staff) {
+            $deptIds = Department::where('hod_id', $staff->id)->pluck('id')->toArray();
+            if (!empty($deptIds)) {
+                $this->scopedDepartmentIds = $deptIds;
+                if (count($deptIds) === 1) {
+                    $this->department_id = (string) $deptIds[0];
+                }
+            }
         }
     }
 
@@ -232,6 +261,11 @@ new #[Layout('layouts.app')] #[Title('Manage Registrations')] class extends Comp
                     $pq->where('department_id', $this->department_id);
                 });
             })
+            ->when(!$this->department_id && !empty($this->scopedDepartmentIds), function ($q) {
+                $q->whereHas('program', function ($pq) {
+                    $pq->whereIn('department_id', $this->scopedDepartmentIds);
+                });
+            })
             ->when($this->program_id, function ($q) {
                 $q->where('program_id', $this->program_id);
             })
@@ -279,7 +313,9 @@ new #[Layout('layouts.app')] #[Title('Manage Registrations')] class extends Comp
 
         $departments = collect();
         if ($this->institution_id) {
-            $departments = Department::where('institution_id', $this->institution_id)->get();
+            $departments = Department::where('institution_id', $this->institution_id)
+                ->when(!empty($this->scopedDepartmentIds), fn($q) => $q->whereIn('id', $this->scopedDepartmentIds))
+                ->get();
         }
 
         $programs = collect();

@@ -95,6 +95,12 @@ class RbacSeeder extends Seeder
             'system.manage' => 'Manage production environment, migrations, and system-wide configurations',
             'system.manage_addons' => 'Enable or disable specialized modules for institutions',
             'system.view_all_data' => 'Access data across all institutions',
+
+            // Scoped Role Assignment Permissions
+            'institutions.assign_roles' => 'Dynamically assign scoped roles strictly to institutions',
+            'departments.assign_roles' => 'Dynamically assign scoped roles strictly to departments',
+            'courses.assign_roles' => 'Dynamically assign scoped roles strictly to courses',
+            'cbt_exams.assign_roles' => 'Dynamically assign scoped roles strictly to CBT exams',
         ];
 
         // Generate CRUD permissions
@@ -151,6 +157,7 @@ class RbacSeeder extends Seeder
                         'courses.allocate', 'courses.revoke_allocation', 'courses.export', 'courses.import',
                         'results.export', 'results.import', 'invoices.manage_students',
                         'dashboard.view', 'id_cards.request',
+                        'institutions.assign_roles', 'departments.assign_roles', 'courses.assign_roles', 'cbt_exams.assign_roles',
                     ]
                 ),
             ],

@@ -368,7 +368,7 @@ it('embeds every matrix row in the page html for print beyond pagination', funct
         ->set('level', '100')
         ->set('semester_id', (string) $f['semester']->id)
         ->assertSee($f['lastMatric'], false)
-        ->assertSee(__('Summary (all students, graded course outcomes)'), false)
+        ->assertSee(__('Overall Summary'), false)
         ->assertSee('100%', false);
 });
 

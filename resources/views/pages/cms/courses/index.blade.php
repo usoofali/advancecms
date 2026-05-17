@@ -40,6 +40,22 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
             abort(403, 'Unauthorized action.');
         }
 
+        // 1. Check if user has a scoped role for specific departments (new polymorphic system)
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', \App\Models\Department::class),
+            $user->getScopedModelIds('Academic Secretary', \App\Models\Department::class)
+        ));
+
+        if (!empty($scopedDeptIds)) {
+            $this->hodDepartmentIds = $scopedDeptIds;
+            $this->isHod = true;
+            if (count($scopedDeptIds) === 1) {
+                $this->departmentId = $scopedDeptIds[0];
+            }
+            return;
+        }
+
+        // 2. Fallback: Legacy check via hod_id column
         $staff = Staff::where('email', $user->email)->first();
 
         if ($staff) {

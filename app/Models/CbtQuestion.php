@@ -12,6 +12,13 @@ class CbtQuestion extends Model
 {
     use HasFactory, HasUuids;
 
+    protected static function booted(): void
+    {
+        static::deleting(function (CbtQuestion $question) {
+            $question->options()->delete();
+        });
+    }
+
     protected $fillable = [
         'cbt_exam_id',
         'question_text',

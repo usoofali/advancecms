@@ -18,6 +18,7 @@ new #[Layout('layouts.app')] #[Title('Invoices')] class extends Component
     public ?int $departmentFilter = null;
 
     public ?int $deletingId = null;
+    public array $scopedDepartmentIds = [];
 
     public function invoices()
     {
@@ -29,6 +30,7 @@ new #[Layout('layouts.app')] #[Title('Invoices')] class extends Component
             ->when($user->hasRole('Super Admin') && $this->institutionFilter, fn ($q) => $q->where('institution_id', $this->institutionFilter))
             ->when(!$user->hasRole('Super Admin'), fn ($q) => $q->where('institution_id', $user->institution_id))
             ->when($this->departmentFilter, fn ($q) => $q->where('department_id', $this->departmentFilter))
+            ->when(!$this->departmentFilter && !empty($this->scopedDepartmentIds), fn ($q) => $q->whereIn('department_id', $this->scopedDepartmentIds))
             ->with(['academicSession', 'items', 'institution', 'department'])
             ->withCount('items')
             ->latest()
@@ -43,7 +45,8 @@ new #[Layout('layouts.app')] #[Title('Invoices')] class extends Component
         $query = StudentInvoice::query()
             ->when($isSuperAdmin && $this->institutionFilter, fn ($q) => $q->where('institution_id', $this->institutionFilter))
             ->when(! $isSuperAdmin, fn ($q) => $q->where('institution_id', $user->institution_id))
-            ->when($this->departmentFilter, fn ($q) => $q->whereHas('invoice', fn ($iq) => $iq->where('department_id', $this->departmentFilter)));
+            ->when($this->departmentFilter, fn ($q) => $q->whereHas('invoice', fn ($iq) => $iq->where('department_id', $this->departmentFilter)))
+            ->when(!$this->departmentFilter && !empty($this->scopedDepartmentIds), fn ($q) => $q->whereHas('invoice', fn ($iq) => $iq->whereIn('department_id', $this->scopedDepartmentIds)));
 
         $totalInvoiced = (float) (clone $query)->sum('total_amount');
         $totalPaid = (float) (clone $query)->sum('amount_paid');
@@ -90,6 +93,35 @@ new #[Layout('layouts.app')] #[Title('Invoices')] class extends Component
     public function mount(): void
     {
         Gate::authorize('invoices.view');
+
+        $user = auth()->user();
+
+        // 1. Check polymorphic scoped roles
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', \App\Models\Department::class),
+            $user->getScopedModelIds('Academic Secretary', \App\Models\Department::class),
+            $user->getScopedModelIds('Accountant', \App\Models\Department::class)
+        ));
+
+        if (!empty($scopedDeptIds)) {
+            $this->scopedDepartmentIds = $scopedDeptIds;
+            if (count($scopedDeptIds) === 1) {
+                $this->departmentFilter = $scopedDeptIds[0];
+            }
+            return;
+        }
+
+        // 2. Fallback: Legacy HOD check
+        $staff = \App\Models\Staff::where('email', $user->email)->first();
+        if ($staff) {
+            $deptIds = \App\Models\Department::where('hod_id', $staff->id)->pluck('id')->toArray();
+            if (!empty($deptIds)) {
+                $this->scopedDepartmentIds = $deptIds;
+                if (count($deptIds) === 1) {
+                    $this->departmentFilter = $deptIds[0];
+                }
+            }
+        }
     }
 
     public function updatedInstitutionFilter()
@@ -167,6 +199,7 @@ new #[Layout('layouts.app')] #[Title('Invoices')] class extends Component
                 <flux:select.option value="">All Departments</flux:select.option>
                 @php
                 $depts = App\Models\Department::query()
+                ->when(!empty($this->scopedDepartmentIds), fn($q) => $q->whereIn('id', $this->scopedDepartmentIds))
                 ->when(!auth()->user()->hasRole('Super Admin'), fn($q) => $q->where('institution_id',
                 auth()->user()->institution_id))
                 ->when(auth()->user()->hasRole('Super Admin') && $this->institutionFilter, fn($q) =>

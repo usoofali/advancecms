@@ -6,6 +6,7 @@ use App\Models\Course;
 use App\Models\AcademicSession;
 use App\Models\Semester;
 use App\Models\Program;
+use App\Models\Department;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -17,7 +18,9 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
     use WithPagination;
 
     public bool $showModal = false;
+    public bool $showDeleteModal = false;
     public $editingId = null;
+    public $deletingId = null;
     
     public function mount(): void
     {
@@ -66,8 +69,37 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
             Gate::authorize('cbt_exams.create');
         }
 
+        $user = auth()->user();
+        $isSuperAdmin = $user->hasRole('Super Admin');
+        $isInstAdmin = $user->hasRole('Institutional Admin');
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', Department::class),
+            $user->getScopedModelIds('Academic Secretary', Department::class),
+            $user->getScopedModelIds('Exam Officer', Department::class)
+        ));
+        $isRestrictedLecturer = !$isSuperAdmin && !$isInstAdmin && empty($scopedDeptIds);
+
         $this->validate([
-            'course_id' => 'required|exists:courses,id',
+            'course_id' => [
+                'required',
+                'exists:courses,id',
+                function ($attribute, $value, $fail) use ($isRestrictedLecturer, $user, $scopedDeptIds) {
+                    if ($isRestrictedLecturer) {
+                        $isAllocated = \Illuminate\Support\Facades\DB::table('course_allocations')
+                            ->where('user_id', $user->id)
+                            ->where('course_id', $value)
+                            ->exists();
+                        if (!$isAllocated) {
+                            $fail('You are not allocated to this course.');
+                        }
+                    } elseif (!empty($scopedDeptIds)) {
+                        $course = Course::find($value);
+                        if ($course && !in_array($course->department_id, $scopedDeptIds)) {
+                            $fail('This course does not belong to your scoped department.');
+                        }
+                    }
+                }
+            ],
             'academic_session_id' => 'required|exists:academic_sessions,id',
             'exam_date' => 'required|date',
             'duration_minutes' => 'required|integer|min:1',
@@ -121,6 +153,39 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
 
     public function edit($id): void
     {
+        $user = auth()->user();
+        $isSuperAdmin = $user->hasRole('Super Admin');
+        $isInstAdmin = $user->hasRole('Institutional Admin');
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', Department::class),
+            $user->getScopedModelIds('Academic Secretary', Department::class),
+            $user->getScopedModelIds('Exam Officer', Department::class)
+        ));
+        $isRestrictedLecturer = !$isSuperAdmin && !$isInstAdmin && empty($scopedDeptIds);
+
+        if ($isRestrictedLecturer) {
+            $isAllocated = \Illuminate\Support\Facades\DB::table('course_allocations')
+                ->where('user_id', $user->id)
+                ->where('course_id', function ($query) use ($id) {
+                    $query->select('course_id')
+                        ->from('cbt_exams')
+                        ->where('id', $id)
+                        ->limit(1);
+                })
+                ->exists();
+            if (!$isAllocated) {
+                abort(403, 'Unauthorized action.');
+            }
+        } elseif (!empty($scopedDeptIds)) {
+            $exam = CbtExam::find($id);
+            if ($exam) {
+                $course = Course::find($exam->course_id);
+                if ($course && !in_array($course->department_id, $scopedDeptIds)) {
+                    abort(403, 'Unauthorized action.');
+                }
+            }
+        }
+
         $exam = CbtExam::with('course')->findOrFail($id);
         $this->editingId = $exam->id;
         $this->exam_date = $exam->exam_date ? $exam->exam_date->format('Y-m-d') : '';
@@ -144,6 +209,40 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
     public function toggleStatus($id): void
     {
         Gate::authorize('cbt_exams.edit');
+
+        $user = auth()->user();
+        $isSuperAdmin = $user->hasRole('Super Admin');
+        $isInstAdmin = $user->hasRole('Institutional Admin');
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', Department::class),
+            $user->getScopedModelIds('Academic Secretary', Department::class),
+            $user->getScopedModelIds('Exam Officer', Department::class)
+        ));
+        $isRestrictedLecturer = !$isSuperAdmin && !$isInstAdmin && empty($scopedDeptIds);
+
+        if ($isRestrictedLecturer) {
+            $isAllocated = \Illuminate\Support\Facades\DB::table('course_allocations')
+                ->where('user_id', $user->id)
+                ->where('course_id', function ($query) use ($id) {
+                    $query->select('course_id')
+                        ->from('cbt_exams')
+                        ->where('id', $id)
+                        ->limit(1);
+                })
+                ->exists();
+            if (!$isAllocated) {
+                abort(403, 'Unauthorized action.');
+            }
+        } elseif (!empty($scopedDeptIds)) {
+            $exam = CbtExam::find($id);
+            if ($exam) {
+                $course = Course::find($exam->course_id);
+                if ($course && !in_array($course->department_id, $scopedDeptIds)) {
+                    abort(403, 'Unauthorized action.');
+                }
+            }
+        }
+
         $exam = CbtExam::findOrFail($id);
         $newStatus = $exam->status === 'active' ? 'draft' : 'active';
         $exam->update(['status' => $newStatus]);
@@ -154,25 +253,93 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
         ]);
     }
 
-    public function delete($id): void
+    public function confirmDelete($id): void
     {
         Gate::authorize('cbt_exams.delete');
-        CbtExam::findOrFail($id)->delete();
-        $this->dispatch('notify', [
-            'type' => 'success',
-            'message' => 'Examination removed.',
-        ]);
+
+        $user = auth()->user();
+        $isSuperAdmin = $user->hasRole('Super Admin');
+        $isInstAdmin = $user->hasRole('Institutional Admin');
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', Department::class),
+            $user->getScopedModelIds('Academic Secretary', Department::class),
+            $user->getScopedModelIds('Exam Officer', Department::class)
+        ));
+        $isRestrictedLecturer = !$isSuperAdmin && !$isInstAdmin && empty($scopedDeptIds);
+
+        if ($isRestrictedLecturer) {
+            $isAllocated = \Illuminate\Support\Facades\DB::table('course_allocations')
+                ->where('user_id', $user->id)
+                ->where('course_id', function ($query) use ($id) {
+                    $query->select('course_id')
+                        ->from('cbt_exams')
+                        ->where('id', $id)
+                        ->limit(1);
+                })
+                ->exists();
+            if (!$isAllocated) {
+                abort(403, 'Unauthorized action.');
+            }
+        } elseif (!empty($scopedDeptIds)) {
+            $exam = CbtExam::find($id);
+            if ($exam) {
+                $course = Course::find($exam->course_id);
+                if ($course && !in_array($course->department_id, $scopedDeptIds)) {
+                    abort(403, 'Unauthorized action.');
+                }
+            }
+        }
+
+        $this->deletingId = $id;
+        $this->showDeleteModal = true;
+    }
+
+    public function executeDelete(): void
+    {
+        Gate::authorize('cbt_exams.delete');
+
+        if ($this->deletingId) {
+            CbtExam::findOrFail($this->deletingId)->delete();
+            $this->showDeleteModal = false;
+            $this->deletingId = null;
+
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'message' => 'Examination deleted successfully.',
+            ]);
+        }
     }
 
     public function with(): array
     {
         $instId = auth()->user()->institution_id;
+        $user = auth()->user();
+        $isSuperAdmin = $user->hasRole('Super Admin');
+        $isInstAdmin = $user->hasRole('Institutional Admin');
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', Department::class),
+            $user->getScopedModelIds('Academic Secretary', Department::class),
+            $user->getScopedModelIds('Exam Officer', Department::class)
+        ));
+        $isRestrictedLecturer = !$isSuperAdmin && !$isInstAdmin && empty($scopedDeptIds);
 
         return [
             'exams' => CbtExam::where('institution_id', $instId)
                 ->with(['course', 'academicSession', 'semester'])
                 ->when($this->search, fn($q) => $q->where('title', 'like', "%{$this->search}%")
                     ->orWhereHas('course', fn($cq) => $cq->where('course_code', 'like', "%{$this->search}%")))
+                ->when($isRestrictedLecturer, function ($q) use ($user) {
+                    $q->whereIn('course_id', function ($sub) use ($user) {
+                        $sub->select('course_id')
+                            ->from('course_allocations')
+                            ->where('user_id', $user->id);
+                    });
+                })
+                ->when(!empty($scopedDeptIds), function ($q) use ($scopedDeptIds) {
+                    $q->whereHas('course', function ($cq) use ($scopedDeptIds) {
+                        $cq->whereIn('department_id', $scopedDeptIds);
+                    });
+                })
                 ->latest()
                 ->paginate(9),
             'programs' => Program::where('institution_id', $instId)->get(),
@@ -181,9 +348,18 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
                 ->when($this->filter_program_id, fn($q) => $q->where('program_id', $this->filter_program_id))
                 ->when($this->filter_level, fn($q) => $q->where('level', $this->filter_level))
                 ->when($this->semester_id, fn($q) => $q->where('semester', $this->semester_id))
+                ->when($isRestrictedLecturer, function ($q) use ($user) {
+                    $q->whereIn('id', function ($sub) use ($user) {
+                        $sub->select('course_id')
+                            ->from('course_allocations')
+                            ->where('user_id', $user->id);
+                    });
+                })
+                ->when(!empty($scopedDeptIds), fn($q) => $q->whereIn('department_id', $scopedDeptIds))
                 ->get(),
         ];
     }
+
 }; ?>
 
 <div class="p-6">
@@ -236,7 +412,7 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
                                     </flux:menu.item>
                                 @endcan
                                 @can('cbt_exams.delete')
-                                    <flux:menu.item variant="danger" icon="trash" wire:click="delete({{ $exam->id }})" wire:confirm="Delete this exam permanently?">{{ __('Delete') }}</flux:menu.item>
+                                    <flux:menu.item variant="danger" icon="trash" wire:click="confirmDelete({{ $exam->id }})">{{ __('Delete') }}</flux:menu.item>
                                 @endcan
                             </flux:menu>
                         </flux:dropdown>
@@ -298,7 +474,9 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
                 <flux:icon icon="clipboard-document-list" class="size-16 text-zinc-300 mb-6" />
                 <flux:heading size="lg">{{ __('No Examinations Found') }}</flux:heading>
                 <flux:text class="text-zinc-500 mt-2">{{ __('Get started by creating your first exam configuration.') }}</flux:text>
-                <flux:button variant="primary" class="mt-6" icon="plus" wire:click="$set('showModal', true)">{{ __('Create Exam') }}</flux:button>
+                @can('cbt_exams.create')
+                    <flux:button variant="primary" class="mt-6" icon="plus" wire:click="$set('showModal', true)">{{ __('Create Exam') }}</flux:button>
+                @endcan
             </div>
         @endforelse
     </div>
@@ -390,5 +568,24 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
                 <flux:button variant="primary" type="submit">{{ __('Save Examination') }}</flux:button>
             </div>
         </form>
+    </flux:modal>
+
+    <flux:modal wire:model="showDeleteModal" class="w-full max-w-lg">
+        <div class="space-y-6">
+            <div class="flex items-start gap-4">
+                <div class="size-12 rounded-2xl bg-red-50 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                    <flux:icon icon="trash" class="size-6 text-red-600" />
+                </div>
+                <div>
+                    <flux:heading size="lg">{{ __('Delete Examination?') }}</flux:heading>
+                    <flux:subheading class="mt-2">{{ __('Are you sure you want to permanently delete this CBT examination? This action is irreversible and will delete all associated question banks, options, and related configurations.') }}</flux:subheading>
+                </div>
+            </div>
+
+            <div class="flex gap-2 justify-end pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                <flux:button wire:click="showDeleteModal = false">{{ __('Cancel') }}</flux:button>
+                <flux:button variant="danger" wire:click="executeDelete">{{ __('Permanently Delete') }}</flux:button>
+            </div>
+        </div>
     </flux:modal>
 </div>

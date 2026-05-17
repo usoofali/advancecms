@@ -14,10 +14,33 @@ new #[Layout('layouts.app')] #[Title('Staff Management')] class extends Componen
     public string $search = '';
     public int|string $role_id = '';
     public int|string|null $deletingId = null;
+    public array $scopedDepartmentIds = [];
 
     public function mount(): void
     {
         Gate::authorize('staff.view');
+
+        $user = auth()->user();
+
+        // 1. Check new polymorphic scoped roles
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', \App\Models\Department::class),
+            $user->getScopedModelIds('Academic Secretary', \App\Models\Department::class)
+        ));
+
+        if (!empty($scopedDeptIds)) {
+            $this->scopedDepartmentIds = $scopedDeptIds;
+            return;
+        }
+
+        // 2. Fallback: Legacy hod_id check
+        $staff = Staff::where('email', $user->email)->first();
+        if ($staff) {
+            $deptIds = Department::where('hod_id', $staff->id)->pluck('id')->toArray();
+            if (!empty($deptIds)) {
+                $this->scopedDepartmentIds = $deptIds;
+            }
+        }
     }
 
     public function updatingSearch(): void
@@ -52,6 +75,10 @@ new #[Layout('layouts.app')] #[Title('Staff Management')] class extends Componen
             'staffMembers' => Staff::query()
                 ->with('role')
                 ->when($institution_id, fn($q) => $q->where('institution_id', $institution_id))
+                ->when(!empty($this->scopedDepartmentIds), fn($q) => $q->where(function ($sub) {
+                    // Filter: show staff who are HOD of the scoped departments
+                    $sub->whereHas('hodDepartments', fn($dq) => $dq->whereIn('id', $this->scopedDepartmentIds));
+                }))
                 ->when($this->search, function ($q) {
                     $q->where('first_name', 'like', "%{$this->search}%")
                         ->orWhere('last_name', 'like', "%{$this->search}%")

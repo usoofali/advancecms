@@ -3,6 +3,8 @@
 use App\Models\CbtExam;
 use App\Models\CbtQuestion;
 use App\Models\CbtOption;
+use App\Models\Department;
+use App\Models\Course;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -64,8 +66,40 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
             Gate::authorize('cbt_questions.create');
         }
 
+        $user = auth()->user();
+        $isSuperAdmin = $user->hasRole('Super Admin');
+        $isInstAdmin = $user->hasRole('Institutional Admin');
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', Department::class),
+            $user->getScopedModelIds('Academic Secretary', Department::class),
+            $user->getScopedModelIds('Exam Officer', Department::class)
+        ));
+        $isRestrictedLecturer = !$isSuperAdmin && !$isInstAdmin && empty($scopedDeptIds);
+
         $this->validate([
-            'selectedExamId' => 'required|exists:cbt_exams,id',
+            'selectedExamId' => [
+                'required',
+                'exists:cbt_exams,id',
+                function ($attribute, $value, $fail) use ($isRestrictedLecturer, $user, $scopedDeptIds) {
+                    $exam = CbtExam::find($value);
+                    if ($exam) {
+                        if ($isRestrictedLecturer) {
+                            $isAllocated = DB::table('course_allocations')
+                                ->where('user_id', $user->id)
+                                ->where('course_id', $exam->course_id)
+                                ->exists();
+                            if (!$isAllocated) {
+                                $fail('You do not have access to this examination.');
+                            }
+                        } elseif (!empty($scopedDeptIds)) {
+                            $course = Course::find($exam->course_id);
+                            if ($course && !in_array($course->department_id, $scopedDeptIds)) {
+                                $fail('This examination belongs to a course outside your department.');
+                            }
+                        }
+                    }
+                }
+            ],
             'question_text' => 'required|string',
             'options.*.text' => 'required|string',
         ]);
@@ -109,7 +143,41 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
     public function importCsv(): void
     {
         Gate::authorize('cbt_questions.import');
+        
+        $user = auth()->user();
+        $isSuperAdmin = $user->hasRole('Super Admin');
+        $isInstAdmin = $user->hasRole('Institutional Admin');
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', Department::class),
+            $user->getScopedModelIds('Academic Secretary', Department::class),
+            $user->getScopedModelIds('Exam Officer', Department::class)
+        ));
+        $isRestrictedLecturer = !$isSuperAdmin && !$isInstAdmin && empty($scopedDeptIds);
+
         $this->validate([
+            'selectedExamId' => [
+                'required',
+                'exists:cbt_exams,id',
+                function ($attribute, $value, $fail) use ($isRestrictedLecturer, $user, $scopedDeptIds) {
+                    $exam = CbtExam::find($value);
+                    if ($exam) {
+                        if ($isRestrictedLecturer) {
+                            $isAllocated = DB::table('course_allocations')
+                                ->where('user_id', $user->id)
+                                ->where('course_id', $exam->course_id)
+                                ->exists();
+                            if (!$isAllocated) {
+                                $fail('You do not have access to this examination.');
+                            }
+                        } elseif (!empty($scopedDeptIds)) {
+                            $course = Course::find($exam->course_id);
+                            if ($course && !in_array($course->department_id, $scopedDeptIds)) {
+                                $fail('This examination belongs to a course outside your department.');
+                            }
+                        }
+                    }
+                }
+            ],
             'csvFile' => 'required|file|mimes:csv,txt|max:1024',
         ]);
 
@@ -163,6 +231,44 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
     public function edit($id): void
     {
         Gate::authorize('cbt_questions.edit');
+
+        $user = auth()->user();
+        $isSuperAdmin = $user->hasRole('Super Admin');
+        $isInstAdmin = $user->hasRole('Institutional Admin');
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', Department::class),
+            $user->getScopedModelIds('Academic Secretary', Department::class),
+            $user->getScopedModelIds('Exam Officer', Department::class)
+        ));
+        $isRestrictedLecturer = !$isSuperAdmin && !$isInstAdmin && empty($scopedDeptIds);
+
+        if ($isRestrictedLecturer) {
+            $isAllocated = DB::table('course_allocations')
+                ->where('user_id', $user->id)
+                ->where('course_id', function ($query) use ($id) {
+                    $query->select('cbt_exams.course_id')
+                        ->from('cbt_exams')
+                        ->join('cbt_questions', 'cbt_questions.cbt_exam_id', '=', 'cbt_exams.id')
+                        ->where('cbt_questions.id', $id)
+                        ->limit(1);
+                })
+                ->exists();
+            if (!$isAllocated) {
+                abort(403, 'Unauthorized action.');
+            }
+        } elseif (!empty($scopedDeptIds)) {
+            $question = CbtQuestion::find($id);
+            if ($question) {
+                $exam = CbtExam::find($question->cbt_exam_id);
+                if ($exam) {
+                    $course = Course::find($exam->course_id);
+                    if ($course && !in_array($course->department_id, $scopedDeptIds)) {
+                        abort(403, 'Unauthorized action.');
+                    }
+                }
+            }
+        }
+
         $question = CbtQuestion::with('options')->findOrFail($id);
         $this->editingId = $question->id;
         $this->question_text = $question->question_text;
@@ -186,6 +292,44 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
     public function delete($id): void
     {
         Gate::authorize('cbt_questions.delete');
+
+        $user = auth()->user();
+        $isSuperAdmin = $user->hasRole('Super Admin');
+        $isInstAdmin = $user->hasRole('Institutional Admin');
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', Department::class),
+            $user->getScopedModelIds('Academic Secretary', Department::class),
+            $user->getScopedModelIds('Exam Officer', Department::class)
+        ));
+        $isRestrictedLecturer = !$isSuperAdmin && !$isInstAdmin && empty($scopedDeptIds);
+
+        if ($isRestrictedLecturer) {
+            $isAllocated = DB::table('course_allocations')
+                ->where('user_id', $user->id)
+                ->where('course_id', function ($query) use ($id) {
+                    $query->select('cbt_exams.course_id')
+                        ->from('cbt_exams')
+                        ->join('cbt_questions', 'cbt_questions.cbt_exam_id', '=', 'cbt_exams.id')
+                        ->where('cbt_questions.id', $id)
+                        ->limit(1);
+                })
+                ->exists();
+            if (!$isAllocated) {
+                abort(403, 'Unauthorized action.');
+            }
+        } elseif (!empty($scopedDeptIds)) {
+            $question = CbtQuestion::find($id);
+            if ($question) {
+                $exam = CbtExam::find($question->cbt_exam_id);
+                if ($exam) {
+                    $course = Course::find($exam->course_id);
+                    if ($course && !in_array($course->department_id, $scopedDeptIds)) {
+                        abort(403, 'Unauthorized action.');
+                    }
+                }
+            }
+        }
+
         CbtQuestion::findOrFail($id)->delete();
         $this->dispatch('notify', [
             'type' => 'success',
@@ -196,11 +340,35 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
     public function with(): array
     {
         $instId = auth()->user()->institution_id;
+        $user = auth()->user();
+        $isSuperAdmin = $user->hasRole('Super Admin');
+        $isInstAdmin = $user->hasRole('Institutional Admin');
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', Department::class),
+            $user->getScopedModelIds('Academic Secretary', Department::class),
+            $user->getScopedModelIds('Exam Officer', Department::class)
+        ));
+        $isRestrictedLecturer = !$isSuperAdmin && !$isInstAdmin && empty($scopedDeptIds);
+
         $currentExam = $this->selectedExamId ? CbtExam::find($this->selectedExamId) : null;
         $addedCount = $this->selectedExamId ? CbtQuestion::where('cbt_exam_id', $this->selectedExamId)->count() : 0;
 
         return [
-            'exams' => CbtExam::where('institution_id', $instId)->latest()->get(),
+            'exams' => CbtExam::where('institution_id', $instId)
+                ->when($isRestrictedLecturer, function ($q) use ($user) {
+                    $q->whereIn('course_id', function ($sub) use ($user) {
+                        $sub->select('course_id')
+                            ->from('course_allocations')
+                            ->where('user_id', $user->id);
+                    });
+                })
+                ->when(!empty($scopedDeptIds), function ($q) use ($scopedDeptIds) {
+                    $q->whereHas('course', function ($cq) use ($scopedDeptIds) {
+                        $cq->whereIn('department_id', $scopedDeptIds);
+                    });
+                })
+                ->latest()
+                ->get(),
             'stats' => [
                 'total_added' => $addedCount,
                 'required' => $currentExam?->total_questions ?? 0,
@@ -214,6 +382,7 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
                 : collect(),
         ];
     }
+
 }; ?>
 
 <div class="p-6">

@@ -37,7 +37,7 @@ class ResultsFilterService
     public static function applyToQuery(Builder $query, array $filters): Builder
     {
         if (self::filterActive($filters['institution_id'] ?? null)) {
-            $query->where('institution_id', $filters['institution_id']);
+            $query->where('results.institution_id', $filters['institution_id']);
         }
 
         if (self::filterActive($filters['department_id'] ?? null)) {
@@ -49,7 +49,7 @@ class ResultsFilterService
         }
 
         if (self::filterActive($filters['session_id'] ?? null)) {
-            $query->where('academic_session_id', $filters['session_id']);
+            $query->where('results.academic_session_id', $filters['session_id']);
         }
 
         if (self::filterActive($filters['level'] ?? null)) {
@@ -57,11 +57,11 @@ class ResultsFilterService
         }
 
         if (self::filterActive($filters['semester_id'] ?? null)) {
-            $query->where('semester_id', $filters['semester_id']);
+            $query->where('results.semester_id', $filters['semester_id']);
         }
 
         if (self::filterActive($filters['course_id'] ?? null)) {
-            $query->where('course_id', $filters['course_id']);
+            $query->where('results.course_id', $filters['course_id']);
         }
 
         $search = trim((string) ($filters['search'] ?? ''));

@@ -386,10 +386,15 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
             $baseQuery = ResultsFilterService::newFilteredQuery($filters)
                 ->with(['student', 'course', 'academicSession', 'semester']);
 
-            $courseResults = (clone $baseQuery)->latest()->paginate(20);
+            $sortedQuery = (clone $baseQuery)
+                ->join('students', 'results.student_id', '=', 'students.id')
+                ->select('results.*')
+                ->orderBy('students.matric_number');
+
+            $courseResults = (clone $sortedQuery)->paginate(20);
             // Full course list for print (same filters as paginated list).
-            $courseResultsForPrint = (clone $baseQuery)->latest()->get();
-            $allForMetrics = (clone $baseQuery)->select(['grade', 'remark'])->get();
+            $courseResultsForPrint = (clone $sortedQuery)->get();
+            $allForMetrics = (clone $baseQuery)->select(['results.grade', 'results.remark'])->get();
             $metrics = ResultsPresentationBuilder::courseModeMetrics($allForMetrics);
 
             return [

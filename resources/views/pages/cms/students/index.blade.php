@@ -313,7 +313,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
         </flux:select>
     </div>
 
-    <flux:table>
+    <flux:table :paginate="$students">
         <flux:table.columns>
             <flux:table.column>{{ __('Matric Number') }}</flux:table.column>
             <flux:table.column>{{ __('Name') }}</flux:table.column>
@@ -387,8 +387,6 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
             @endforelse
         </flux:table.rows>
     </flux:table>
-
-    <div class="mt-4">{{ $students->links() }}</div>
 
     {{-- Import Modal --}}
     <flux:modal name="import-students" variant="filled" class="min-w-[28rem]">

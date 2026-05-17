@@ -6,15 +6,15 @@ use App\Models\Semester;
 use App\Models\CourseRegistration;
 use App\Models\Result;
 use App\Services\GradingService;
-    use App\Exports\LecturerResultsExport;
-    use App\Imports\LecturerResultsImport;
-    use Livewire\WithFileUploads;
-    use Livewire\Attributes\Layout;
-    use Livewire\Attributes\Title;
-    use Livewire\Component;
+use App\Exports\LecturerResultsExport;
+use App\Imports\LecturerResultsImport;
+use Livewire\WithFileUploads;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
+use Livewire\Component;
 
-    new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
-        use WithFileUploads;
+new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
+    use WithFileUploads;
     public int|string $session_id = '';
     public int|string $semester_id = '';
     public int|string $course_id = '';
@@ -24,7 +24,7 @@ use App\Services\GradingService;
     public $importFile;
     public array $importFailures = [];
     public int $importedCount = 0;
-    
+
     public array $scores = []; // student_id => [ca, exam]
 
     public function mount(): void
@@ -105,14 +105,14 @@ use App\Services\GradingService;
 
         $result = Result::updateOrCreate(
             [
-                'student_id'          => $studentId,
-                'course_id'           => $this->course_id,
-                'semester_id'         => $targetSem?->id ?? $this->semester_id,
+                'student_id' => $studentId,
+                'course_id' => $this->course_id,
+                'semester_id' => $targetSem?->id ?? $this->semester_id,
             ],
             [
-                'institution_id'      => $this->institution_id ?: auth()->user()->institution_id,
+                'institution_id' => $this->institution_id ?: auth()->user()->institution_id,
                 'academic_session_id' => $this->session_id,
-                'ca_score'   => (float) ($this->scores[$studentId]['ca'] ?: 0),
+                'ca_score' => (float) ($this->scores[$studentId]['ca'] ?: 0),
                 'exam_score' => (float) ($this->scores[$studentId]['exam'] ?: 0),
             ]
         );
@@ -125,10 +125,10 @@ use App\Services\GradingService;
         Gate::authorize('results.enter');
 
         $this->validate([
-            'session_id'  => ['required'],
+            'session_id' => ['required'],
             'semester_id' => ['required'],
-            'course_id'   => ['required'],
-            'scores.*.ca'   => ['numeric', 'min:0', 'max:100'],
+            'course_id' => ['required'],
+            'scores.*.ca' => ['numeric', 'min:0', 'max:100'],
             'scores.*.exam' => ['numeric', 'min:0', 'max:100'],
         ]);
 
@@ -244,11 +244,11 @@ use App\Services\GradingService;
         return [
             'sessions' => AcademicSession::query()->orderByDesc('name')->get(),
             'semesters' => $this->session_id ? Semester::where('academic_session_id', $this->session_id)->get() : [],
-            'institutions' => auth()->user()->institution_id 
-                ? [] 
+            'institutions' => auth()->user()->institution_id
+                ? []
                 : \App\Models\Institution::query()->where('status', 'active')->orderBy('name')->get(),
             'programs' => \App\Models\Program::query()
-                ->when($this->institution_id ?: auth()->user()->institution_id, function($q, $id) {
+                ->when($this->institution_id ?: auth()->user()->institution_id, function ($q, $id) {
                     $q->whereHas('department', fn($dq) => $dq->where('institution_id', $id));
                 })
                 ->orderBy('name')
@@ -258,21 +258,21 @@ use App\Services\GradingService;
                 ->when($this->filter_program, function ($q) {
                     $q->where(function ($sq) {
                         $sq->where('program_id', $this->filter_program)
-                           ->orWhereHas('programs', fn($pq) => $pq->where('programs.id', $this->filter_program));
+                            ->orWhereHas('programs', fn($pq) => $pq->where('programs.id', $this->filter_program));
                     });
                 })
                 ->when($this->filter_level, function ($q) {
                     $q->where(function ($sq) {
                         $sq->where('level', $this->filter_level)
-                           ->orWhereHas('programs', fn($pq) => $pq->where('program_courses.level', $this->filter_level));
+                            ->orWhereHas('programs', fn($pq) => $pq->where('program_courses.level', $this->filter_level));
                     });
                 })
                 ->when(!auth()->user()->hasAnyRole(['Super Admin', 'Institutional Admin']), function ($q) {
                     $user = auth()->user();
                     $q->whereHas('allocations', function ($query) use ($user) {
                         $query->where('user_id', $user->id)
-                              ->where('academic_session_id', $this->session_id)
-                              ->where('semester_id', $this->semester_id);
+                            ->where('academic_session_id', $this->session_id)
+                            ->where('semester_id', $this->semester_id);
                     });
                 })
                 ->when($this->semester_id, function ($q) {
@@ -301,17 +301,17 @@ use App\Services\GradingService;
             </x-action-message>
 
             @if ($course_id && count($students) > 0)
-            @can('results.export')
-            <flux:button size="sm" variant="ghost" icon="document-arrow-down" wire:click="exportCsv">
-                {{ __('Export CSV') }}
-            </flux:button>
-            @endcan
-            @can('results.import')
-            <flux:button size="sm" variant="ghost" icon="document-arrow-up"
-                x-on:click="$flux.modal('import-results').show()">
-                {{ __('Import CSV') }}
-            </flux:button>
-            @endcan
+                @can('results.export')
+                    <flux:button size="sm" variant="ghost" icon="document-arrow-down" wire:click="exportCsv">
+                        {{ __('Export CSV') }}
+                    </flux:button>
+                @endcan
+                @can('results.import')
+                    <flux:button size="sm" variant="ghost" icon="document-arrow-up"
+                        x-on:click="$flux.modal('import-results').show()">
+                        {{ __('Import CSV') }}
+                    </flux:button>
+                @endcan
             @endif
         </div>
     </div>
@@ -319,120 +319,122 @@ use App\Services\GradingService;
     <flux:card class="mb-8">
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
             @if (!auth()->user()->institution_id)
-            <flux:select wire:model.live="institution_id" :label="__('Institution')" required>
-                <flux:select.option value="null">{{ __('Select institution...') }}</flux:select.option>
-                @foreach ($institutions as $inst)
-                <flux:select.option :value="$inst->id">{{ $inst->name }}</flux:select.option>
-                @endforeach
-            </flux:select>
+                <flux:select wire:model.live="institution_id" :label="__('Institution')" required>
+                    <flux:select.option value="null">{{ __('Select institution...') }}</flux:select.option>
+                    @foreach ($institutions as $inst)
+                        <flux:select.option :value="$inst->id">{{ $inst->name }}</flux:select.option>
+                    @endforeach
+                </flux:select>
             @endif
 
             <flux:select wire:model.live="session_id" :label="__('Academic Session')" required
                 :disabled="!$institution_id && !auth()->user()->institution_id">
                 <flux:select.option value="null">{{ __('Select session...') }}</flux:select.option>
                 @foreach ($sessions as $session)
-                <flux:select.option :value="$session->id">{{ $session->name }}</flux:select.option>
+                    <flux:select.option :value="$session->id">{{ $session->name }}</flux:select.option>
                 @endforeach
             </flux:select>
 
             <flux:select wire:model.live="filter_program" :label="__('Program')" :disabled="!$session_id">
                 <flux:select.option value="">{{ __('All Programs') }}</flux:select.option>
                 @foreach ($programs as $prog)
-                <flux:select.option :value="$prog->id">{{ $prog->name }}</flux:select.option>
+                    <flux:select.option :value="$prog->id">{{ $prog->name }}</flux:select.option>
                 @endforeach
             </flux:select>
 
             <flux:select wire:model.live="filter_level" :label="__('Level')" :disabled="!$session_id">
                 <flux:select.option value="">{{ __('All Levels') }}</flux:select.option>
                 @foreach ([100, 200, 300] as $lvl)
-                <flux:select.option :value="$lvl">{{ $lvl }}</flux:select.option>
+                    <flux:select.option :value="$lvl">{{ $lvl }}</flux:select.option>
                 @endforeach
             </flux:select>
 
             <flux:select wire:model.live="semester_id" :label="__('Semester')" :disabled="!$session_id">
                 <flux:select.option value="null">{{ __('Select semester...') }}</flux:select.option>
                 @foreach ($semesters as $semester)
-                <flux:select.option :value="$semester->id">{{ ucfirst($semester->name) }}</flux:select.option>
+                    <flux:select.option :value="$semester->id">{{ ucfirst($semester->name) }}</flux:select.option>
                 @endforeach
             </flux:select>
 
             <flux:select wire:model.live="course_id" :label="__('Course')" :disabled="!$semester_id">
                 <flux:select.option value="null">{{ __('Select course...') }}</flux:select.option>
                 @foreach ($courses as $course)
-                <flux:select.option :value="$course->id">{{ $course->course_code }}: {{ $course->title }}
-                </flux:select.option>
+                    <flux:select.option :value="$course->id">{{ $course->course_code }}: {{ $course->title }}
+                    </flux:select.option>
                 @endforeach
             </flux:select>
         </div>
     </flux:card>
 
     @if ($course_id && count($students) > 0)
-    <div class="space-y-6">
-        <flux:card>
-        <div
-            class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
-            <table class="w-full text-left border-collapse">
-                <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700">
-                    <tr>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Student
-                            Name') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Matric
-                            Number') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 w-32">{{ __('CA
-                            (40)') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 w-32">{{ __('Exam
-                            (60)') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 w-24">{{ __('Total')
-                            }}</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                    @foreach ($students as $stu)
-                    <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors" wire:key="{{ $stu->id }}">
-                        <td class="px-4 py-3 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                            {{ $stu->full_name }}
-                        </td>
-                        <td class="px-4 py-3 font-mono text-sm text-zinc-600 dark:text-zinc-400 uppercase">
-                            {{ $stu->matric_number }}
-                        </td>
-                        <td class="px-4 py-3">
-                            <flux:input type="number" step="0.5" wire:model.blur="scores.{{ $stu->id }}.ca" 
-                                wire:change="saveSingleResult({{ $stu->id }})" size="sm"
-                                class="w-24" />
-                        </td>
-                        <td class="px-4 py-3">
-                            <flux:input type="number" step="0.5" wire:model.blur="scores.{{ $stu->id }}.exam" 
-                                wire:change="saveSingleResult({{ $stu->id }})" size="sm"
-                                class="w-24" />
-                        </td>
-                        <td class="px-4 py-3">
-                            <div class="font-bold text-zinc-900 dark:text-zinc-100">
-                                {{ (float)(($scores[$stu->id]['ca'] ?? 0) ?: 0) + (float)(($scores[$stu->id]['exam'] ?? 0) ?: 0) }}
-                            </div>
-                        </td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </flux:card>
+        <div class="space-y-6">
+            <flux:card>
+                <div
+                    class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
+                    <table class="w-full text-left border-collapse whitespace-nowrap">
+                        <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700">
+                            <tr>
+                                <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">
+                                    {{ __('Student') }}</th>
+                                <th
+                                    class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 w-32 min-w-[100px]">
+                                    {{ __('CA (30)') }}</th>
+                                <th
+                                    class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 w-32 min-w-[100px]">
+                                    {{ __('Exam (70)') }}</th>
+                                <th
+                                    class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-center w-24 min-w-[80px]">
+                                    {{ __('Total') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
+                            @foreach ($students as $stu)
+                                <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors"
+                                    wire:key="{{ $stu->id }}">
+                                    <td class="px-4 py-3">
+                                        <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ $stu->full_name }}
+                                        </div>
+                                        <div class="font-mono text-xs text-zinc-500 dark:text-zinc-400 uppercase mt-0.5">
+                                            {{ $stu->matric_number }}</div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <flux:input type="number" step="0.5" wire:model.blur="scores.{{ $stu->id }}.ca"
+                                            wire:change="saveSingleResult({{ $stu->id }})" size="sm" class="w-24" />
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <flux:input type="number" step="0.5" wire:model.blur="scores.{{ $stu->id }}.exam"
+                                            wire:change="saveSingleResult({{ $stu->id }})" size="sm" class="w-24" />
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="font-bold text-center text-zinc-900 dark:text-zinc-100">
+                                            {{ (float) (($scores[$stu->id]['ca'] ?? 0) ?: 0) + (float) (($scores[$stu->id]['exam'] ?? 0) ?: 0) }}
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </flux:card>
 
-        <div class="sticky bottom-6 p-4 bg-white/90 dark:bg-zinc-900/90 backdrop-blur border border-zinc-200 dark:border-zinc-700 rounded-2xl flex items-center justify-between shadow-xl z-30">
-            <div class="flex items-center gap-2 text-xs text-zinc-500">
-                <flux:icon.check-circle class="size-4 text-green-500" />
-                {{ __('Results are auto-saved as you move between fields.') }}
-            </div>
+            <div
+                class="sticky bottom-6 p-4 bg-white/90 dark:bg-zinc-900/90 backdrop-blur border border-zinc-200 dark:border-zinc-700 rounded-2xl flex items-center justify-between shadow-xl z-30">
+                <div class="flex items-center gap-2 text-xs text-zinc-500">
+                    <flux:icon.check-circle class="size-4 text-green-500" />
+                    {{ __('Results are auto-saved as you move between fields.') }}
+                </div>
 
-            <div class="flex items-center gap-3">
-                <flux:button variant="primary" wire:click="saveResults" icon="check">
-                    {{ __('Finalize & Grade All') }}
-                </flux:button>
+                <div class="flex items-center gap-3">
+                    <flux:button variant="primary" wire:click="saveResults" icon="check">
+                        {{ __('Finalize & Grade All') }}
+                    </flux:button>
+                </div>
             </div>
         </div>
-    </div>
     @elseif ($course_id)
-    <div class="p-12 text-center border-2 border-dashed rounded-2xl text-zinc-500">
-        {{ __('No students registered for this course in the selected semester.') }}
-    </div>
+        <div class="p-12 text-center border-2 border-dashed rounded-2xl text-zinc-500">
+            {{ __('No students registered for this course in the selected semester.') }}
+        </div>
     @endif
 
     <flux:modal name="import-results" class="min-w-[28rem]">
@@ -453,14 +455,14 @@ use App\Services\GradingService;
             <flux:error name="importFile" />
 
             @if (!empty($importFailures))
-            <div
-                class="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 p-4 space-y-1 max-h-48 overflow-y-auto">
-                <p class="text-sm font-medium text-red-700 dark:text-red-400">{{ count($importFailures) }} {{ __('row(s)
-                    failed:') }}</p>
-                @foreach ($importFailures as $failure)
-                <p class="text-xs text-red-600 dark:text-red-500">{{ $failure }}</p>
-                @endforeach
-            </div>
+                <div
+                    class="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 p-4 space-y-1 max-h-48 overflow-y-auto">
+                    <p class="text-sm font-medium text-red-700 dark:text-red-400">{{ count($importFailures) }} {{ __('row(s)
+                        failed:') }}</p>
+                    @foreach ($importFailures as $failure)
+                        <p class="text-xs text-red-600 dark:text-red-500">{{ $failure }}</p>
+                    @endforeach
+                </div>
             @endif
 
             <div class="flex gap-2">

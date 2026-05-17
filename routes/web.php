@@ -86,7 +86,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('portal/course-form', 'pages::cms.students.course-form')->name('cms.students.course-form')->middleware('auth');
     Route::livewire('portal/exam-card', 'pages::cms.students.exam-card')->name('cms.students.exam-card')->middleware('auth');
     Route::livewire('portal/my-lecturers', 'pages::cms.students.my-lecturers')->name('cms.students.my-lecturers')->middleware('can:registrations.view_personal');
-    Route::livewire('portal/invoices', 'pages::cms.students.portal-invoices')->name('cms.students.portal-invoices')->middleware('auth');
+    Route::livewire('portal/invoices', 'pages::cms.students.portal-invoices')->name('cms.students.portal-invoices')->middleware(['auth', 'can:invoices.view_personal']);
 
     // Course Management
     Route::livewire('courses', 'pages::cms.courses.index')->name('cms.courses.index');
@@ -113,7 +113,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Academic Sessions
-    Route::livewire('sessions', 'pages::cms.sessions.index')->name('cms.sessions.index')->middleware('can:settings.view');
+    Route::livewire('sessions', 'pages::cms.sessions.index')->name('cms.sessions.index')->middleware('can:academic_sessions.view');
 
     // Staff Management
     Route::middleware('can:staff.view')->group(function () {
@@ -150,7 +150,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
     // ID Card Management
     Route::group(['prefix' => 'id-cards', 'as' => 'cms.id-cards.'], function () {
-        Route::livewire('request', 'cms.id-cards.request-card')->name('request');
+        Route::livewire('request', 'cms.id-cards.request-card')->name('request')->middleware('can:id_cards.request');
         Route::livewire('manage', 'cms.id-cards.manage-id-cards')->name('manage')->middleware('can:staff.view');
         Route::livewire('print/{data}', 'cms.id-cards.print-id-cards')->name('print')->middleware('can:staff.view');
     });
@@ -160,7 +160,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::prefix('cbt')->name('cms.cbt.')->group(function () {
             Route::livewire('exams', 'pages::cms.cbt.exams')->name('exams')->middleware('can:cbt_exams.view');
             Route::livewire('questions', 'pages::cms.cbt.questions')->name('questions')->middleware('can:cbt_questions.view');
-            Route::livewire('sync', 'pages::cms.cbt.sync')->name('sync')->middleware('can:cbt_data.sync');
+            Route::livewire('sync', 'pages::cms.cbt.sync')->name('sync')->middleware('can:cbt_sync.view');
             Route::livewire('results', 'pages::cms.cbt.results')->name('results')->middleware('can:cbt_results.view');
         });
     });

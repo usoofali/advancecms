@@ -182,7 +182,7 @@
                         </flux:sidebar.item>
                     @endcan
 
-                    @can('courses.view_assigned')
+                    @can('attendance.view_history')
                         <flux:sidebar.item icon="clock" :href="route('cms.attendance.history')"
                             :current="request()->routeIs('cms.attendance.history')" wire:navigate>
                             {{ __('Attendance History') }}
@@ -280,12 +280,12 @@
                         </flux:sidebar.item>
                     @endcan
 
-                    @canany(['payments.view', 'payments.verify'])
+                    @can('payments.view')
                         <flux:sidebar.item icon="check-badge" :href="route('cms.invoices.payments')"
                             :current="request()->routeIs('cms.invoices.payments')" wire:navigate>
                             {{ __('Verify Payments') }}
                         </flux:sidebar.item>
-                    @endcanany
+                    @endcan
 
                     @can('invoices.view_personal')
                         <flux:sidebar.item icon="credit-card" :href="route('cms.students.portal-invoices')"

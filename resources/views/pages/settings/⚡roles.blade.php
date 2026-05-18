@@ -403,9 +403,11 @@ new #[Title('Role Management')] class extends Component {
                                     @foreach ($permissions as $permission)
                                         <label class="group flex items-center gap-2 cursor-pointer p-2 rounded-lg border border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                                             <flux:checkbox wire:model="selectedPermissions" :value="$permission->permission_name" />
-                                            <span class="text-[11px] font-medium text-zinc-600 dark:text-zinc-400 group-hover:text-primary-500 transition-colors truncate">
-                                                {{ Str::after($permission->permission_name, '.') }}
-                                            </span>
+                                            <flux:tooltip :content="$permission->description ?? __('No description')" class="flex-1 min-w-0">
+                                                <span class="text-[11px] font-medium text-zinc-600 dark:text-zinc-400 group-hover:text-primary-500 transition-colors truncate block">
+                                                    {{ Str::after($permission->permission_name, '.') }}
+                                                </span>
+                                            </flux:tooltip>
                                         </label>
                                     @endforeach
                                 </div>

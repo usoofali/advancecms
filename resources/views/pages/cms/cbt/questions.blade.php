@@ -466,7 +466,7 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
 
                     <flux:select label="{{ __('Level') }}" wire:model.live="filter_level">
                         <option value="">{{ __('All Levels') }}</option>
-                        @foreach ([100, 200, 300, 400, 500] as $lvl)
+                        @foreach ([100, 200, 300] as $lvl)
                             <option value="{{ $lvl }}">{{ $lvl }}</option>
                         @endforeach
                     </flux:select>

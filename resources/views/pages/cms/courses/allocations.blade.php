@@ -44,14 +44,29 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
             $this->institution_id = $user->institution_id;
         }
 
-        $staff = Staff::where('email', $user->email)->first();
-        if ($staff) {
-            $this->hodDepartmentIds = Department::where('hod_id', $staff->id)->pluck('id')->toArray();
-            if (!empty($this->hodDepartmentIds)) {
+        if (!$user->hasRole('Super Admin') && !$user->hasRole('Institutional Admin')) {
+            $scopedDeptIds = array_merge(
+                $user->getScopedModelIds('Academic Secretary', \App\Models\Department::class),
+                $user->getScopedModelIds('Head of Department (HOD)', \App\Models\Department::class),
+                $user->getScopedModelIds('Exam Officer', \App\Models\Department::class)
+            );
+
+            if (!empty($scopedDeptIds)) {
                 $this->isHod = true;
-                if (count($this->hodDepartmentIds) === 1) {
-                    $this->department_id = $this->hodDepartmentIds[0];
+                $this->hodDepartmentIds = $scopedDeptIds;
+            }
+
+            $staff = Staff::where('email', $user->email)->first();
+            if ($staff) {
+                $legacyHodDeptIds = Department::where('hod_id', $staff->id)->pluck('id')->toArray();
+                if (!empty($legacyHodDeptIds)) {
+                    $this->isHod = true;
+                    $this->hodDepartmentIds = array_unique(array_merge($this->hodDepartmentIds, $legacyHodDeptIds));
                 }
+            }
+
+            if ($this->isHod && count($this->hodDepartmentIds) === 1) {
+                $this->department_id = $this->hodDepartmentIds[0];
             }
         }
     }

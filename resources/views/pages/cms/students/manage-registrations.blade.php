@@ -42,7 +42,8 @@ new #[Layout('layouts.app')] #[Title('Manage Registrations')] class extends Comp
         // 1. Check polymorphic scoped roles
         $scopedDeptIds = array_unique(array_merge(
             $user->getScopedModelIds('Head of Department (HOD)', Department::class),
-            $user->getScopedModelIds('Academic Secretary', Department::class)
+            $user->getScopedModelIds('Academic Secretary', Department::class),
+            $user->getScopedModelIds('Exam Officer', Department::class)
         ));
 
         if (!empty($scopedDeptIds)) {

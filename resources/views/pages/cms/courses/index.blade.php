@@ -43,7 +43,8 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
         // 1. Check if user has a scoped role for specific departments (new polymorphic system)
         $scopedDeptIds = array_unique(array_merge(
             $user->getScopedModelIds('Head of Department (HOD)', \App\Models\Department::class),
-            $user->getScopedModelIds('Academic Secretary', \App\Models\Department::class)
+            $user->getScopedModelIds('Academic Secretary', \App\Models\Department::class),
+            $user->getScopedModelIds('Exam Officer', \App\Models\Department::class)
         ));
 
         if (!empty($scopedDeptIds)) {

@@ -25,7 +25,8 @@ new #[Layout('layouts.app')] #[Title('Staff Management')] class extends Componen
         // 1. Check new polymorphic scoped roles
         $scopedDeptIds = array_unique(array_merge(
             $user->getScopedModelIds('Head of Department (HOD)', \App\Models\Department::class),
-            $user->getScopedModelIds('Academic Secretary', \App\Models\Department::class)
+            $user->getScopedModelIds('Academic Secretary', \App\Models\Department::class),
+            $user->getScopedModelIds('Exam Officer', \App\Models\Department::class)
         ));
 
         if (!empty($scopedDeptIds)) {

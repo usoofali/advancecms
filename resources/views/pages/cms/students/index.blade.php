@@ -53,7 +53,8 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
         // 1. Check if user has a scoped role for a specific department
         $scopedDeptIds = array_merge(
             $user->getScopedModelIds('Academic Secretary', \App\Models\Department::class),
-            $user->getScopedModelIds('Head of Department (HOD)', \App\Models\Department::class)
+            $user->getScopedModelIds('Head of Department (HOD)', \App\Models\Department::class),
+            $user->getScopedModelIds('Exam Officer', \App\Models\Department::class)
         );
 
         if (!empty($scopedDeptIds)) {

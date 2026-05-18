@@ -197,6 +197,18 @@ class RbacSeeder extends Seeder
                     ['students.create', 'applications.view', 'applications.approve', 'applicants.enroll', 'applications.notify', 'applications.print_letter', 'applications.print_receipt', 'dashboard.view', 'id_cards.request']
                 ),
             ],
+            'Exam Officer' => [
+                'description' => 'Coordinate exams and academic results management',
+                'permissions' => array_merge(
+                    $crud(['cbt_exams', 'cbt_questions']),
+                    [
+                        'students.view_dept', 'courses.view_dept', 'results.view_dept', 'results.enter', 'results.modify',
+                        'cbt_data.sync', 'cbt_results.view', 'cbt_results.review', 'cbt_results.approve', 'cbt_results.reject', 'cbt_results.mass_action',
+                        'cbt_sync.view', 'cbt_questions.import', 'results.export', 'results.import',
+                        'dashboard.view', 'id_cards.request',
+                    ]
+                ),
+            ],
             'Accountant' => [
                 'description' => 'Institutional financial management',
                 'permissions' => array_merge(

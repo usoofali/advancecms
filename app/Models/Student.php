@@ -30,7 +30,12 @@ class Student extends Model
                     ->where('admission_year', $year)
                     ->count() + 1;
 
-                $student->matric_number = strtoupper(sprintf('%s/%s/%s/%03d', $instAcronym, $progAcronym, $year, $count));
+                do {
+                    $matric = strtoupper(sprintf('%s/%s/%s/%03d', $instAcronym, $progAcronym, $year, $count));
+                    $count++;
+                } while (static::where('matric_number', $matric)->exists());
+
+                $student->matric_number = $matric;
             } else {
                 $student->matric_number = strtoupper($student->matric_number);
             }

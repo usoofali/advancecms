@@ -33,7 +33,8 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
         if (!$user->hasRole('Super Admin') && !$user->hasRole('Institutional Admin')) {
             $scopedDeptIds = array_merge(
                 $user->getScopedModelIds('Academic Secretary', \App\Models\Department::class),
-                $user->getScopedModelIds('Head of Department (HOD)', \App\Models\Department::class)
+                $user->getScopedModelIds('Head of Department (HOD)', \App\Models\Department::class),
+                $user->getScopedModelIds('Exam Officer', \App\Models\Department::class)
             );
 
             if (!empty($scopedDeptIds)) {

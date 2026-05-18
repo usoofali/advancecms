@@ -403,104 +403,81 @@ new #[Layout('layouts.app')] #[Title('Manage Registrations')] class extends Comp
                     </div>
                 </div>
             @endif
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="border-b border-zinc-200 dark:border-zinc-800">
-                            <th class="py-3 px-4 w-12 text-center">
-                                <flux:checkbox wire:model.live="selectAll" />
-                            </th>
-                            <th class="py-3 px-4 text-left font-bold uppercase text-[10px] tracking-widest text-zinc-500">
-                                {{ __('Student') }}
-                            </th>
-                            <th class="py-3 px-4 text-center font-bold uppercase text-[10px] tracking-widest text-zinc-500">
-                                {{ __('1st Sem') }}
-                            </th>
-                            <th class="py-3 px-4 text-center font-bold uppercase text-[10px] tracking-widest text-zinc-500">
-                                {{ __('2nd Sem') }}
-                            </th>
-                            <th class="py-3 px-4 text-center font-bold uppercase text-[10px] tracking-widest text-zinc-500">
-                                {{ __('Total Units') }}
-                            </th>
-                            <th class="py-3 px-4 text-center font-bold uppercase text-[10px] tracking-widest text-zinc-500">
-                                {{ __('Session Status') }}
-                            </th>
-                            <th class="py-3 px-4 text-right font-bold uppercase text-[10px] tracking-widest text-zinc-500">
-                                {{ __('Actions') }}
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
-                        @forelse ($students as $student)
-                            @php
-                                $firstSemUnits = $student->courseRegistrations->where('semester.name', 'first')->sum(fn($r) => $r->course->credit_unit ?? 0);
-                                $secondSemUnits = $student->courseRegistrations->where('semester.name', 'second')->sum(fn($r) => $r->course->credit_unit ?? 0);
-                                $totalUnits = $firstSemUnits + $secondSemUnits;
-                                $isClosed = $student->reg_status_closed;
-                            @endphp
-                            <tr
-                                class="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors {{ in_array((string) $student->id, $selectedStudents) ? 'bg-zinc-50 dark:bg-zinc-900/40' : '' }}">
-                                <td class="py-4 px-4 text-center border-r border-zinc-100 dark:border-zinc-800/50">
-                                    <flux:checkbox wire:model.live="selectedStudents" value="{{ $student->id }}" />
-                                </td>
-                                <td class="py-4 px-4">
-                                    <div class="flex items-center gap-3">
-                                        <div
-                                            class="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-zinc-500">
-                                            {{ substr($student->first_name, 0, 1) }}
-                                        </div>
-                                        <div>
-                                            <div class="font-bold text-zinc-900 dark:text-white">{{ $student->full_name }}</div>
-                                            <div class="text-xs font-mono text-zinc-500">{{ $student->matric_number }}</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="py-4 px-4 text-center font-mono">{{ $firstSemUnits }}</td>
-                                <td class="py-4 px-4 text-center font-mono">{{ $secondSemUnits }}</td>
-                                <td class="py-4 px-4 text-center font-mono font-bold">{{ $totalUnits }}</td>
-                                <td class="py-4 px-4 text-center">
-                                    @if ($isClosed)
-                                        <flux:badge color="red" size="sm" inset="top bottom">{{ __('Locked') }}</flux:badge>
-                                    @else
-                                        <flux:badge color="green" size="sm" inset="top bottom">{{ __('Open') }}</flux:badge>
-                                    @endif
-                                </td>
-                                <td class="py-4 px-4">
-                                    <div class="flex items-center justify-end gap-2">
-                                        {{-- Default to first semester for course form, but ideally this should be a session view --}}
-                                        <flux:button size="sm" variant="ghost" icon="eye"
-                                            :href="route('cms.students.course-form', ['student' => $student->id, 'session' => $session_id, 'semester' => $student->courseRegistrations->first()->semester_id ?? \App\Models\Semester::where('academic_session_id', $session_id)->first()?->id])"
-                                            wire:navigate title="{{ __('View Course Form') }}" />
+            <flux:table :paginate="$students">
+                <flux:table.columns>
+                    <flux:table.column class="w-12 text-center">
+                        <flux:checkbox wire:model.live="selectAll" />
+                    </flux:table.column>
+                    <flux:table.column>{{ __('Student') }}</flux:table.column>
+                    <flux:table.column align="center">{{ __('1st Sem') }}</flux:table.column>
+                    <flux:table.column align="center">{{ __('2nd Sem') }}</flux:table.column>
+                    <flux:table.column align="center">{{ __('Total Units') }}</flux:table.column>
+                    <flux:table.column align="center">{{ __('Session Status') }}</flux:table.column>
+                    <flux:table.column align="right">{{ __('Actions') }}</flux:table.column>
+                </flux:table.columns>
 
-                                        @can('registration_status.update')
-                                            @if ($isClosed)
-                                                <flux:button size="sm" variant="danger" icon="lock-closed"
-                                                    wire:click="confirmToggle({{ $student->id }}, '{{ addslashes($student->full_name) }}', true)" />
-                                            @else
-                                                <flux:button size="sm" variant="primary" icon="lock-open"
-                                                    wire:click="confirmToggle({{ $student->id }}, '{{ addslashes($student->full_name) }}', false)"
-                                                    :disabled="$totalUnits === 0" />
-                                            @endif
-                                        @endcan
+                <flux:table.rows>
+                    @forelse ($students as $student)
+                        @php
+                            $firstSemUnits = $student->courseRegistrations->where('semester.name', 'first')->sum(fn($r) => $r->course->credit_unit ?? 0);
+                            $secondSemUnits = $student->courseRegistrations->where('semester.name', 'second')->sum(fn($r) => $r->course->credit_unit ?? 0);
+                            $totalUnits = $firstSemUnits + $secondSemUnits;
+                            $isClosed = $student->reg_status_closed;
+                        @endphp
+                        <flux:table.row :wire:key="$student->id" class="{{ in_array((string) $student->id, $selectedStudents) ? 'bg-zinc-50 dark:bg-zinc-900/40' : '' }}">
+                            <flux:table.cell class="w-12 text-center border-r border-zinc-100 dark:border-zinc-800/50">
+                                <flux:checkbox wire:model.live="selectedStudents" value="{{ $student->id }}" />
+                            </flux:table.cell>
+                            <flux:table.cell>
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-zinc-500">
+                                        {{ substr($student->first_name, 0, 1) }}
                                     </div>
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="7" class="p-12 text-center text-zinc-400">
-                                    {{ __('No students found for this selection.') }}
-                                </td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
+                                    <div>
+                                        <div class="font-bold text-zinc-900 dark:text-white">{{ $student->full_name }}</div>
+                                        <div class="text-xs font-mono text-zinc-500">{{ $student->matric_number }}</div>
+                                    </div>
+                                </div>
+                            </flux:table.cell>
+                            <flux:table.cell align="center" class="font-mono">{{ $firstSemUnits }}</flux:table.cell>
+                            <flux:table.cell align="center" class="font-mono">{{ $secondSemUnits }}</flux:table.cell>
+                            <flux:table.cell align="center" class="font-mono font-bold">{{ $totalUnits }}</flux:table.cell>
+                            <flux:table.cell align="center">
+                                @if ($isClosed)
+                                    <flux:badge color="red" size="sm" inset="top bottom">{{ __('Locked') }}</flux:badge>
+                                @else
+                                    <flux:badge color="green" size="sm" inset="top bottom">{{ __('Open') }}</flux:badge>
+                                @endif
+                            </flux:table.cell>
+                            <flux:table.cell align="right">
+                                <div class="flex items-center justify-end gap-2">
+                                    {{-- Default to first semester for course form, but ideally this should be a session view --}}
+                                    <flux:button size="sm" variant="ghost" icon="eye"
+                                        :href="route('cms.students.course-form', ['student' => $student->id, 'session' => $session_id, 'semester' => $student->courseRegistrations->first()->semester_id ?? \App\Models\Semester::where('academic_session_id', $session_id)->first()?->id])"
+                                        wire:navigate title="{{ __('View Course Form') }}" />
 
-            @if ($students->hasPages())
-                <div class="mt-4">
-                    {{ $students->links() }}
-                </div>
-            @endif
+                                    @can('registration_status.update')
+                                        @if ($isClosed)
+                                            <flux:button size="sm" variant="danger" icon="lock-closed"
+                                                wire:click="confirmToggle({{ $student->id }}, '{{ addslashes($student->full_name) }}', true)" />
+                                        @else
+                                            <flux:button size="sm" variant="primary" icon="lock-open"
+                                                wire:click="confirmToggle({{ $student->id }}, '{{ addslashes($student->full_name) }}', false)"
+                                                :disabled="$totalUnits === 0" />
+                                        @endif
+                                    @endcan
+                                </div>
+                            </flux:table.cell>
+                        </flux:table.row>
+                    @empty
+                        <flux:table.row>
+                            <flux:table.cell colspan="7" class="py-12 text-center text-zinc-400">
+                                {{ __('No students found for this selection.') }}
+                            </flux:table.cell>
+                        </flux:table.row>
+                    @endforelse
+                </flux:table.rows>
+            </flux:table>
         @else
             <div class="p-12 text-center border-2 border-dashed rounded-2xl text-zinc-400">
                 {{ __('Please select an academic session to manage registrations.') }}

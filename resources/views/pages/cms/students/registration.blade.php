@@ -18,13 +18,37 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
     public $selected_courses = [];
     public $courses_to_drop = [];
     public int|string $institution_id = '';
+    public ?int $department_id = null;
 
     public function mount(): void
     {
         Gate::authorize('registrations.view');
 
-        if (auth()->user()->institution_id) {
-            $this->institution_id = auth()->user()->institution_id;
+        $user = auth()->user();
+
+        if ($user->institution_id) {
+            $this->institution_id = $user->institution_id;
+        }
+
+        if (!$user->hasRole('Super Admin') && !$user->hasRole('Institutional Admin')) {
+            $scopedDeptIds = array_merge(
+                $user->getScopedModelIds('Academic Secretary', \App\Models\Department::class),
+                $user->getScopedModelIds('Head of Department (HOD)', \App\Models\Department::class)
+            );
+
+            if (!empty($scopedDeptIds)) {
+                $this->department_id = $scopedDeptIds[0];
+                return;
+            }
+
+            // Fallback: Legacy check for HOD via hod_id column
+            $staff = \App\Models\Staff::where('email', $user->email)->first();
+            if ($staff) {
+                $hodDept = \App\Models\Department::where('hod_id', $staff->id)->first();
+                if ($hodDept) {
+                    $this->department_id = $hodDept->id;
+                }
+            }
         }
     }
 
@@ -254,6 +278,9 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
             'students'          => Student::query()
                 ->with('program.department')
                 ->when($this->institution_id, fn($q) => $q->where('institution_id', $this->institution_id))
+                ->when($this->department_id, function($q) {
+                    $q->whereHas('program', fn($pq) => $pq->where('department_id', $this->department_id));
+                })
                 ->when($this->student_search, function($q) {
                     $q->where(function($sq) {
                         $sq->where('matric_number', 'like', "%{$this->student_search}%")

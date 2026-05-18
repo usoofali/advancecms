@@ -90,6 +90,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Course Management
     Route::livewire('courses', 'pages::cms.courses.index')->name('cms.courses.index');
+    Route::livewire('courses/my-allocations', 'pages::cms.courses.my-allocations')->name('cms.courses.my-allocations')->middleware('can:courses.view_assigned');
 
     Route::middleware('can:courses.view')->group(function () {
         Route::livewire('courses/create', 'pages::cms.courses.create')->name('cms.courses.create')->middleware('can:courses.create');
@@ -98,8 +99,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::livewire('courses/{course}/edit', 'pages::cms.courses.edit')->name('cms.courses.edit')->middleware('can:courses.edit');
     });
 
-    Route::livewire('courses/my-allocations', 'pages::cms.courses.my-allocations')->name('cms.courses.my-allocations')->middleware('can:courses.view_assigned');
-
     // Attendance
     Route::middleware('can:attendance.take')->group(function () {
         Route::livewire('attendance/take', 'pages::cms.attendance.take')->name('cms.attendance.take');
@@ -107,7 +106,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('can:attendance.view_history')->group(function () {
         Route::livewire('attendance/history', 'pages::cms.attendance.history')->name('cms.attendance.history');
     });
-
+    Route::middleware('can:attendance.manage')->group(function () {
+        Route::livewire('attendance/manage', 'pages::cms.attendance.manage')->name('cms.attendance.manage');
+    });
     Route::middleware('can:attendance.view_own')->group(function () {
         Route::livewire('attendance/my-participation', 'pages::cms.attendance.student-view')->name('cms.attendance.participation');
     });

@@ -174,25 +174,24 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
                 <flux:error name="session_delete" class="mb-4" icon="exclamation-circle" />
                 
                 <!-- Desktop Table View -->
-                <div class="hidden sm:block overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
-                    <table class="w-full text-left border-collapse">
-                        <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700">
-                            <tr>
-                                <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Session') }}</th>
-                                <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Dates') }}</th>
-                                <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Status') }}</th>
-                                @if (!auth()->user()->institution_id)
-                                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-right">{{ __('Actions') }}</th>
-                                @endif
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
+                <div class="hidden sm:block">
+                    <flux:table>
+                        <flux:table.columns>
+                            <flux:table.column>{{ __('Session') }}</flux:table.column>
+                            <flux:table.column>{{ __('Dates') }}</flux:table.column>
+                            <flux:table.column>{{ __('Status') }}</flux:table.column>
+                            @if (!auth()->user()->institution_id)
+                                <flux:table.column align="right">{{ __('Actions') }}</flux:table.column>
+                            @endif
+                        </flux:table.columns>
+
+                        <flux:table.rows>
                             @forelse ($sessions as $session)
-                                <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors" wire:key="{{ $session->id }}">
-                                    <td class="px-4 py-4 font-medium text-zinc-900 dark:text-zinc-100">
+                                <flux:table.row :wire:key="$session->id">
+                                    <flux:table.cell class="font-medium text-zinc-900 dark:text-zinc-100">
                                         {{ $session->name }}
-                                    </td>
-                                    <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400">
+                                    </flux:table.cell>
+                                    <flux:table.cell class="text-sm text-zinc-600 dark:text-zinc-400">
                                         @if ($session->start_date)
                                             <div class="text-sm">
                                                 {{ $session->start_date->format('M j, Y') }} — {{ $session->end_date?->format('M j, Y') ?? '?' }}
@@ -200,14 +199,14 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
                                         @else
                                             <span class="text-zinc-500 italic text-xs">{{ __('Not set') }}</span>
                                         @endif
-                                    </td>
-                                    <td class="px-4 py-4 text-sm">
+                                    </flux:table.cell>
+                                    <flux:table.cell>
                                         <flux:badge :color="$session->status === 'active' ? 'green' : 'zinc'" size="sm">
                                             {{ ucfirst($session->status) }}
                                         </flux:badge>
-                                    </td>
+                                    </flux:table.cell>
                                     @if (!auth()->user()->institution_id)
-                                        <td class="px-4 py-4 text-right">
+                                        <flux:table.cell align="right">
                                             <div class="flex items-center justify-end gap-2">
                                                 @can('academic_sessions.edit')
                                                 <flux:button size="sm" variant="ghost" :icon="$session->status === 'active' ? 'lock-closed' : 'lock-open'" 
@@ -218,18 +217,18 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
                                                     x-on:click="$wire.deletingId = {{ $session->id }}; $flux.modal('delete-session').show()" />
                                                 @endcan
                                             </div>
-                                        </td>
+                                        </flux:table.cell>
                                     @endif
-                                </tr>
+                                </flux:table.row>
                             @empty
-                                <tr>
-                                    <td colspan="4" class="px-4 py-12 text-center text-zinc-500 dark:text-zinc-400">
+                                <flux:table.row>
+                                    <flux:table.cell colspan="4" class="px-4 py-12 text-center text-zinc-500 dark:text-zinc-400">
                                         {{ __('No academic sessions yet.') }}
-                                    </td>
-                                </tr>
+                                    </flux:table.cell>
+                                </flux:table.row>
                             @endforelse
-                        </tbody>
-                    </table>
+                        </flux:table.rows>
+                    </flux:table>
                 </div>
 
                 <!-- Mobile Card View -->

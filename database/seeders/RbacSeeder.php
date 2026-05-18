@@ -49,8 +49,9 @@ class RbacSeeder extends Seeder
             'admission_status.update' => 'Open, close or schedule admission windows for an institution',
 
             'attendance.take' => 'Record student attendance for assigned courses',
-            'attendance.view_history' => 'View past attendance records and session details',
-            'attendance.view_own' => 'View personal attendance percentages and history',
+            'attendance.view_history' => 'View own past attendance records and contact hours',
+            'attendance.manage' => 'Oversee and audit all institutional attendance sessions and payout tallies',
+            'attendance.view_own' => 'View personal attendance percentages and history as a student',
             'attendance.view_all' => 'View attendance records for any student in the institution',
 
             'attendance_payments.process' => 'Process and manage monthly lecturer attendance payments',
@@ -147,7 +148,7 @@ class RbacSeeder extends Seeder
                         'courses.view_assigned', 'results.enter', 'results.modify',
                         'reports.generate', 'applications.view', 'applications.approve', 'applicants.enroll',
                         'registration_status.update', 'admission_status.update',
-                        'attendance.take', 'attendance.view_history', 'attendance.view_own', 'attendance.view_all', 'attendance_payments.process',
+                        'attendance.take', 'attendance.view_history', 'attendance.manage', 'attendance.view_own', 'attendance.view_all', 'attendance_payments.process',
                         'invoices.generate', 'invoices.cancel', 'invoices.print_report', 'payments.verify',
                         'cbt_data.sync', 'cbt_results.view', 'cbt_results.review', 'cbt_results.approve', 'cbt_results.reject', 'cbt_results.mass_action',
                         'cbt_sync.view', 'cbt_sync.manage_tokens',
@@ -167,7 +168,7 @@ class RbacSeeder extends Seeder
                     $crud(['cbt_questions', 'cbt_exams']),
                     [
                         'students.view_dept', 'courses.view_dept', 'results.view_dept',
-                        'registration_status.update', 'attendance.view_history',
+                        'registration_status.update', 'attendance.view_history', 'attendance.manage',
                         'cbt_results.view', 'cbt_results.review', 'cbt_results.approve', 'cbt_results.reject', 'cbt_results.mass_action',
                         'cbt_sync.view', 'cbt_data.sync', 'cbt_questions.import', 'students.export',
                         'courses.allocate', 'courses.revoke_allocation', 'courses.export',
@@ -181,13 +182,14 @@ class RbacSeeder extends Seeder
                 'permissions' => array_merge(
                     $crud(['cbt_questions']),
                     ['cbt_exams.view', 'cbt_questions.import', 'courses.view_assigned', 'results.enter', 'results.modify', 'attendance.take', 'attendance.view_history', 'dashboard.view', 'id_cards.request']
+                    // Note: Lecturers get attendance.view_history (own history) but NOT attendance.manage
                 ),
             ],
             'Academic Secretary' => [
                 'description' => 'Coordinate academic record keeping',
                 'permissions' => array_merge(
                     $crud(['registrations']),
-                    ['reports.generate', 'attendance.view_history', 'cbt_data.sync', 'cbt_sync.view', 'cbt_sync.manage_tokens', 'cbt_results.view', 'cbt_results.review', 'students.change_status', 'registrations.print_form', 'registrations.print_exam_card', 'dashboard.view', 'id_cards.request']
+                    ['reports.generate', 'attendance.view_history', 'attendance.manage', 'cbt_data.sync', 'cbt_sync.view', 'cbt_sync.manage_tokens', 'cbt_results.view', 'cbt_results.review', 'students.change_status', 'registrations.print_form', 'registrations.print_exam_card', 'dashboard.view', 'id_cards.request']
                 ),
             ],
             'Admission Officer' => [
@@ -203,6 +205,7 @@ class RbacSeeder extends Seeder
                     $crud(['cbt_exams', 'cbt_questions']),
                     [
                         'students.view_dept', 'courses.view_dept', 'results.view_dept', 'results.enter', 'results.modify',
+                        'attendance.manage',
                         'cbt_data.sync', 'cbt_results.view', 'cbt_results.review', 'cbt_results.approve', 'cbt_results.reject', 'cbt_results.mass_action',
                         'cbt_sync.view', 'cbt_questions.import', 'results.export', 'results.import',
                         'dashboard.view', 'id_cards.request',
@@ -213,7 +216,7 @@ class RbacSeeder extends Seeder
                 'description' => 'Institutional financial management',
                 'permissions' => array_merge(
                     $crud(['payments', 'invoices']),
-                    ['attendance_payments.process', 'attendance.view_history', 'invoices.generate', 'invoices.cancel', 'invoices.print_report', 'payments.verify', 'applications.print_receipt', 'dashboard.view', 'id_cards.request']
+                    ['attendance_payments.process', 'attendance.view_history', 'attendance.manage', 'invoices.generate', 'invoices.cancel', 'invoices.print_report', 'payments.verify', 'applications.print_receipt', 'dashboard.view', 'id_cards.request']
                 ),
             ],
             'Student' => [
@@ -229,17 +232,17 @@ class RbacSeeder extends Seeder
         ];
 
         foreach ($roles as $name => $data) {
-            $role = Role::updateOrCreate(
-                ['role_name' => $name],
-                ['description' => $data['description']]
-            );
+            // $role = Role::updateOrCreate(
+            //     ['role_name' => $name],
+            //     ['description' => $data['description']]
+            // );
 
-            // Sync Permissions
-            $permissionIds = Permission::whereIn('permission_name', $data['permissions'])
-                ->pluck('permission_id')
-                ->toArray();
+            // // Sync Permissions
+            // $permissionIds = Permission::whereIn('permission_name', $data['permissions'])
+            //     ->pluck('permission_id')
+            //     ->toArray();
 
-            $role->permissions()->sync($permissionIds);
+            // $role->permissions()->sync($permissionIds);
         }
     }
 }

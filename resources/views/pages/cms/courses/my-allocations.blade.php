@@ -19,12 +19,12 @@ new #[Layout('layouts.app')] #[Title('My Allocations')] class extends Component 
         $this->selectedAllocationId = $id;
     }
 
-    public function render(): \Illuminate\View\View
+    public function with(): array
     {
         $user = auth()->user();
 
         // 1. Fetch the lecturer's allocations, eager loading the related Session, Semester, and Course.
-        $allocations = CourseAllocation::with(['academicSession', 'semester', 'course'])
+        $allocations = CourseAllocation::with(['academicSession', 'semester', 'course.program'])
             ->where('user_id', $user->id)
             ->orderByDesc('academic_session_id')
             ->orderByDesc('semester_id')
@@ -50,11 +50,11 @@ new #[Layout('layouts.app')] #[Title('My Allocations')] class extends Component 
             }
         }
 
-        return view('pages.cms.courses.my-allocations', [
+        return [
             'allocations' => $allocations,
             'selectedAllocation' => $selectedAllocation,
             'students' => $students,
-        ]);
+        ];
     }
 }; ?>
 
@@ -77,10 +77,16 @@ new #[Layout('layouts.app')] #[Title('My Allocations')] class extends Component 
                 >
                     <div class="flex justify-between items-start mb-2">
                         <div>
-                            <div class="font-mono text-sm tracking-tight uppercase font-semibold text-zinc-900 dark:text-white">
-                                {{ $alloc->course->course_code }}
+                            <div class="flex items-center gap-2">
+                                <div class="font-mono text-sm tracking-tight uppercase font-semibold text-zinc-900 dark:text-white">
+                                    {{ $alloc->course->course_code }}
+                                </div>
+                                <flux:badge size="sm" color="zinc" class="text-[10px] py-0 px-1.5 font-semibold">{{ $alloc->course->level }}{{ __('L') }}</flux:badge>
+                                @if ($alloc->course->program)
+                                    <flux:badge size="sm" color="blue" class="text-[10px] py-0 px-1.5 font-semibold">{{ $alloc->course->program->acronym }}</flux:badge>
+                                @endif
                             </div>
-                            <div class="text-sm font-medium text-zinc-700 dark:text-zinc-300 line-clamp-1">
+                            <div class="text-sm font-medium text-zinc-700 dark:text-zinc-300 line-clamp-1 mt-1">
                                 {{ $alloc->course->title }}
                             </div>
                         </div>

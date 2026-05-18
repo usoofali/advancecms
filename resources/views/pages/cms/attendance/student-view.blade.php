@@ -250,44 +250,43 @@ new #[Layout('layouts.app')] #[Title('My Attendance')] class extends Component
             <flux:badge variant="neutral" size="sm">{{ count($history) }} {{ __('Sessions') }}</flux:badge>
         </div>
         
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm border-collapse">
-                <thead class="bg-zinc-50 dark:bg-zinc-900">
-                    <tr>
-                        <th class="px-4 py-3 font-semibold text-zinc-900 dark:text-white">{{ __('Date') }}</th>
-                        <th class="px-4 py-3 font-semibold text-zinc-900 dark:text-white">{{ __('Course') }}</th>
-                        <th class="px-4 py-3 font-semibold text-center text-zinc-900 dark:text-white">{{ __('Status') }}</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                    @forelse ($history as $record)
-                        <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                            <td class="px-4 py-3">
-                                <div class="font-medium text-zinc-900 dark:text-white">{{ $record->attendance->date->format('M d, Y') }}</div>
-                                <div class="text-[10px] text-zinc-500">{{ $record->attendance->date->format('l') }}</div>
-                            </td>
-                            <td class="px-4 py-3">
-                                <div class="font-mono text-xs font-bold text-zinc-900 dark:text-white">{{ $record->attendance->courseAllocation->course->course_code }}</div>
-                                <div class="text-xs text-zinc-500 truncate max-w-xs">{{ $record->attendance->courseAllocation->course->title }}</div>
-                            </td>
-                            <td class="px-4 py-3 text-center">
-                                @if($record->is_present)
-                                    <flux:badge color="green" size="sm" class="min-w-[80px]">{{ __('Present') }}</flux:badge>
-                                @else
-                                    <flux:badge color="red" size="sm" class="min-w-[80px]">{{ __('Absent') }}</flux:badge>
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="3" class="py-12 text-center text-zinc-500 italic">
-                                <flux:icon.calendar class="mx-auto size-8 mb-3 opacity-20" />
-                                <p>{{ __('No attendance logs recorded for this period.') }}</p>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+        <flux:table>
+            <flux:table.columns>
+                <flux:table.column>{{ __('Date') }}</flux:table.column>
+                <flux:table.column>{{ __('Course') }}</flux:table.column>
+                <flux:table.column align="center">{{ __('Status') }}</flux:table.column>
+            </flux:table.columns>
+
+            <flux:table.rows>
+                @forelse ($history as $record)
+                    <flux:table.row :key="$record->id">
+                        <flux:table.cell>
+                            <div class="font-medium text-zinc-900 dark:text-white">{{ $record->attendance->date->format('M d, Y') }}</div>
+                            <div class="text-[10px] text-zinc-500">{{ $record->attendance->date->format('l') }}</div>
+                        </flux:table.cell>
+
+                        <flux:table.cell>
+                            <div class="font-mono text-xs font-bold text-zinc-900 dark:text-white">{{ $record->attendance->courseAllocation->course->course_code }}</div>
+                            <div class="text-xs text-zinc-500 truncate max-w-xs">{{ $record->attendance->courseAllocation->course->title }}</div>
+                        </flux:table.cell>
+
+                        <flux:table.cell align="center">
+                            @if($record->is_present)
+                                <flux:badge color="green" size="sm" class="min-w-[80px]">{{ __('Present') }}</flux:badge>
+                            @else
+                                <flux:badge color="red" size="sm" class="min-w-[80px]">{{ __('Absent') }}</flux:badge>
+                            @endif
+                        </flux:table.cell>
+                    </flux:table.row>
+                @empty
+                    <flux:table.row>
+                        <flux:table.cell colspan="3" class="text-center py-12 text-zinc-500 italic">
+                            <flux:icon.calendar class="mx-auto size-8 mb-3 opacity-20" />
+                            <p>{{ __('No attendance logs recorded for this period.') }}</p>
+                        </flux:table.cell>
+                    </flux:table.row>
+                @endforelse
+            </flux:table.rows>
+        </flux:table>
     </flux:card>
 </div>

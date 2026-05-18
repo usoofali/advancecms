@@ -231,18 +231,21 @@ class RbacSeeder extends Seeder
             ],
         ];
 
-        foreach ($roles as $name => $data) {
-            // $role = Role::updateOrCreate(
-            //     ['role_name' => $name],
-            //     ['description' => $data['description']]
-            // );
+        if (app()->environment('testing')) {
+            foreach ($roles as $name => $data) {
+                $role = Role::updateOrCreate(
+                    ['role_name' => $name],
+                    ['description' => $data['description']]
+                );
 
-            // // Sync Permissions
-            // $permissionIds = Permission::whereIn('permission_name', $data['permissions'])
-            //     ->pluck('permission_id')
-            //     ->toArray();
+                // Sync Permissions
+                $permissionIds = Permission::whereIn('permission_name', $data['permissions'])
+                    ->pluck('permission_id')
+                    ->toArray();
 
-            // $role->permissions()->sync($permissionIds);
+                $role->permissions()->sync($permissionIds);
+            }
         }
+
     }
 }

@@ -167,6 +167,12 @@
                 <li class="nav-item">
                     <a href="manage_exams.php"
                         class="nav-link <?php echo $current_page == 'manage_exams.php' ? 'active' : ''; ?>">
+                        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"
+                            viewBox="0 0 24 24" class="me-2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87m-4-12a4 4 0 0 1 0 7.75"></path>
+                        </svg>
                         <span>Manage Exams</span>
                     </a>
                 </li>
@@ -190,11 +196,6 @@
                             </path>
                         </svg>
                         View Results
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="upload.php" class="nav-link <?php echo $current_page == 'upload.php' ? 'active' : ''; ?>">
-                        <span>Upload Questions</span>
                     </a>
                 </li>
                 <li class="nav-item">

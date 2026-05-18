@@ -5,6 +5,8 @@ use App\Models\CbtQuestion;
 use App\Models\CbtOption;
 use App\Models\Department;
 use App\Models\Course;
+use App\Models\AcademicSession;
+use App\Models\Program;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -28,6 +30,34 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
 
     // CSV Import
     public $csvFile;
+
+    // Filters
+    public $filter_session_id = '';
+    public $filter_program_id = '';
+    public $filter_level = '';
+
+    public function updatedFilterSessionId(): void
+    {
+        $this->selectedExamId = '';
+        $this->resetPage();
+    }
+
+    public function updatedFilterProgramId(): void
+    {
+        $this->selectedExamId = '';
+        $this->resetPage();
+    }
+
+    public function updatedFilterLevel(): void
+    {
+        $this->selectedExamId = '';
+        $this->resetPage();
+    }
+
+    public function updatedSelectedExamId(): void
+    {
+        $this->resetPage();
+    }
 
     public function mount(): void
     {
@@ -354,7 +384,20 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
         $addedCount = $this->selectedExamId ? CbtQuestion::where('cbt_exam_id', $this->selectedExamId)->count() : 0;
 
         return [
+            'sessions' => AcademicSession::all(),
+            'programs' => Program::where('institution_id', $instId)->get(),
             'exams' => CbtExam::where('institution_id', $instId)
+                ->when($this->filter_session_id, fn($q) => $q->where('academic_session_id', $this->filter_session_id))
+                ->when($this->filter_program_id, function ($q) {
+                    $q->whereHas('course', function ($cq) {
+                        $cq->where('program_id', $this->filter_program_id);
+                    });
+                })
+                ->when($this->filter_level, function ($q) {
+                    $q->whereHas('course', function ($cq) {
+                        $cq->where('level', $this->filter_level);
+                    });
+                })
                 ->when($isRestrictedLecturer, function ($q) use ($user) {
                     $q->whereIn('course_id', function ($sub) use ($user) {
                         $sub->select('course_id')
@@ -405,7 +448,30 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
 
     <div class="mb-8">
         <flux:card class="p-0 overflow-hidden">
-            <div class="p-4 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800">
+            <div class="p-6 bg-zinc-50 dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 space-y-6">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <flux:select label="{{ __('Academic Session') }}" wire:model.live="filter_session_id">
+                        <option value="">{{ __('All Sessions') }}</option>
+                        @foreach ($sessions as $session)
+                            <option value="{{ $session->id }}">{{ $session->name }}</option>
+                        @endforeach
+                    </flux:select>
+
+                    <flux:select label="{{ __('Program') }}" wire:model.live="filter_program_id">
+                        <option value="">{{ __('All Programs') }}</option>
+                        @foreach ($programs as $program)
+                            <option value="{{ $program->id }}">{{ $program->name }}</option>
+                        @endforeach
+                    </flux:select>
+
+                    <flux:select label="{{ __('Level') }}" wire:model.live="filter_level">
+                        <option value="">{{ __('All Levels') }}</option>
+                        @foreach ([100, 200, 300, 400, 500] as $lvl)
+                            <option value="{{ $lvl }}">{{ $lvl }}</option>
+                        @endforeach
+                    </flux:select>
+                </div>
+
                 <flux:select label="{{ __('Target Examination') }}" wire:model.live="selectedExamId">
                     <option value="">{{ __('-- Choose an exam to manage --') }}</option>
                     @foreach ($exams as $exam)

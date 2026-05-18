@@ -90,29 +90,29 @@ new #[Layout('layouts.app')] #[Title('My Lecturers')] class extends Component {
             @if (count($allocations) > 0)
             @foreach ($allocations as $allocation)
             <div
-                class="p-4 border border-zinc-200 dark:border-zinc-700 rounded-xl flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                class="p-4 border border-zinc-200 dark:border-zinc-700 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
                 <div class="flex items-center gap-4">
                     <div
-                        class="w-12 h-12 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-500 font-bold border border-zinc-200 dark:border-zinc-700">
+                        class="w-12 h-12 shrink-0 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-500 font-bold border border-zinc-200 dark:border-zinc-700">
                         {{ substr($allocation->user->name, 0, 1) }}
                     </div>
-                    <div>
-                        <h4 class="font-semibold text-zinc-900 dark:text-white">{{ $allocation->user->name }}</h4>
-                        <div class="text-sm text-zinc-500 font-mono uppercase tracking-tight">
+                    <div class="min-w-0">
+                        <h4 class="font-semibold text-zinc-900 dark:text-white truncate">{{ $allocation->user->name }}</h4>
+                        <div class="text-sm text-zinc-500 font-mono uppercase tracking-tight break-words">
                             {{ $allocation->course->course_code }}: {{ $allocation->course->title }}
                         </div>
                     </div>
                 </div>
-                <div class="flex flex-col items-end gap-1">
+                <div class="flex flex-col items-start sm:items-end gap-1.5 shrink-0 pl-16 sm:pl-0">
                     <div class="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-                        <flux:icon.envelope class="size-4" />
-                        <a href="mailto:{{ $allocation->user->email }}" class="hover:text-blue-500">{{
+                        <flux:icon.envelope class="size-4 shrink-0" />
+                        <a href="mailto:{{ $allocation->user->email }}" class="hover:text-blue-500 break-all">{{
                             $allocation->user->email }}</a>
                     </div>
                     @php $staff = \App\Models\Staff::where('email', $allocation->user->email)->first(); @endphp
                     @if ($staff && $staff->phone)
                     <div class="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-                        <flux:icon.phone class="size-4" />
+                        <flux:icon.phone class="size-4 shrink-0" />
                         <span>{{ $staff->phone }}</span>
                     </div>
                     @endif

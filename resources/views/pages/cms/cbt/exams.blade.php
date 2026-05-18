@@ -21,12 +21,12 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
     public bool $showDeleteModal = false;
     public $editingId = null;
     public $deletingId = null;
-    
+
     public function mount(): void
     {
         Gate::authorize('cbt_exams.view');
     }
-    
+
     #[Url]
     public string $search = '';
 
@@ -144,7 +144,7 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
 
         $this->showModal = false;
         $this->reset(['editingId', 'exam_date', 'course_id', 'academic_session_id', 'semester_id', 'duration_minutes', 'total_questions', 'randomize_questions', 'randomize_options', 'status', 'filter_program_id', 'filter_level']);
-        
+
         $this->dispatch('notify', [
             'type' => 'success',
             'message' => $msg,
@@ -197,7 +197,7 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
         $this->randomize_questions = $exam->randomize_questions;
         $this->randomize_options = $exam->randomize_options;
         $this->status = $exam->status;
-        
+
         if ($exam->course) {
             $this->filter_program_id = $exam->course->program_id;
             $this->filter_level = $exam->course->level;
@@ -246,7 +246,7 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
         $exam = CbtExam::findOrFail($id);
         $newStatus = $exam->status === 'active' ? 'draft' : 'active';
         $exam->update(['status' => $newStatus]);
-        
+
         $this->dispatch('notify', [
             'type' => 'success',
             'message' => "Examination status is now " . ucfirst($newStatus),
@@ -366,124 +366,135 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
             <flux:heading size="xl">{{ __('CBT Examinations') }}</flux:heading>
-            <flux:subheading>{{ __('Configure rules and manage the lifecycle of institutional exams.') }}</flux:subheading>
+            <flux:subheading>{{ __('Configure rules and manage the lifecycle of institutional exams.') }}
+            </flux:subheading>
         </div>
         @can('cbt_exams.create')
             <div class="flex-shrink-0">
-                <flux:button variant="primary" icon="plus" wire:click="$set('showModal', true)">{{ __('New Examination') }}</flux:button>
+                <flux:button variant="primary" icon="plus" wire:click="$set('showModal', true)">{{ __('New Examination') }}
+                </flux:button>
             </div>
         @endcan
     </div>
 
     <div class="mb-8 flex flex-col md:flex-row md:items-center gap-4">
-        <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" placeholder="{{ __('Search exams by title or course code...') }}" class="w-full md:max-w-md" />
+        <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass"
+            placeholder="{{ __('Search exams by title or course code...') }}" class="w-full md:max-w-md" />
         <flux:spacer class="hidden md:block" />
         <div class="flex items-center gap-2">
             <flux:badge color="zinc" variant="outline">{{ $exams->total() }} {{ __('Total Exams') }}</flux:badge>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        @forelse ($exams as $exam)
-            <flux:card class="relative flex flex-col p-0 overflow-hidden hover:shadow-lg transition-shadow duration-300 border-zinc-200 dark:border-zinc-800">
-                {{-- Header Color Bar --}}
-                <div class="h-1.5 w-full {{ $exam->status === 'active' ? 'bg-green-500' : 'bg-zinc-300 dark:bg-zinc-700' }}"></div>
+    <flux:table :paginate="$exams">
+        <flux:table.columns>
+            <flux:table.column>{{ __('Examination / Title') }}</flux:table.column>
+            <flux:table.column>{{ __('Session & Semester') }}</flux:table.column>
+            <flux:table.column>{{ __('Details') }}</flux:table.column>
+            <flux:table.column>{{ __('Question Bank') }}</flux:table.column>
+            <flux:table.column>{{ __('Status') }}</flux:table.column>
+            <flux:table.column></flux:table.column>
+        </flux:table.columns>
 
-                <div class="p-6 flex-1 flex flex-col">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex flex-col">
-                            <flux:heading size="lg" class="mb-1">{{ $exam->title }}</flux:heading>
-                            <flux:text size="xs" class="uppercase font-bold tracking-tight text-zinc-500">
-                                {{ $exam->academicSession->name }} &bull; {{ $exam->semester->name }} 
-                                @if($exam->exam_date) &bull; <span class="text-zinc-700 dark:text-zinc-300">{{ $exam->exam_date->format('M d, Y') }}</span> @endif
-                            </flux:text>
-                        </div>
-                        <flux:dropdown>
-                            <flux:button variant="ghost" size="sm" icon="ellipsis-vertical" />
-                            <flux:menu>
-                                @can('cbt_exams.edit')
-                                    <flux:menu.item icon="pencil-square" wire:click="edit({{ $exam->id }})">{{ __('Edit Rules') }}</flux:menu.item>
-                                @endcan
-                                <flux:menu.item icon="document-text" :href="route('cms.cbt.questions') . '?selectedExamId=' . $exam->id" wire:navigate>{{ __('Manage Questions') }}</flux:menu.item>
-                                <flux:menu.separator />
-                                @can('cbt_exams.edit')
-                                    <flux:menu.item icon="arrow-path" wire:click="toggleStatus({{ $exam->id }})">
-                                        {{ $exam->status === 'active' ? __('Move to Draft') : __('Publish Exam') }}
-                                    </flux:menu.item>
-                                @endcan
-                                @can('cbt_exams.delete')
-                                    <flux:menu.item variant="danger" icon="trash" wire:click="confirmDelete({{ $exam->id }})">{{ __('Delete') }}</flux:menu.item>
-                                @endcan
-                            </flux:menu>
-                        </flux:dropdown>
-                    </div>
+        <flux:table.rows>
+            @forelse ($exams as $exam)
+                            @php
+                $added = $exam->questions_count ?? \App\Models\CbtQuestion::where('cbt_exam_id', $exam->id)->count();
+                $required = $exam->total_questions;
+                $percent = $required > 0 ? min(100, ($added / $required) * 100) : 0;
+                            @endphp
+                            <flux:table.row :key="$exam->id">
+                                <flux:table.cell>
+                                    <div class="flex flex-col">
+                                        <span class="font-bold text-zinc-900 dark:text-white">{{ $exam->title }}</span>
+                                        @if($exam->exam_date)
+                                            <span class="text-sm text-zinc-500">{{ $exam->exam_date->format('M d, Y') }} ({{ $exam->course->course_code }})</span>
+                                        @else
+                                            <span class="text-xs text-zinc-400 italic">{{ __('Not Scheduled') }}</span>
+                                        @endif
 
-                    <div class="bg-zinc-50 dark:bg-zinc-900 rounded-xl p-3 mb-6 border border-zinc-100 dark:border-zinc-800">
-                        <div class="flex items-center gap-3">
-                            <div class="size-10 rounded-lg bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm border border-zinc-200 dark:border-zinc-700">
-                                <flux:icon icon="academic-cap" class="size-5 text-blue-600" />
-                            </div>
-                            <div class="flex flex-col overflow-hidden">
-                                <span class="text-sm font-bold truncate">{{ $exam->course->title }}</span>
-                                <span class="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">{{ $exam->course->course_code }}</span>
-                            </div>
-                        </div>
-                    </div>
+                                    </div>
+                                </flux:table.cell>
 
-                    <div class="grid grid-cols-2 gap-4 mb-6">
-                        <div class="flex flex-col">
-                            <flux:text size="xs" class="text-zinc-500 uppercase font-bold">{{ __('Duration') }}</flux:text>
-                            <span class="text-sm font-medium">{{ $exam->duration_minutes }} {{ __('minutes') }}</span>
-                        </div>
-                        <div class="flex flex-col">
-                            <flux:text size="xs" class="uppercase font-bold text-zinc-500">{{ __('Questions') }}</flux:text>
-                            <span class="text-sm font-medium">{{ $exam->total_questions }}</span>
-                        </div>
-                    </div>
+                                <flux:table.cell>
+                                    <div class="flex flex-col">
+                                        <span class="text-sm text-zinc-900 dark:text-white">{{ $exam->academicSession->name }}</span>
+                                        <span class="text-xs text-zinc-500 capitalize">{{ $exam->semester->name }}
+                                            {{ __('Semester') }}</span>
+                                    </div>
+                                </flux:table.cell>
 
-                    <div class="mt-auto pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                        @php 
-                            $added = $exam->questions_count ?? \App\Models\CbtQuestion::where('cbt_exam_id', $exam->id)->count();
-                            $required = $exam->total_questions;
-                            $percent = $required > 0 ? min(100, ($added / $required) * 100) : 0;
-                        @endphp
-                        <div class="flex items-center justify-between mb-2">
-                            <flux:text size="xs" class="font-bold text-zinc-500 uppercase">{{ __('Question Bank') }}</flux:text>
-                            <span class="text-[10px] font-mono {{ $added >= $required ? 'text-green-600' : 'text-orange-600' }}">
-                                {{ $added }} / {{ $required }}
-                            </span>
-                        </div>
-                        <div class="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                            <div class="h-full {{ $percent >= 100 ? 'bg-green-500' : 'bg-orange-500' }} transition-all duration-500" style="width: {{ $percent }}%"></div>
-                        </div>
-                    </div>
-                </div>
+                                <flux:table.cell>
+                                    <div class="flex flex-col text-xs text-zinc-600 dark:text-zinc-400 space-y-0.5">
+                                        <span><strong>{{ __('Duration:') }}</strong> {{ $exam->duration_minutes }}
+                                            {{ __('mins') }}</span>
+                                        <span><strong>{{ __('Questions:') }}</strong> {{ $exam->total_questions }}</span>
+                                    </div>
+                                </flux:table.cell>
 
-                <div class="px-6 py-3 bg-zinc-50/50 dark:bg-zinc-900/50 flex justify-between items-center">
-                    <flux:badge :color="$exam->status === 'active' ? 'success' : 'zinc'" size="sm" variant="pill">
-                        {{ ucfirst($exam->status) }}
-                    </flux:badge>
-                    <flux:button variant="ghost" size="xs" :href="route('cms.cbt.questions') . '?selectedExamId=' . $exam->id" wire:navigate class="font-bold">
-                        {{ __('Open Bank') }} &rarr;
-                    </flux:button>
-                </div>
-            </flux:card>
-        
-        @empty
-            <div class="col-span-full py-32 flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-900/50 rounded-3xl border-2 border-dashed border-zinc-200 dark:border-zinc-800">
-                <flux:icon icon="clipboard-document-list" class="size-16 text-zinc-300 mb-6" />
-                <flux:heading size="lg">{{ __('No Examinations Found') }}</flux:heading>
-                <flux:text class="text-zinc-500 mt-2">{{ __('Get started by creating your first exam configuration.') }}</flux:text>
-                @can('cbt_exams.create')
-                    <flux:button variant="primary" class="mt-6" icon="plus" wire:click="$set('showModal', true)">{{ __('Create Exam') }}</flux:button>
-                @endcan
-            </div>
-        @endforelse
-    </div>
+                                <flux:table.cell class="min-w-[150px]">
+                                    <div class="flex flex-col">
+                                        <div class="flex items-center justify-between text-xs mb-1">
+                                            <span class="font-mono text-zinc-500">{{ $added }} / {{ $required }}</span>
+                                            <span
+                                                class="text-[10px] {{ $added >= $required ? 'text-green-600' : 'text-orange-600' }} font-bold">
+                                                {{ round($percent) }}%
+                                            </span>
+                                        </div>
+                                        <div class="h-1.5 w-full bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+                                            <div class="h-full {{ $percent >= 100 ? 'bg-green-500' : 'bg-orange-500' }} transition-all duration-500"
+                                                style="width: {{ $percent }}%"></div>
+                                        </div>
+                                    </div>
+                                </flux:table.cell>
 
-    <div class="mt-8">
-        {{ $exams->links() }}
-    </div>
+                                <flux:table.cell>
+                                    <flux:badge :color="$exam->status === 'active' ? 'success' : 'zinc'" size="sm" variant="pill">
+                                        {{ ucfirst($exam->status) }}
+                                    </flux:badge>
+                                </flux:table.cell>
+
+                                <flux:table.cell>
+                                    <flux:dropdown>
+                                        <flux:button variant="ghost" size="sm" icon="ellipsis-vertical" />
+                                        <flux:menu>
+                                            @can('cbt_exams.edit')
+                                                <flux:menu.item icon="pencil-square" wire:click="edit({{ $exam->id }})">
+                                                    {{ __('Edit Rules') }}</flux:menu.item>
+                                            @endcan
+                                            <flux:menu.item icon="document-text"
+                                                :href="route('cms.cbt.questions') . '?selectedExamId=' . $exam->id" wire:navigate>
+                                                {{ __('Manage Questions') }}</flux:menu.item>
+                                            <flux:menu.separator />
+                                            @can('cbt_exams.edit')
+                                                <flux:menu.item icon="arrow-path" wire:click="toggleStatus({{ $exam->id }})">
+                                                    {{ $exam->status === 'active' ? __('Move to Draft') : __('Publish Exam') }}
+                                                </flux:menu.item>
+                                            @endcan
+                                            @can('cbt_exams.delete')
+                                                <flux:menu.item variant="danger" icon="trash" wire:click="confirmDelete({{ $exam->id }})">
+                                                    {{ __('Delete') }}</flux:menu.item>
+                                            @endcan
+                                        </flux:menu>
+                                    </flux:dropdown>
+                                </flux:table.cell>
+                            </flux:table.row>
+            @empty
+                <flux:table.row>
+                    <flux:table.cell colspan="7" class="text-center py-20 text-zinc-500">
+                        <flux:icon icon="clipboard-document-list" class="size-12 mx-auto mb-4 opacity-20" />
+                        <p class="font-medium text-zinc-800 dark:text-zinc-200">{{ __('No Examinations Found') }}</p>
+                        <p class="text-sm text-zinc-500 mt-1">
+                            {{ __('Get started by creating your first exam configuration.') }}</p>
+                        @can('cbt_exams.create')
+                            <flux:button variant="ghost" size="sm" class="mt-4" wire:click="$set('showModal', true)">
+                                {{ __('Create Exam') }}</flux:button>
+                        @endcan
+                    </flux:table.cell>
+                </flux:table.row>
+            @endforelse
+        </flux:table.rows>
+    </flux:table>
 
     <flux:modal wire:model="showModal" class="w-full max-w-2xl">
         <form wire:submit="save" class="space-y-6">
@@ -492,8 +503,10 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
                     <flux:icon icon="pencil-square" class="size-6 text-blue-600" />
                 </div>
                 <div>
-                    <flux:heading size="lg">{{ $editingId ? __('Refine Examination Rules') : __('New Examination Setup') }}</flux:heading>
-                    <flux:subheading>{{ __('Define the constraints and metadata for this CBT session.') }}</flux:subheading>
+                    <flux:heading size="lg">
+                        {{ $editingId ? __('Refine Examination Rules') : __('New Examination Setup') }}</flux:heading>
+                    <flux:subheading>{{ __('Define the constraints and metadata for this CBT session.') }}
+                    </flux:subheading>
                 </div>
             </div>
 
@@ -509,12 +522,14 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
                 <flux:input type="date" label="{{ __('Exam Date') }}" wire:model="exam_date" required />
             </div>
 
-            <div class="p-5 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 space-y-5 shadow-inner">
+            <div
+                class="p-5 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 space-y-5 shadow-inner">
                 <div class="flex items-center gap-2 mb-2">
                     <flux:icon icon="funnel" variant="mini" class="text-zinc-400" />
-                    <flux:heading size="sm" class="uppercase tracking-widest text-zinc-500 font-bold">{{ __('Course Selection Cascade') }}</flux:heading>
+                    <flux:heading size="sm" class="uppercase tracking-widest text-zinc-500 font-bold">
+                        {{ __('Course Selection Cascade') }}</flux:heading>
                 </div>
-                
+
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <flux:select label="{{ __('Program') }}" wire:model.live="filter_program_id">
                         <option value="">{{ __('All Programs') }}</option>
@@ -573,12 +588,15 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
     <flux:modal wire:model="showDeleteModal" class="w-full max-w-lg">
         <div class="space-y-6">
             <div class="flex items-start gap-4">
-                <div class="size-12 rounded-2xl bg-red-50 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                <div
+                    class="size-12 rounded-2xl bg-red-50 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
                     <flux:icon icon="trash" class="size-6 text-red-600" />
                 </div>
                 <div>
                     <flux:heading size="lg">{{ __('Delete Examination?') }}</flux:heading>
-                    <flux:subheading class="mt-2">{{ __('Are you sure you want to permanently delete this CBT examination? This action is irreversible and will delete all associated question banks, options, and related configurations.') }}</flux:subheading>
+                    <flux:subheading class="mt-2">
+                        {{ __('Are you sure you want to permanently delete this CBT examination? This action is irreversible and will delete all associated question banks, options, and related configurations.') }}
+                    </flux:subheading>
                 </div>
             </div>
 

@@ -350,6 +350,29 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
                     </tbody>
                 </table>
             </div>
+
+            @php
+                $gradingService = app(\App\Services\GradingService::class);
+                $activeScale = $gradingService->getGradingScale($this->student->program?->department);
+                $isCustomDeptScale = $this->student->program?->department?->gradingSystem !== null;
+            @endphp
+            <div class="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] text-zinc-400 dark:text-zinc-500">
+                <span class="font-bold uppercase tracking-wider">{{ __('Grading:') }}</span>
+                <span class="font-medium text-zinc-500 dark:text-zinc-400">
+                    {{ $isCustomDeptScale ? (($this->student->program?->department?->name ?? '') . ' ' . __('Scale')) : __('Default Scale') }}:
+                </span>
+                <div class="flex flex-wrap items-center gap-x-2">
+                    @foreach ($activeScale as $scaleItem)
+                    <span class="inline-flex items-center gap-1 font-mono">
+                        <span class="font-bold text-zinc-700 dark:text-zinc-300">{{ $scaleItem['grade'] }}</span>
+                        <span>({{ $scaleItem['min'] }}% = {{ number_format((float) $scaleItem['point'], 1) }})</span>
+                    </span>
+                    @if (!$loop->last)
+                    <span class="text-zinc-300 dark:text-zinc-700">&bull;</span>
+                    @endif
+                    @endforeach
+                </div>
+            </div>
             @else
             {{-- Locked State UI --}}
             <div

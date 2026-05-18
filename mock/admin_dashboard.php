@@ -82,14 +82,25 @@ require 'admin_layout.php';
         <div class="glass-card h-100">
             <h5 class="fw-bold mb-4">Quick Actions</h5>
             <div class="d-grid gap-3">
-                <a href="upload.php" class="btn btn-light py-3 border text-start d-flex align-items-center gap-3">
-                    <div class="bg-primary text-white p-2 rounded-3">
-                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
-                            viewBox="0 0 24 24">
-                            <path d="M12 4v16m8-8H4"></path>
+                <a href="sync_manager.php"
+                    class="btn btn-light py-3 border text-start d-flex align-items-center gap-3">
+                    <div class="bg-warning text-white p-2 rounded-3">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z"></path>
+                            <path d="M12 7v5l3 3"></path>
                         </svg>
                     </div>
-                    <span class="fw-600">Upload Questions</span>
+                    <span class="fw-600">CMS Sync</span>
+                </a>
+                <a href="manage_sessions.php"
+                    class="btn btn-light py-3 border text-start d-flex align-items-center gap-3">
+                    <div class="bg-success text-white p-2 rounded-3">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                            viewBox="0 0 24 24">
+                            <path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
+                        </svg>
+                    </div>
+                    <span class="fw-600">Monitor Sessions</span>
                 </a>
                 <a href="manage_students.php"
                     class="btn btn-light py-3 border text-start d-flex align-items-center gap-3">
@@ -102,26 +113,6 @@ require 'admin_layout.php';
                         </svg>
                     </div>
                     <span class="fw-600">Manage Students</span>
-                </a>
-                <a href="manage_sessions.php"
-                    class="btn btn-light py-3 border text-start d-flex align-items-center gap-3">
-                    <div class="bg-success text-white p-2 rounded-3">
-                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
-                            viewBox="0 0 24 24">
-                            <path d="M12 8v4l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"></path>
-                        </svg>
-                    </div>
-                    <span class="fw-600">Monitor Sessions</span>
-                </a>
-                <a href="sync_manager.php"
-                    class="btn btn-light py-3 border text-start d-flex align-items-center gap-3">
-                    <div class="bg-warning text-white p-2 rounded-3">
-                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z"></path>
-                            <path d="M12 7v5l3 3"></path>
-                        </svg>
-                    </div>
-                    <span class="fw-600">CMS Sync Hub</span>
                 </a>
             </div>
         </div>

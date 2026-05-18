@@ -216,7 +216,7 @@ class Student extends Model
         $query = $this->attendanceRecords();
 
         if ($courseId || $sessionId || $semesterId) {
-            $query->whereHas('attendance.attendanceSession', function ($q) use ($courseId, $sessionId, $semesterId) {
+            $query->whereHas('attendance.courseAllocation', function ($q) use ($courseId, $sessionId, $semesterId) {
                 if ($courseId) {
                     $q->where('course_id', $courseId);
                 }

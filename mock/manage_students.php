@@ -109,24 +109,6 @@ require 'admin_layout.php';
         <h2>Student Management</h2>
         <p>Manage individual registrations and bulk uploads.</p>
     </div>
-    <div class="header-actions">
-        <button class="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow-sm" data-bs-toggle="modal"
-            data-bs-target="#addStudentModal">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
-                class="me-2">
-                <path d="M12 4v16m8-8H4"></path>
-            </svg>
-            Add Single Student
-        </button>
-        <button class="btn btn-outline-primary rounded-pill px-4 py-2 fw-bold shadow-sm ms-2" data-bs-toggle="modal"
-            data-bs-target="#uploadCsvModal">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
-                class="me-2">
-                <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-            </svg>
-            Bulk Upload (CSV)
-        </button>
-    </div>
 </div>
 
 <!-- Filters -->
@@ -180,7 +162,6 @@ require 'admin_layout.php';
                     <th style="width: 40%;">Student Info</th>
                     <th style="width: 25%;">Dept & Level</th>
                     <th style="width: 20%;">Password</th>
-                    <th class="text-end" style="width: 15%;">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -205,32 +186,7 @@ require 'admin_layout.php';
                             </span>
                         </td>
                         <td>
-                            <code class="text-primary fw-bold"><?php echo htmlspecialchars($s['password']); ?></code>
-                        </td>
-                        <td class="text-end">
-                            <button class="btn btn-link text-primary p-0 me-2 edit-btn"
-                                data-id="<?php echo $s['user_id']; ?>"
-                                data-name="<?php echo htmlspecialchars($s['fullname']); ?>"
-                                data-user="<?php echo htmlspecialchars($s['username']); ?>"
-                                data-pass="<?php echo htmlspecialchars($s['password']); ?>"
-                                data-dept="<?php echo $s['dept']; ?>"
-                                data-level="<?php echo htmlspecialchars($s['level']); ?>">
-                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
-                                    viewBox="0 0 24 24">
-                                    <path
-                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
-                                    </path>
-                                </svg>
-                            </button>
-                            <button class="btn btn-link text-danger p-0 delete-btn" data-id="<?php echo $s['user_id']; ?>"
-                                data-name="<?php echo htmlspecialchars($s['fullname']); ?>">
-                                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
-                                    viewBox="0 0 24 24">
-                                    <path
-                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                                    </path>
-                                </svg>
-                            </button>
+                            <code class="text-primary fw-bold">******</code>
                         </td>
                     </tr>
                 <?php } ?>
@@ -373,67 +329,6 @@ require 'admin_layout.php';
                         data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" name="add_student" class="btn btn-primary rounded-pill px-4 fw-bold">Register
                         Student</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Upload CSV Modal -->
-<div class="modal fade" id="uploadCsvModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0"
-            style="border-radius: 24px; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px);">
-            <div class="modal-header border-0 pb-0">
-                <h5 class="modal-title fw-bold">Bulk Student Upload</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="POST" enctype="multipart/form-data">
-                <div class="modal-body p-4 text-center">
-                    <div class="mb-4">
-                        <div class="bg-light rounded-4 p-3 mb-2 d-inline-block">
-                            <svg width="40" height="40" fill="none" stroke="var(--primary-color)" stroke-width="2"
-                                viewBox="0 0 24 24">
-                                <path
-                                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v8">
-                                </path>
-                            </svg>
-                        </div>
-                        <p class="small text-muted">Select a CSV file containing <strong>username, fullname,
-                                password</strong></p>
-                    </div>
-
-                    <div class="row text-start">
-                        <div class="col-md-6 mb-3">
-                            <label class="small fw-bold text-muted mb-1">Department</label>
-                            <select name="dept" class="form-select rounded-pill border-0 shadow-sm py-2" required>
-                                <?php foreach ($departments as $d) { ?>
-                                    <option value="<?php echo $d['id']; ?>">
-                                        <?php echo htmlspecialchars($d['code']); ?>
-                                    </option>
-                                <?php } ?>
-                            </select>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="small fw-bold text-muted mb-1">Level</label>
-                            <select name="level" class="form-select rounded-pill border-0 shadow-sm py-2" required>
-                                <option value="100L">100L</option>
-                                <option value="200L">200L</option>
-                                <option value="300L">300L</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <input type="file" name="csvFile" class="form-control rounded-pill border-0 shadow-sm"
-                            accept=".csv" required>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-light rounded-pill px-4"
-                        data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" name="upload" class="btn btn-primary rounded-pill px-4 fw-bold">Start
-                        Upload</button>
                 </div>
             </form>
         </div>

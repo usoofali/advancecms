@@ -30,16 +30,7 @@ require 'admin_layout.php';
 <div class="page-header d-flex justify-content-between align-items-center">
     <div class="page-title">
         <h2>Examination Results</h2>
-        <p>Review and export student performance records across all departments.</p>
-    </div>
-    <div class="header-actions">
-        <button id="exportCsvBtn" class="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow-sm">
-            <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"
-                class="me-2">
-                <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-            </svg>
-            Export All Results
-        </button>
+        <p>Review student performance records across all departments.</p>
     </div>
 </div>
 
@@ -93,9 +84,7 @@ require 'admin_layout.php';
                     <th>Student Details</th>
                     <th>Examination</th>
                     <th class="text-center">Attempted</th>
-                    <th class="text-center">CA Score</th>
                     <th class="text-center">Exam Score</th>
-                    <th class="text-center">Total Score</th>
                     <th class="text-center">Sync Status</th>
                     <th class="text-end">Percentage</th>
                     <th class="text-end">Audit Trail</th>
@@ -129,13 +118,7 @@ require 'admin_layout.php';
                             </span>
                         </td>
                         <td class="text-center fw-600">
-                            <?php echo $r['ca_score']; ?>
-                        </td>
-                        <td class="text-center fw-600">
                             <?php echo $r['total_score']; ?>
-                        </td>
-                        <td class="text-center fw-bold text-primary">
-                            <?php echo $r['total_score'] + $r['ca_score']; ?>
                         </td>
                         <td class="text-center">
                             <?php if ($r['is_synced']) { ?>
@@ -153,12 +136,13 @@ require 'admin_layout.php';
                                     style="width: <?php echo $r['percent_score']; ?>%"></div>
                             </div>
                         </td>
-                    </tr>
                         <td class="text-end">
                             <button class="btn btn-sm btn-light border rounded-pill px-3 audit-btn" data-session="<?php echo $r['session_id']; ?>" data-student="<?php echo htmlspecialchars($r['fullname']); ?>">
                                 Audit
                             </button>
                         </td>
+                    </tr>
+                        
                 <?php } ?>
                 <tr id="noResults" style="display: none;">
                     <td colspan="7" class="text-center py-5">
@@ -274,12 +258,6 @@ require 'admin_layout.php';
             $('#resultSearch').val('');
             $('#examFilter, #levelFilter').val('');
             filterResults();
-        });
-
-        $('#exportCsvBtn').on('click', function () {
-            const exam = $('#examFilter').val();
-            const level = $('#levelFilter').val();
-            window.location.href = `export_results.php?exam=${exam}&level=${level}`;
         });
 
         filterResults();

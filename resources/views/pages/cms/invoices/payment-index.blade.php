@@ -8,12 +8,15 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
-{
+new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component {
     use WithPagination;
+
+    #[Url]
+    public string $search = '';
 
     public string $statusFilter = 'pending';
 
@@ -50,10 +53,29 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
     public function payments()
     {
         return $this->paymentQueryForCurrentUser()
-            ->when($this->statusFilter !== 'all', fn ($q) => $q->where('status', $this->statusFilter))
+            ->when($this->statusFilter !== 'all', fn($q) => $q->where('status', $this->statusFilter))
+            ->when($this->search, function ($q) {
+                $q->where(function ($query) {
+                    $query->where('reference', 'like', '%' . $this->search . '%')
+                        ->orWhereHas('studentInvoice.student', function ($subQuery) {
+                            $subQuery->where('first_name', 'like', '%' . $this->search . '%')
+                                ->orWhere('last_name', 'like', '%' . $this->search . '%')
+                                ->orWhere('matric_number', 'like', '%' . $this->search . '%');
+                        })
+                        ->orWhereHas('studentInvoice.applicant', function ($subQuery) {
+                            $subQuery->where('full_name', 'like', '%' . $this->search . '%')
+                                ->orWhere('application_number', 'like', '%' . $this->search . '%');
+                        });
+                });
+            })
             ->with(['studentInvoice.student', 'studentInvoice.invoice', 'receipt'])
             ->latest()
             ->paginate(20);
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
     }
 
     public function updatedInstitutionFilter(): void
@@ -81,7 +103,7 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
             ->where('status', 'pending')
             ->first();
 
-        if (! $payment) {
+        if (!$payment) {
             return;
         }
 
@@ -105,7 +127,7 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
         $receipt = Receipt::create([
             'institution_id' => $payment->institution_id,
             'payment_id' => $payment->id,
-            'receipt_number' => 'REC-'.strtoupper(Str::random(10)), // Simple unique ref
+            'receipt_number' => 'REC-' . strtoupper(Str::random(10)), // Simple unique ref
             'issued_at' => now(),
         ]);
 
@@ -141,7 +163,7 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
             ->where('status', 'pending')
             ->first();
 
-        if (! $payment) {
+        if (!$payment) {
             return;
         }
 
@@ -167,43 +189,55 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
 ?>
 
 <div class="space-y-6">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
             <flux:heading size="xl">Verify Payments</flux:heading>
             <flux:subheading>Approve or reject manual payment records from students.</flux:subheading>
         </div>
-
-        <div class="flex flex-wrap items-end gap-4 justify-end">
-            @if(auth()->user()->hasRole('Super Admin'))
-                <div class="w-full sm:w-64">
-                    <flux:select wire:model.live="institutionFilter" :label="__('Institution')">
-                        <flux:select.option value="">{{ __('All Institutions') }}</flux:select.option>
-                        @foreach(\App\Models\Institution::query()->where('status', 'active')->orderBy('name')->get() as $institution)
-                            <flux:select.option value="{{ $institution->id }}">{{ $institution->name }}</flux:select.option>
-                        @endforeach
-                    </flux:select>
-                </div>
-            @endif
-            <div class="w-full sm:max-w-xs">
-                <flux:select wire:model.live="statusFilter" :label="__('Verification Status')">
-                    <flux:select.option value="all">All Payments</flux:select.option>
-                    <flux:select.option value="pending">Pending Verification</flux:select.option>
-                    <flux:select.option value="success">Success / Completed</flux:select.option>
-                    <flux:select.option value="failed">Rejected / Failed</flux:select.option>
+    </div>
+    <div class="flex flex-col sm:flex-row sm:items-end gap-4 w-full md:w-auto">
+        @if(auth()->user()->hasRole('Super Admin'))
+            <div class="w-full sm:w-64">
+                <flux:select wire:model.live="institutionFilter" :label="__('Institution')">
+                    <flux:select.option value="">{{ __('All Institutions') }}</flux:select.option>
+                    @foreach(\App\Models\Institution::query()->where('status', 'active')->orderBy('name')->get() as $institution)
+                        <flux:select.option value="{{ $institution->id }}">{{ $institution->name }}</flux:select.option>
+                    @endforeach
                 </flux:select>
             </div>
+        @endif
+        <div class="w-full sm:w-64">
+            <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass"
+                placeholder="{{ __('Search by name, matric, ref...') }}" label="{{ __('Search') }}" />
+        </div>
+        <div class="w-full sm:w-64">
+            <flux:select wire:model.live="statusFilter" :label="__('Verification Status')">
+                <flux:select.option value="all">All Payments</flux:select.option>
+                <flux:select.option value="pending">Pending Verification</flux:select.option>
+                <flux:select.option value="success">Success / Completed</flux:select.option>
+                <flux:select.option value="failed">Rejected / Failed</flux:select.option>
+            </flux:select>
         </div>
     </div>
-
     <div class="overflow-x-auto">
         <table class="w-full text-left">
             <thead>
                 <tr class="border-b border-zinc-200 dark:border-zinc-700">
-                    <th class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider">Student</th>
-                    <th class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider">Invoice / Ref</th>
-                    <th class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider text-right">Amount</th>
-                    <th class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider">Status</th>
-                    <th class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider">Date</th>
+                    <th
+                        class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider">
+                        Student</th>
+                    <th
+                        class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider">
+                        Invoice / Ref</th>
+                    <th
+                        class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider text-right">
+                        Amount</th>
+                    <th
+                        class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider">
+                        Status</th>
+                    <th
+                        class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider">
+                        Date</th>
                     <th class="py-3 px-4"></th>
                 </tr>
             </thead>
@@ -213,8 +247,12 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
                     @foreach ($paginatedPayments as $payment)
                         <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
                             <td class="py-4 px-4">
-                                <flux:text weight="medium" class="text-zinc-900 dark:text-white">{{ $payment->studentInvoice?->student?->full_name }}</flux:text>
-                                <flux:text size="sm" class="text-zinc-500">{{ $payment->studentInvoice?->student?->matric_number }}</flux:text>
+                                <flux:text weight="medium" class="text-zinc-900 dark:text-white">
+                                    {{ $payment->studentInvoice?->student?->full_name }}
+                                </flux:text>
+                                <flux:text size="sm" class="text-zinc-500">
+                                    {{ $payment->studentInvoice?->student?->matric_number }}
+                                </flux:text>
                             </td>
                             <td class="py-4 px-4">
                                 <flux:text size="sm">{{ $payment->studentInvoice?->invoice?->title }}</flux:text>
@@ -224,10 +262,9 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
                                 ₦{{ number_format($payment->amount_paid, 2) }}
                             </td>
                             <td class="py-4 px-4">
-                                <flux:badge 
+                                <flux:badge
                                     :variant="$payment->status === 'success' ? 'success' : ($payment->status === 'pending' ? 'warning' : 'danger')"
-                                    size="sm"
-                                >
+                                    size="sm">
                                     {{ ucfirst($payment->status) }}
                                 </flux:badge>
                             </td>
@@ -238,13 +275,17 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
                                 @if($payment->status === 'pending')
                                     <div class="flex items-center justify-end gap-2">
                                         @can('payments.verify')
-                                        <flux:button variant="subtle" size="sm" wire:click="confirmApprove({{ $payment->id }})" class="text-green-600 hover:text-green-700">Approve</flux:button>
-                                        <flux:button variant="ghost" size="sm" wire:click="confirmReject({{ $payment->id }})" class="text-red-600 hover:text-red-700">Reject</flux:button>
+                                            <flux:button variant="subtle" size="sm" wire:click="confirmApprove({{ $payment->id }})"
+                                                class="text-green-600 hover:text-green-700">Approve</flux:button>
+                                            <flux:button variant="ghost" size="sm" wire:click="confirmReject({{ $payment->id }})"
+                                                class="text-red-600 hover:text-red-700">Reject</flux:button>
                                         @endcan
                                     </div>
                                 @elseif($payment->status === 'success' && $payment->receipt)
                                     <div class="flex items-center justify-end">
-                                        <flux:button variant="ghost" size="sm" icon="printer" href="{{ route('cms.invoices.receipt.print', $payment->receipt->receipt_number) }}" target="_blank" class="text-blue-600 hover:text-blue-700">Print Receipt</flux:button>
+                                        <flux:button variant="ghost" size="sm" icon="printer"
+                                            href="{{ route('cms.invoices.receipt.print', $payment->receipt->receipt_number) }}"
+                                            target="_blank" class="text-blue-600 hover:text-blue-700">Print Receipt</flux:button>
                                     </div>
                                 @endif
                             </td>
@@ -268,7 +309,8 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
         <div class="space-y-6">
             <div>
                 <flux:heading size="lg">Approve Payment?</flux:heading>
-                <flux:subheading>Are you sure you want to approve this payment? This will update the student's balance and generate a receipt.</flux:subheading>
+                <flux:subheading>Are you sure you want to approve this payment? This will update the student's balance
+                    and generate a receipt.</flux:subheading>
             </div>
 
             <div class="flex items-center justify-end gap-3">
@@ -285,7 +327,8 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
         <div class="space-y-6">
             <div>
                 <flux:heading size="lg">Reject Payment?</flux:heading>
-                <flux:subheading>Are you sure you want to reject this payment record? This action will mark it as failed.</flux:subheading>
+                <flux:subheading>Are you sure you want to reject this payment record? This action will mark it as
+                    failed.</flux:subheading>
             </div>
 
             <div class="flex items-center justify-end gap-3">

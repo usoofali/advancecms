@@ -124,3 +124,57 @@ it('does not approve a payment outside the user institution scope', function ():
     expect($paymentOther->fresh()->status)->toBe('pending')
         ->and(Receipt::query()->where('payment_id', $paymentOther->id)->exists())->toBeFalse();
 });
+
+it('can search payments by reference, student name, student matric number', function (): void {
+    $institution = Institution::factory()->create();
+
+    $paymentA = createPendingPaymentForInstitution($institution, 'REF-SEARCH-ALPHA');
+    $studentA = $paymentA->studentInvoice->student;
+    $studentA->update([
+        'first_name' => 'Adewale',
+        'last_name' => 'Adekunle',
+        'matric_number' => 'CMS/ADE/2026/001',
+    ]);
+
+    $paymentB = createPendingPaymentForInstitution($institution, 'REF-SEARCH-BETA');
+    $studentB = $paymentB->studentInvoice->student;
+    $studentB->update([
+        'first_name' => 'Chinedu',
+        'last_name' => 'Okonkwo',
+        'matric_number' => 'CMS/CHI/2026/999',
+    ]);
+
+    $user = User::factory()->withRole('Accountant')->create([
+        'institution_id' => $institution->id,
+    ]);
+
+    $this->actingAs($user);
+
+    // 1. Search by reference
+    Livewire::test('pages::cms.invoices.payment-index')
+        ->set('statusFilter', 'all')
+        ->set('search', 'ALPHA')
+        ->assertSee('REF-SEARCH-ALPHA', false)
+        ->assertDontSee('REF-SEARCH-BETA', false);
+
+    // 2. Search by first name
+    Livewire::test('pages::cms.invoices.payment-index')
+        ->set('statusFilter', 'all')
+        ->set('search', 'Adewale')
+        ->assertSee('REF-SEARCH-ALPHA', false)
+        ->assertDontSee('REF-SEARCH-BETA', false);
+
+    // 3. Search by last name
+    Livewire::test('pages::cms.invoices.payment-index')
+        ->set('statusFilter', 'all')
+        ->set('search', 'Adekunle')
+        ->assertSee('REF-SEARCH-ALPHA', false)
+        ->assertDontSee('REF-SEARCH-BETA', false);
+
+    // 4. Search by matric number
+    Livewire::test('pages::cms.invoices.payment-index')
+        ->set('statusFilter', 'all')
+        ->set('search', 'CHI/2026/999')
+        ->assertDontSee('REF-SEARCH-ALPHA', false)
+        ->assertSee('REF-SEARCH-BETA', false);
+});

@@ -7,6 +7,7 @@ use App\Models\Course;
 use App\Models\CourseRegistration;
 use App\Models\Department;
 use App\Models\Result;
+use App\Models\Semester;
 use App\Models\Student;
 use Illuminate\Support\Collection;
 
@@ -53,7 +54,7 @@ class GradingService
      *
      * @return array<int, array{min: int, grade: string, point: float}>
      */
-    protected function getGradingScale(?Department $department = null): array
+    public function getGradingScale(?Department $department = null): array
     {
         if ($department && $department->gradingSystem) {
             return $department->gradingSystem->scale;
@@ -164,7 +165,7 @@ class GradingService
             return collect();
         }
 
-        $semester = \App\Models\Semester::find($semesterId);
+        $semester = Semester::find($semesterId);
 
         return Course::whereIn('id', $pendingCarryoverIds)
             ->where('institution_id', $institutionId)

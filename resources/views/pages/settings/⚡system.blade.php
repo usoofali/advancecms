@@ -9,8 +9,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
-new #[Title('System Configuration')] class extends Component
-{
+new #[Title('System Configuration')] class extends Component {
     use WithFileUploads;
 
     public $system_logo;
@@ -35,6 +34,8 @@ new #[Title('System Configuration')] class extends Component
 
     public string $last_output = '';
 
+    public string $regrade_department_id = '';
+
     public array $target_folders = [
         'storage',
         'storage/app',
@@ -49,7 +50,7 @@ new #[Title('System Configuration')] class extends Component
             abort(403);
         }
 
-        $this->current_logo = Cache::rememberForever('system_logo', fn () => SystemSetting::where('key', 'system_logo')->value('value'));
+        $this->current_logo = Cache::rememberForever('system_logo', fn() => SystemSetting::where('key', 'system_logo')->value('value'));
 
         $this->refreshStats();
         $this->discoverSeeders();
@@ -95,8 +96,8 @@ new #[Title('System Configuration')] class extends Component
         if (File::exists($path)) {
             $files = File::files($path);
             $this->available_seeders = collect($files)
-                ->map(fn ($file) => $file->getFilenameWithoutExtension())
-                ->filter(fn ($name) => $name !== 'DatabaseSeeder')
+                ->map(fn($file) => $file->getFilenameWithoutExtension())
+                ->filter(fn($name) => $name !== 'DatabaseSeeder')
                 ->values()
                 ->toArray();
         }
@@ -105,7 +106,7 @@ new #[Title('System Configuration')] class extends Component
     public function fetchBackups(): void
     {
         $path = storage_path('app/backups');
-        if (! File::exists($path)) {
+        if (!File::exists($path)) {
             File::makeDirectory($path, 0755, true);
         }
 
@@ -114,7 +115,7 @@ new #[Title('System Configuration')] class extends Component
             ->map(function ($file) {
                 return [
                     'name' => $file->getFilename(),
-                    'size' => number_format($file->getSize() / 1024, 2).' KB',
+                    'size' => number_format($file->getSize() / 1024, 2) . ' KB',
                     'created_at' => date('Y-m-d H:i:s', $file->getMTime()),
                     'timestamp' => $file->getMTime(),
                 ];
@@ -128,8 +129,8 @@ new #[Title('System Configuration')] class extends Component
     {
         Gate::authorize('system.manage');
 
-        $filename = 'backup-'.date('Y-m-d-His').'.sql';
-        $path = storage_path('app/backups/'.$filename);
+        $filename = 'backup-' . date('Y-m-d-His') . '.sql';
+        $path = storage_path('app/backups/' . $filename);
 
         $conn = config('database.connections.mysql');
         $command = sprintf(
@@ -157,8 +158,8 @@ new #[Title('System Configuration')] class extends Component
     {
         Gate::authorize('system.manage');
 
-        $path = storage_path('app/backups/'.$filename);
-        if (! File::exists($path)) {
+        $path = storage_path('app/backups/' . $filename);
+        if (!File::exists($path)) {
             $this->dispatch('notify', message: __('Backup file not found.'), variant: 'danger');
 
             return;
@@ -190,7 +191,7 @@ new #[Title('System Configuration')] class extends Component
     {
         Gate::authorize('system.manage');
 
-        $path = storage_path('app/backups/'.$filename);
+        $path = storage_path('app/backups/' . $filename);
         if (File::exists($path)) {
             File::delete($path);
             $this->fetchBackups();
@@ -202,7 +203,7 @@ new #[Title('System Configuration')] class extends Component
     {
         Gate::authorize('system.manage');
 
-        $path = storage_path('app/backups/'.$filename);
+        $path = storage_path('app/backups/' . $filename);
         if (File::exists($path)) {
             return response()->download($path);
         }
@@ -221,7 +222,7 @@ new #[Title('System Configuration')] class extends Component
             $output = Artisan::output();
             $rows = explode("\n", trim($output));
             // Filter rows that match "| No" indicating a pending migration
-            $this->pending_migrations = count(array_filter($rows, fn ($row) => str_contains($row, '| No')));
+            $this->pending_migrations = count(array_filter($rows, fn($row) => str_contains($row, '| No')));
         } catch (Exception $e) {
             $this->pending_migrations = 0;
         }
@@ -247,7 +248,7 @@ new #[Title('System Configuration')] class extends Component
         Gate::authorize('system.manage');
 
         $path = base_path($folder);
-        if (! File::exists($path)) {
+        if (!File::exists($path)) {
             $this->dispatch('notify', message: __(':folder is missing.', ['folder' => $folder]), variant: 'danger');
 
             return;
@@ -277,7 +278,7 @@ new #[Title('System Configuration')] class extends Component
             $this->dispatch('notify', message: __('Storage link created successfully.'), variant: 'success');
         } catch (Exception $e) {
             $this->last_output = $e->getMessage();
-            $this->dispatch('notify', message: __('Failed to create storage link: ').$e->getMessage(), variant: 'danger');
+            $this->dispatch('notify', message: __('Failed to create storage link: ') . $e->getMessage(), variant: 'danger');
         }
     }
 
@@ -292,7 +293,7 @@ new #[Title('System Configuration')] class extends Component
             $this->dispatch('notify', message: __('Database migrations executed successfully.'), variant: 'success');
         } catch (Exception $e) {
             $this->last_output = $e->getMessage();
-            $this->dispatch('notify', message: __('Migration failed: ').$e->getMessage(), variant: 'danger');
+            $this->dispatch('notify', message: __('Migration failed: ') . $e->getMessage(), variant: 'danger');
         }
     }
 
@@ -307,7 +308,7 @@ new #[Title('System Configuration')] class extends Component
             $this->dispatch('notify', message: __('Forced database migrations executed.'), variant: 'success');
         } catch (Exception $e) {
             $this->last_output = $e->getMessage();
-            $this->dispatch('notify', message: __('Forced migration failed: ').$e->getMessage(), variant: 'danger');
+            $this->dispatch('notify', message: __('Forced migration failed: ') . $e->getMessage(), variant: 'danger');
         }
     }
 
@@ -325,7 +326,7 @@ new #[Title('System Configuration')] class extends Component
             $this->dispatch('notify', message: $class ? __(':class seeder completed.', ['class' => $class]) : __('All database seeders completed.'), variant: 'success');
         } catch (Exception $e) {
             $this->last_output = $e->getMessage();
-            $this->dispatch('notify', message: __('Seeding failed: ').$e->getMessage(), variant: 'danger');
+            $this->dispatch('notify', message: __('Seeding failed: ') . $e->getMessage(), variant: 'danger');
         }
     }
 
@@ -342,6 +343,30 @@ new #[Title('System Configuration')] class extends Component
             $this->dispatch('notify', message: __('Failed to clear optimization cache.'), variant: 'danger');
         }
     }
+
+    public function regradeResults(bool $all = false): void
+    {
+        Gate::authorize('system.manage');
+
+        try {
+            $params = [];
+            if ($all) {
+                $params['--all'] = true;
+            } elseif ($this->regrade_department_id) {
+                $params['--department'] = (int) $this->regrade_department_id;
+            } else {
+                $this->dispatch('notify', message: __('Please select a department or choose "All".'), variant: 'warning');
+                return;
+            }
+
+            Artisan::call('results:regrade', $params);
+            $this->last_output = Artisan::output();
+            $this->dispatch('notify', message: __('Student results re-graded successfully.'), variant: 'success');
+        } catch (Exception $e) {
+            $this->last_output = $e->getMessage();
+            $this->dispatch('notify', message: __('Re-grading failed: ') . $e->getMessage(), variant: 'danger');
+        }
+    }
 }; ?>
 
 <section class="w-full">
@@ -353,15 +378,20 @@ new #[Title('System Configuration')] class extends Component
         <div class="space-y-6">
             <!-- Environment Stats -->
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <flux:card class="p-4 flex flex-col justify-center items-center text-center space-y-2 border-zinc-100 dark:border-zinc-800">
-                    <flux:text size="xs" class="uppercase tracking-widest text-zinc-400 font-bold">{{ __('PHP Version') }}</flux:text>
+                <flux:card
+                    class="p-4 flex flex-col justify-center items-center text-center space-y-2 border-zinc-100 dark:border-zinc-800">
+                    <flux:text size="xs" class="uppercase tracking-widest text-zinc-400 font-bold">
+                        {{ __('PHP Version') }}</flux:text>
                     <flux:heading size="xl" class="font-mono">{{ $php_version }}</flux:heading>
                 </flux:card>
 
-                <flux:card class="p-4 flex flex-col justify-center items-center text-center space-y-2 border-zinc-100 dark:border-zinc-800">
-                    <flux:text size="xs" class="uppercase tracking-widest text-zinc-400 font-bold">{{ __('Environment') }}</flux:text>
+                <flux:card
+                    class="p-4 flex flex-col justify-center items-center text-center space-y-2 border-zinc-100 dark:border-zinc-800">
+                    <flux:text size="xs" class="uppercase tracking-widest text-zinc-400 font-bold">
+                        {{ __('Environment') }}</flux:text>
                     <div class="flex items-center gap-2">
-                        <flux:badge size="sm" :color="$environment === 'production' ? 'green' : 'blue'">{{ ucfirst($environment) }}</flux:badge>
+                        <flux:badge size="sm" :color="$environment === 'production' ? 'green' : 'blue'">
+                            {{ ucfirst($environment) }}</flux:badge>
                         @if($debug_mode)
                             <flux:badge size="sm" color="orange" inset="top bottom">{{ __('Debug Active') }}</flux:badge>
                         @endif
@@ -371,33 +401,40 @@ new #[Title('System Configuration')] class extends Component
 
             <!-- System Branding -->
             <flux:card class="space-y-4 border-zinc-100 dark:border-zinc-800">
-                <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-zinc-400">{{ __('System Branding') }}</flux:heading>
+                <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-zinc-400">
+                    {{ __('System Branding') }}</flux:heading>
                 <div class="flex flex-col sm:flex-row gap-6 items-start">
                     <div class="flex-shrink-0 flex flex-col items-center gap-2">
-                        <div class="size-24 rounded-xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 flex items-center justify-center bg-zinc-50 dark:bg-zinc-900 overflow-hidden">
+                        <div
+                            class="size-24 rounded-xl border-2 border-dashed border-zinc-200 dark:border-zinc-700 flex items-center justify-center bg-zinc-50 dark:bg-zinc-900 overflow-hidden">
                             @if($system_logo)
                                 <img src="{{ $system_logo->temporaryUrl() }}" class="w-full h-full object-contain p-2" />
                             @elseif($current_logo)
-                                <img src="data:image/png;base64,{{ $current_logo }}" class="w-full h-full object-contain p-2" />
+                                <img src="data:image/png;base64,{{ $current_logo }}"
+                                    class="w-full h-full object-contain p-2" />
                             @else
                                 <flux:icon.photo class="size-8 text-zinc-300 dark:text-zinc-600" />
                             @endif
                         </div>
                         @if($current_logo && !$system_logo)
-                            <flux:button wire:click="removeLogo" size="xs" variant="danger" icon="trash">{{ __('Remove Logo') }}</flux:button>
+                            <flux:button wire:click="removeLogo" size="xs" variant="danger" icon="trash">
+                                {{ __('Remove Logo') }}</flux:button>
                         @endif
                     </div>
-                    
+
                     <div class="flex-1 space-y-4 w-full">
                         <form wire:submit="updateLogo" class="space-y-4">
                             <flux:field>
                                 <flux:label>{{ __('Upload New Logo') }}</flux:label>
                                 <flux:input type="file" wire:model="system_logo" accept="image/*" />
                                 <flux:error name="system_logo" />
-                                <flux:description>{{ __('Recommended size: 200x200px. Max: 2MB. Updates the application icon globally.') }}</flux:description>
+                                <flux:description>
+                                    {{ __('Recommended size: 200x200px. Max: 2MB. Updates the application icon globally.') }}
+                                </flux:description>
                             </flux:field>
-                            
-                            <flux:button type="submit" variant="primary" :disabled="!$system_logo" wire:loading.attr="disabled">{{ __('Save Logo') }}</flux:button>
+
+                            <flux:button type="submit" variant="primary" :disabled="!$system_logo"
+                                wire:loading.attr="disabled">{{ __('Save Logo') }}</flux:button>
                         </form>
                     </div>
                 </div>
@@ -407,7 +444,8 @@ new #[Title('System Configuration')] class extends Component
             <flux:card class="space-y-4 border-zinc-100 dark:border-zinc-800">
                 <div class="flex items-center justify-between py-2 border-b border-zinc-50 dark:border-zinc-800/50">
                     <div class="flex items-center gap-3">
-                        <div class="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
+                        <div
+                            class="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
                             <flux:icon.link class="size-4 text-zinc-400" />
                         </div>
                         <div>
@@ -420,25 +458,30 @@ new #[Title('System Configuration')] class extends Component
                             {{ $storage_link_exists ? __('Healthy') : __('Broken/Missing') }}
                         </flux:badge>
                         @if(!$storage_link_exists)
-                            <flux:button wire:click="createStorageLink" size="xs" variant="primary">{{ __('Fix Now') }}</flux:button>
+                            <flux:button wire:click="createStorageLink" size="xs" variant="primary">{{ __('Fix Now') }}
+                            </flux:button>
                         @endif
                     </div>
                 </div>
 
                 <div class="flex items-center justify-between py-2">
                     <div class="flex items-center gap-3">
-                        <div class="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
+                        <div
+                            class="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
                             <flux:icon.table-cells class="size-4 text-zinc-400" />
                         </div>
                         <div>
                             <flux:heading size="sm">{{ __('Database Migrations') }}</flux:heading>
-                            <flux:text size="xs">{{ __('Consistency between code and database structure.') }}</flux:text>
+                            <flux:text size="xs">{{ __('Consistency between code and database structure.') }}
+                            </flux:text>
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
                         @if($pending_migrations > 0)
-                            <flux:badge size="sm" color="orange" class="font-bold">{{ $pending_migrations }} {{ __('Pending') }}</flux:badge>
-                            <flux:button wire:click="runMigrations" size="xs" variant="primary" icon="play">{{ __('Upgrade') }}</flux:button>
+                            <flux:badge size="sm" color="orange" class="font-bold">{{ $pending_migrations }}
+                                {{ __('Pending') }}</flux:badge>
+                            <flux:button wire:click="runMigrations" size="xs" variant="primary" icon="play">
+                                {{ __('Upgrade') }}</flux:button>
                         @else
                             <flux:badge size="sm" color="green" inset="top bottom">{{ __('Up to date') }}</flux:badge>
                         @endif
@@ -448,46 +491,57 @@ new #[Title('System Configuration')] class extends Component
 
             <!-- Directory Permissions -->
             <div class="space-y-4">
-                <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-zinc-400">{{ __('Directory Permissions') }}</flux:heading>
-                <flux:card class="divide-y divide-zinc-100 dark:divide-zinc-800 p-0 border-zinc-100 dark:border-zinc-800 overflow-hidden">
+                <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-zinc-400">
+                    {{ __('Directory Permissions') }}</flux:heading>
+                <flux:card
+                    class="divide-y divide-zinc-100 dark:divide-zinc-800 p-0 border-zinc-100 dark:border-zinc-800 overflow-hidden">
                     @foreach($target_folders as $folder)
-                    <div class="flex items-center justify-between p-4 bg-white dark:bg-zinc-900/50">
-                        <div class="flex items-center gap-3">
-                            <div class="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
-                                <flux:icon.folder class="size-4 text-zinc-400" />
+                        <div class="flex items-center justify-between p-4 bg-white dark:bg-zinc-900/50">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
+                                    <flux:icon.folder class="size-4 text-zinc-400" />
+                                </div>
+                                <div>
+                                    <flux:heading size="sm" class="font-mono text-xs">{{ $folder }}</flux:heading>
+                                    <flux:text size="xs">{{ __('Current: ') }} <span
+                                            class="font-mono font-bold @if($folder_perms[$folder] === '0775' || $folder_perms[$folder] === '0755') text-green-600 @else text-orange-600 @endif">{{ $folder_perms[$folder] ?? '---' }}</span>
+                                    </flux:text>
+                                </div>
                             </div>
-                            <div>
-                                <flux:heading size="sm" class="font-mono text-xs">{{ $folder }}</flux:heading>
-                                <flux:text size="xs">{{ __('Current: ') }} <span class="font-mono font-bold @if($folder_perms[$folder] === '0775' || $folder_perms[$folder] === '0755') text-green-600 @else text-orange-600 @endif">{{ $folder_perms[$folder] ?? '---' }}</span></flux:text>
+                            <div class="flex items-center gap-2">
+                                @if($folder_perms[$folder] !== '0775' && $folder_perms[$folder] !== 'missing')
+                                    <flux:button wire:click="fixPermission('{{ $folder }}')" size="xs" variant="subtle"
+                                        icon="wrench-screwdriver" class="text-[10px]">{{ __('Fix (775)') }}</flux:button>
+                                @elseif($folder_perms[$folder] === 'missing')
+                                    <flux:badge size="sm" color="red" inset="top bottom">{{ __('Missing') }}</flux:badge>
+                                @else
+                                    <flux:badge size="sm" color="green" icon="check" inset="top bottom">{{ __('Optimal') }}
+                                    </flux:badge>
+                                @endif
                             </div>
                         </div>
-                        <div class="flex items-center gap-2">
-                            @if($folder_perms[$folder] !== '0775' && $folder_perms[$folder] !== 'missing')
-                                <flux:button wire:click="fixPermission('{{ $folder }}')" size="xs" variant="subtle" icon="wrench-screwdriver" class="text-[10px]">{{ __('Fix (775)') }}</flux:button>
-                            @elseif($folder_perms[$folder] === 'missing')
-                                <flux:badge size="sm" color="red" inset="top bottom">{{ __('Missing') }}</flux:badge>
-                            @else
-                                <flux:badge size="sm" color="green" icon="check" inset="top bottom">{{ __('Optimal') }}</flux:badge>
-                            @endif
-                        </div>
-                    </div>
                     @endforeach
                 </flux:card>
             </div>
 
             <!-- Maintenance & Seeders -->
             <div class="space-y-4">
-                <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-zinc-400">{{ __('Maintenance & Seeding') }}</flux:heading>
-                
+                <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-zinc-400">
+                    {{ __('Maintenance & Seeding') }}</flux:heading>
+
                 <div class="grid grid-cols-1 gap-4">
                     <flux:card class="p-4 space-y-4 border-zinc-100 dark:border-zinc-800">
                         <div class="flex items-start gap-3">
                             <flux:icon.sparkles class="size-5 text-blue-500" />
                             <div class="flex-1">
                                 <flux:heading size="sm">{{ __('Optimization') }}</flux:heading>
-                                <flux:text size="xs">{{ __('Clear configuration, routing, and application caches to reflect recent changes.') }}</flux:text>
+                                <flux:text size="xs">
+                                    {{ __('Clear configuration, routing, and application caches to reflect recent changes.') }}
+                                </flux:text>
                             </div>
-                            <flux:button wire:click="clearOptimization" size="sm" variant="subtle">{{ __('Clear All Caches') }}</flux:button>
+                            <flux:button wire:click="clearOptimization" size="sm" variant="subtle">
+                                {{ __('Clear All Caches') }}</flux:button>
                         </div>
                     </flux:card>
 
@@ -496,22 +550,105 @@ new #[Title('System Configuration')] class extends Component
                             <flux:icon.beaker class="size-5 text-purple-500" />
                             <div class="flex-1">
                                 <flux:heading size="sm">{{ __('Database Seeding') }}</flux:heading>
-                                <flux:text size="xs">{{ __('Populate the database with initial or dummy data.') }}</flux:text>
+                                <flux:text size="xs">{{ __('Populate the database with initial or dummy data.') }}
+                                </flux:text>
                             </div>
-                            <flux:button wire:click="runSeeder()" size="sm" variant="subtle" icon="play-circle">{{ __('Run Base Seeds') }}</flux:button>
+                            <flux:button wire:click="runSeeder()" size="sm" variant="subtle" icon="play-circle">
+                                {{ __('Run Base Seeds') }}</flux:button>
                         </div>
 
                         <div class="space-y-3">
-                            <flux:text size="xs" weight="medium" class="text-zinc-500 uppercase tracking-wider">{{ __('Selective Seeders') }}</flux:text>
+                            <flux:text size="xs" weight="medium" class="text-zinc-500 uppercase tracking-wider">
+                                {{ __('Selective Seeders') }}</flux:text>
                             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                                 @foreach($available_seeders as $seeder)
-                                <div class="flex items-center justify-between p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
-                                    <flux:text size="xs" class="font-mono truncate mr-2">{{ $seeder }}</flux:text>
-                                    <flux:button wire:click="runSeeder('{{ $seeder }}')" size="xs" variant="ghost" icon="play" class="shrink-0" />
-                                </div>
+                                    <div
+                                        class="flex items-center justify-between p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
+                                        <flux:text size="xs" class="font-mono truncate mr-2">{{ $seeder }}</flux:text>
+                                        <flux:button wire:click="runSeeder('{{ $seeder }}')" size="xs" variant="ghost"
+                                            icon="play" class="shrink-0" />
+                                    </div>
                                 @endforeach
                             </div>
                         </div>
+                    </flux:card>
+
+                    <flux:card class="p-4 space-y-4 border-zinc-100 dark:border-zinc-800">
+                        <div class="flex items-start gap-3">
+                            <flux:icon.academic-cap class="size-5 text-emerald-500" />
+                            <div class="flex-1">
+                                <flux:heading size="sm">{{ __('Results Re-grading') }}</flux:heading>
+                                <flux:text size="xs">
+                                    {{ __('Re-grade student results using their department\'s custom grading system or the default scale.') }}
+                                </flux:text>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row items-end gap-3 pt-2">
+                            <div class="flex-1 w-full">
+                                <flux:select wire:model.live="regrade_department_id"
+                                    :label="__('Select Department (Optional)')"
+                                    placeholder="{{ __('Choose a department to scope regrading') }}"
+                                    wire:loading.attr="disabled" wire:target="regradeResults">
+                                    <flux:select.option value="">{{ __('No Department (Default Scale)') }}
+                                    </flux:select.option>
+                                    @foreach (\App\Models\Department::all() as $dept)
+                                        <flux:select.option :value="$dept->id">
+                                            {{ $dept->name }}({{ $dept->institution->acronym }})</flux:select.option>
+                                    @endforeach
+                                </flux:select>
+                            </div>
+                            <div class="flex gap-2 shrink-0">
+                                <flux:button wire:click="regradeResults(false)" size="sm" variant="primary"
+                                    icon="arrow-path" :disabled="!$regrade_department_id" wire:loading.attr="disabled"
+                                    wire:target="regradeResults">
+                                    {{ __('Regrade Department') }}
+                                </flux:button>
+
+                                <flux:modal.trigger name="confirm-regrade-all">
+                                    <flux:button size="sm" variant="danger" icon="exclamation-triangle"
+                                        wire:loading.attr="disabled" wire:target="regradeResults">
+                                        {{ __('Regrade All') }}
+                                    </flux:button>
+                                </flux:modal.trigger>
+                            </div>
+                        </div>
+
+                        <!-- Processing State Indicator -->
+                        <div wire:loading wire:target="regradeResults"
+                            class="w-full p-3 bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-lg flex items-center gap-3">
+                            <svg class="animate-spin h-5 w-5 text-emerald-500" xmlns="http://www.w3.org/2000/svg"
+                                fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                </path>
+                            </svg>
+                            <flux:text size="sm" class="text-zinc-600 dark:text-zinc-400 animate-pulse font-medium">
+                                {{ __('Re-grading in progress... Please do not close or refresh this page.') }}
+                            </flux:text>
+                        </div>
+
+                        <flux:modal name="confirm-regrade-all" class="min-w-[22rem] space-y-6">
+                            <div class="space-y-2">
+                                <flux:heading size="lg">{{ __('Confirm Global Re-grading') }}</flux:heading>
+                                <flux:subheading>
+                                    {{ __('Are you sure you want to re-grade ALL student results across the entire institution? This operation updates all academic result records and could take a while.') }}
+                                </flux:subheading>
+                            </div>
+
+                            <div class="flex gap-2">
+                                <flux:spacer />
+                                <flux:modal.close>
+                                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                                </flux:modal.close>
+                                <flux:modal.close>
+                                    <flux:button wire:click="regradeResults(true)" variant="danger">
+                                        {{ __('Yes, Regrade All') }}</flux:button>
+                                </flux:modal.close>
+                            </div>
+                        </flux:modal>
                     </flux:card>
                 </div>
             </div>
@@ -519,8 +656,10 @@ new #[Title('System Configuration')] class extends Component
             <!-- Data Backups -->
             <div class="space-y-4">
                 <div class="flex items-center justify-between">
-                    <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-zinc-400">{{ __('Data Backups') }}</flux:heading>
-                    <flux:button wire:click="createBackup" size="xs" variant="primary" icon="plus">{{ __('Create New Backup') }}</flux:button>
+                    <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-zinc-400">
+                        {{ __('Data Backups') }}</flux:heading>
+                    <flux:button wire:click="createBackup" size="xs" variant="primary" icon="plus">
+                        {{ __('Create New Backup') }}</flux:button>
                 </div>
 
                 <flux:card class="p-0 border-zinc-100 dark:border-zinc-800 overflow-hidden">
@@ -540,18 +679,27 @@ new #[Title('System Configuration')] class extends Component
                                     <flux:table.cell>{{ $backup['created_at'] }}</flux:table.cell>
                                     <flux:table.cell>
                                         <div class="flex items-center justify-end gap-2">
-                                            <flux:button wire:click="downloadBackup('{{ $backup['name'] }}')" size="xs" variant="ghost" icon="arrow-down-tray" tooltip="{{ __('Download') }}" />
+                                            <flux:button wire:click="downloadBackup('{{ $backup['name'] }}')" size="xs"
+                                                variant="ghost" icon="arrow-down-tray" tooltip="{{ __('Download') }}" />
 
-                                            <flux:modal.trigger name="confirm-restore-{{ str_replace('.', '-', $backup['name']) }}">
-                                                <flux:button size="xs" variant="subtle" icon="arrow-path" tooltip="{{ __('Restore') }}" />
+                                            <flux:modal.trigger
+                                                name="confirm-restore-{{ str_replace('.', '-', $backup['name']) }}">
+                                                <flux:button size="xs" variant="subtle" icon="arrow-path"
+                                                    tooltip="{{ __('Restore') }}" />
                                             </flux:modal.trigger>
 
-                                            <flux:button wire:click="deleteBackup('{{ $backup['name'] }}')" wire:confirm="{{ __('Are you sure you want to delete this backup?') }}" size="xs" variant="ghost" icon="trash" color="red" tooltip="{{ __('Delete') }}" />
+                                            <flux:button wire:click="deleteBackup('{{ $backup['name'] }}')"
+                                                wire:confirm="{{ __('Are you sure you want to delete this backup?') }}"
+                                                size="xs" variant="ghost" icon="trash" color="red"
+                                                tooltip="{{ __('Delete') }}" />
 
-                                            <flux:modal name="confirm-restore-{{ str_replace('.', '-', $backup['name']) }}" class="min-w-[22rem] space-y-6">
+                                            <flux:modal name="confirm-restore-{{ str_replace('.', '-', $backup['name']) }}"
+                                                class="min-w-[22rem] space-y-6">
                                                 <div class="space-y-2">
                                                     <flux:heading size="lg">{{ __('Confirm Restoration') }}</flux:heading>
-                                                    <flux:subheading>{{ __('Are you sure you want to restore the database from :name? This will overwrite all current data.', ['name' => $backup['name']]) }}</flux:subheading>
+                                                    <flux:subheading>
+                                                        {{ __('Are you sure you want to restore the database from :name? This will overwrite all current data.', ['name' => $backup['name']]) }}
+                                                    </flux:subheading>
                                                 </div>
 
                                                 <div class="flex gap-2">
@@ -559,7 +707,8 @@ new #[Title('System Configuration')] class extends Component
                                                     <flux:modal.close>
                                                         <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                                                     </flux:modal.close>
-                                                    <flux:button wire:click="restoreBackup('{{ $backup['name'] }}')" variant="danger">{{ __('Yes, Restore Now') }}</flux:button>
+                                                    <flux:button wire:click="restoreBackup('{{ $backup['name'] }}')"
+                                                        variant="danger">{{ __('Yes, Restore Now') }}</flux:button>
                                                 </div>
                                             </flux:modal>
                                         </div>
@@ -579,15 +728,19 @@ new #[Title('System Configuration')] class extends Component
 
             <!-- Danger Zone -->
             <div class="space-y-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-red-500">{{ __('Danger Zone') }}</flux:heading>
-                
-                <flux:card class="p-4 bg-orange-50/50 dark:bg-orange-950/10 border-orange-100 dark:border-orange-900/50 space-y-4">
+                <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-red-500">
+                    {{ __('Danger Zone') }}</flux:heading>
+
+                <flux:card
+                    class="p-4 bg-orange-50/50 dark:bg-orange-950/10 border-orange-100 dark:border-orange-900/50 space-y-4">
                     <div class="flex items-start gap-4">
-                        <div class="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-500">
+                        <div
+                            class="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-500">
                             <flux:icon.exclamation-triangle class="size-6" />
                         </div>
                         <div class="flex-1">
-                            <flux:heading size="sm" class="text-orange-900 dark:text-orange-400">{{ __('Full Migration Run') }}</flux:heading>
+                            <flux:heading size="sm" class="text-orange-900 dark:text-orange-400">
+                                {{ __('Full Migration Run') }}</flux:heading>
                             <flux:text size="xs" class="text-orange-700 dark:text-orange-500/80">
                                 {{ __('This will run all pending migrations with the --force flag. Although it does not drop tables, you should still back up your data before proceeding.') }}
                             </flux:text>
@@ -598,20 +751,23 @@ new #[Title('System Configuration')] class extends Component
                             </flux:button>
                         </flux:modal.trigger>
                     </div>
-    
+
                     <flux:modal name="confirm-force-migrate" class="min-w-[22rem] space-y-6">
                         <div class="space-y-2">
                             <flux:heading size="lg">{{ __('Confirm Forced Migration') }}</flux:heading>
-                            <flux:subheading>{{ __('Are you sure? This will execute all pending database migrations in a production environment. Please ensure you have a fresh backup.') }}</flux:subheading>
+                            <flux:subheading>
+                                {{ __('Are you sure? This will execute all pending database migrations in a production environment. Please ensure you have a fresh backup.') }}
+                            </flux:subheading>
                         </div>
-    
+
                         <div class="flex gap-2">
                             <flux:spacer />
                             <flux:modal.close>
                                 <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                             </flux:modal.close>
                             <flux:modal.close>
-                                <flux:button wire:click="forceMigrate" variant="primary">{{ __('Yes, Run Migrations') }}</flux:button>
+                                <flux:button wire:click="forceMigrate" variant="primary">{{ __('Yes, Run Migrations') }}
+                                </flux:button>
                             </flux:modal.close>
                         </div>
                     </flux:modal>
@@ -620,20 +776,25 @@ new #[Title('System Configuration')] class extends Component
 
             <!-- Terminal Output (Optional/Last Action) -->
             @if($last_output)
-            <div class="mt-8 space-y-2">
-                <div class="flex items-center justify-between">
-                    <flux:text size="xs" class="uppercase tracking-widest text-zinc-400 font-bold">{{ __('Last Command Output') }}</flux:text>
-                    <flux:button variant="ghost" size="xs" wire:click="$set('last_output', '')">{{ __('Clear Output') }}</flux:button>
+                <div class="mt-8 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <flux:text size="xs" class="uppercase tracking-widest text-zinc-400 font-bold">
+                            {{ __('Last Command Output') }}</flux:text>
+                        <flux:button variant="ghost" size="xs" wire:click="$set('last_output', '')">{{ __('Clear Output') }}
+                        </flux:button>
+                    </div>
+                    <pre
+                        class="p-4 bg-zinc-900 text-zinc-300 rounded-xl font-mono text-[10px] overflow-x-auto whitespace-pre-wrap leading-relaxed shadow-inner">{{ $last_output }}</pre>
                 </div>
-                <pre class="p-4 bg-zinc-900 text-zinc-300 rounded-xl font-mono text-[10px] overflow-x-auto whitespace-pre-wrap leading-relaxed shadow-inner">{{ $last_output }}</pre>
-            </div>
             @endif
 
             <!-- Warning for Shared Hosting -->
-            <div class="p-4 rounded-xl bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/50 flex gap-3">
+            <div
+                class="p-4 rounded-xl bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/50 flex gap-3">
                 <flux:icon.exclamation-triangle class="size-5 text-orange-600 dark:text-orange-500 shrink-0 mt-0.5" />
                 <div>
-                    <flux:text size="xs" class="text-orange-800 dark:text-orange-300 font-bold">{{ __('Shared Hosting Tip') }}</flux:text>
+                    <flux:text size="xs" class="text-orange-800 dark:text-orange-300 font-bold">
+                        {{ __('Shared Hosting Tip') }}</flux:text>
                     <flux:text size="xs" class="text-orange-700 dark:text-orange-400 mt-1">
                         {{ __('Some systems may restrict symlink creation or CLI execution. If "Fix Now" fails, you might need to contact support to create the storage link manually.') }}
                     </flux:text>

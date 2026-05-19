@@ -15,9 +15,17 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
     public $selectedResultId = null;
     public bool $showReviewModal = false;
     public string $filter_exam_id = '';
+    public string $search = '';
     public array $selectedResults = [];
     public bool $selectAll = false;
     public bool $showApproveAllModal = false;
+
+    public function updatedSearch(): void
+    {
+        $this->resetPage();
+        $this->selectedResults = [];
+        $this->selectAll = false;
+    }
 
     public function mount(): void
     {
@@ -187,6 +195,22 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
             $query->where('cbt_exam_id', $this->filter_exam_id);
         }
 
+        if ($this->search) {
+            $query->where(function ($q) {
+                $q->whereHas('student', function ($sq) {
+                    $sq->where('first_name', 'like', '%' . $this->search . '%')
+                        ->orWhere('last_name', 'like', '%' . $this->search . '%')
+                        ->orWhere('matric_number', 'like', '%' . $this->search . '%');
+                })
+                ->orWhereHas('exam', function ($eq) {
+                    $eq->where('title', 'like', '%' . $this->search . '%')
+                        ->orWhereHas('course', function ($cq) {
+                            $cq->where('course_code', 'like', '%' . $this->search . '%');
+                        });
+                });
+            });
+        }
+
         return $query;
     }
 
@@ -276,12 +300,6 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
-            <flux:select wire:model.live="filter_exam_id" placeholder="{{ __('Choose Examination...') }}" class="w-full md:min-w-[350px]">
-                <flux:select.option value="">{{ __('--- All Exams ---') }}</flux:select.option>
-                @foreach($exams as $exam)
-                    <flux:select.option :value="$exam->id">{{ $exam->course->course_code }} - {{ $exam->title }} ({{ $exam->exam_date->format('M d, Y') }})</flux:select.option>
-                @endforeach
-            </flux:select>
 
             <flux:button icon="printer" variant="subtle" onclick="window.print()">{{ __('Print Report') }}</flux:button>
             
@@ -293,6 +311,17 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
                 @endcan
             @endif
         </div>
+    </div>
+    <div class="flex flex-col md:flex-row mb-8 gap-4">
+        <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass"
+                placeholder="{{ __('Search student, matric, exam or course...') }}" class="w-full md:w-[300px]" />
+
+            <flux:select wire:model.live="filter_exam_id" placeholder="{{ __('Choose Examination...') }}" class="w-full md:min-w-[300px]">
+                <flux:select.option value="">{{ __('--- All Exams ---') }}</flux:select.option>
+                @foreach($exams as $exam)
+                    <flux:select.option :value="$exam->id">{{ $exam->course->course_code }} - {{ $exam->title }} ({{ $exam->exam_date->format('M d, Y') }})</flux:select.option>
+                @endforeach
+            </flux:select>
     </div>
 
     {{-- High-Density Stats Grid --}}
@@ -559,7 +588,7 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
                 </div>
                 <div class="min-w-0">
                     <flux:heading size="xl" class="truncate">{{ __('Examination Script Audit') }}</flux:heading>
-                    <flux:subheading class="truncate">{{ $selectedResult->student->full_name }} &bull; {{ $selectedResult->exam->title }}</flux:subheading>
+                    <flux:subheading class="truncate">{{ $selectedResult->student->full_name }}</flux:subheading>
                 </div>
             </div>
             <div class="flex gap-2 w-full sm:w-auto shrink-0">

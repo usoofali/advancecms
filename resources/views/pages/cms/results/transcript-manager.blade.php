@@ -18,18 +18,57 @@ new #[Layout('layouts.app')] #[Title('Transcript Manager')] class extends Compon
     public ?int $filterDepartment = null;
     public ?int $filterProgram = null;
 
+    public bool $isHod = false;
+    public array $hodDepartmentIds = [];
+
     public function mount(): void
     {
         Gate::authorize('reports.generate');
 
-        if (auth()->user()->institution_id) {
-            $this->filterInstitution = auth()->user()->institution_id;
+        $user = auth()->user();
+        if ($user->institution_id) {
+            $this->filterInstitution = $user->institution_id;
+        }
+
+        if (!$user->hasRole('Super Admin') && !$user->hasRole('Institutional Admin')) {
+            $scopedDeptIds = array_merge(
+                $user->getScopedModelIds('Academic Secretary', \App\Models\Department::class),
+                $user->getScopedModelIds('Head of Department (HOD)', \App\Models\Department::class),
+                $user->getScopedModelIds('Exam Officer', \App\Models\Department::class)
+            );
+
+            if (!empty($scopedDeptIds)) {
+                $this->isHod = true;
+                $this->hodDepartmentIds = $scopedDeptIds;
+            }
+
+            $staff = \App\Models\Staff::where('email', $user->email)->first();
+            if ($staff) {
+                $legacyHodDeptIds = \App\Models\Department::where('hod_id', $staff->id)->pluck('id')->toArray();
+                if (!empty($legacyHodDeptIds)) {
+                    $this->isHod = true;
+                    $this->hodDepartmentIds = array_unique(array_merge($this->hodDepartmentIds, $legacyHodDeptIds));
+                }
+            }
+
+            if ($this->isHod && count($this->hodDepartmentIds) === 1) {
+                $this->filterDepartment = $this->hodDepartmentIds[0];
+            }
+        }
+    }
+
+    protected function resetDepartmentId(): void
+    {
+        if ($this->isHod && count($this->hodDepartmentIds) === 1) {
+            $this->filterDepartment = $this->hodDepartmentIds[0];
+        } else {
+            $this->filterDepartment = null;
         }
     }
 
     public function updatedFilterInstitution(): void
     {
-        $this->filterDepartment = null;
+        $this->resetDepartmentId();
         $this->filterProgram = null;
         $this->selectedStudent = null;
     }
@@ -60,11 +99,16 @@ new #[Layout('layouts.app')] #[Title('Transcript Manager')] class extends Compon
     {
         $students = [];
         if (strlen($this->search) >= 2 || $this->filterProgram || $this->filterDepartment) {
-            $students = Student::query()
+            $studentsQuery = Student::query()
                 ->when($this->filterInstitution, fn($q) => $q->where('institution_id', $this->filterInstitution))
                 ->when($this->filterProgram, fn($q) => $q->where('program_id', $this->filterProgram))
-                ->when($this->filterDepartment, fn($q) => $q->whereHas('program', fn($pq) => $pq->where('department_id', $this->filterDepartment)))
-                ->when(strlen($this->search) >= 2, function ($q) {
+                ->when($this->filterDepartment, fn($q) => $q->whereHas('program', fn($pq) => $pq->where('department_id', $this->filterDepartment)));
+
+            if ($this->isHod && (!$this->filterDepartment || $this->filterDepartment === 'null')) {
+                $studentsQuery->whereHas('program', fn($pq) => $pq->whereIn('department_id', $this->hodDepartmentIds));
+            }
+
+            $students = $studentsQuery->when(strlen($this->search) >= 2, function ($q) {
                     $q->where(function ($sq) {
                         $sq->where('matric_number', 'like', "%{$this->search}%")
                             ->orWhere('first_name', 'like', "%{$this->search}%")
@@ -90,10 +134,25 @@ new #[Layout('layouts.app')] #[Title('Transcript Manager')] class extends Compon
             $totalUnits = $results->sum(fn($r) => $r->course->credit_unit ?? 0);
         }
 
+        $departmentsQuery = \App\Models\Department::query();
+        if ($this->filterInstitution) {
+            $departmentsQuery->where('institution_id', $this->filterInstitution);
+        }
+        if ($this->isHod) {
+            $departmentsQuery->whereIn('id', $this->hodDepartmentIds);
+        }
+
+        $programsQuery = \App\Models\Program::query();
+        if ($this->filterDepartment) {
+            $programsQuery->where('department_id', $this->filterDepartment);
+        } elseif ($this->isHod) {
+            $programsQuery->whereIn('department_id', $this->hodDepartmentIds);
+        }
+
         return [
             'institutions' => auth()->user()->hasAnyRole(['Super Admin']) ? \App\Models\Institution::all() : [],
-            'departments' => $this->filterInstitution ? \App\Models\Department::where('institution_id', $this->filterInstitution)->get() : [],
-            'programs' => $this->filterDepartment ? \App\Models\Program::where('department_id', $this->filterDepartment)->get() : [],
+            'departments' => $departmentsQuery->get(),
+            'programs' => $programsQuery->get(),
             'students' => $students,
             'results' => $results,
             'cgpa' => $cgpa,
@@ -128,11 +187,13 @@ new #[Layout('layouts.app')] #[Title('Transcript Manager')] class extends Compon
             </flux:select>
             @endif
 
-            <flux:select wire:model.live="filterDepartment" :label="__('Department')" placeholder="{{ __('All Departments') }}" :disabled="!$filterInstitution">
+            @if (!$this->isHod || count($this->hodDepartmentIds) > 1)
+            <flux:select wire:model.live="filterDepartment" :label="__('Department')" placeholder="{{ $this->isHod ? __('All My Departments') : __('All Departments') }}" :disabled="!$filterInstitution">
                 @foreach ($departments as $dept)
                 <flux:select.option :value="$dept->id">{{ $dept->name }}</flux:select.option>
                 @endforeach
             </flux:select>
+            @endif
 
             <flux:select wire:model.live="filterProgram" :label="__('Program')" placeholder="{{ __('All Programs') }}" :disabled="!$filterDepartment">
                 @foreach ($programs as $prog)

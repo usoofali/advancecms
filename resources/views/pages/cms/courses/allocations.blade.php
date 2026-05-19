@@ -71,9 +71,18 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
         }
     }
 
+    protected function resetDepartmentId(): void
+    {
+        if ($this->isHod && count($this->hodDepartmentIds) === 1) {
+            $this->department_id = $this->hodDepartmentIds[0];
+        } else {
+            $this->department_id = 'null';
+        }
+    }
+
     public function updatedInstitutionId(): void
     {
-        $this->department_id = 'null';
+        $this->resetDepartmentId();
         $this->program_id = 'null';
         $this->course_id = 'null';
     }
@@ -81,7 +90,7 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
     public function updatedSessionId(): void
     {
         $this->semester_id = 'null';
-        $this->department_id = 'null';
+        $this->resetDepartmentId();
         $this->program_id = 'null';
         $this->course_id = 'null';
     }

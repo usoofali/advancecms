@@ -172,7 +172,7 @@ class RbacSeeder extends Seeder
                         'cbt_results.view', 'cbt_results.review', 'cbt_results.approve', 'cbt_results.reject', 'cbt_results.mass_action',
                         'cbt_sync.view', 'cbt_data.sync', 'cbt_questions.import', 'students.export',
                         'courses.allocate', 'courses.revoke_allocation', 'courses.export',
-                        'results.export', 'invoices.manage_students',
+                        'results.export', 'invoices.manage_students', 'reports.generate',
                         'dashboard.view', 'id_cards.request',
                     ]
                 ),
@@ -231,21 +231,21 @@ class RbacSeeder extends Seeder
             ],
         ];
 
-        // if (app()->environment('testing')) {
-        //     foreach ($roles as $name => $data) {
-        //         $role = Role::updateOrCreate(
-        //             ['role_name' => $name],
-        //             ['description' => $data['description']]
-        //         );
+        if (app()->environment('local', 'testing')) {
+            foreach ($roles as $name => $data) {
+                $role = Role::updateOrCreate(
+                    ['role_name' => $name],
+                    ['description' => $data['description']]
+                );
 
-        //         // Sync Permissions
-        //         $permissionIds = Permission::whereIn('permission_name', $data['permissions'])
-        //             ->pluck('permission_id')
-        //             ->toArray();
+                // Sync Permissions
+                $permissionIds = Permission::whereIn('permission_name', $data['permissions'])
+                    ->pluck('permission_id')
+                    ->toArray();
 
-        //         $role->permissions()->sync($permissionIds);
-        //     }
-        // }
+                $role->permissions()->sync($permissionIds);
+            }
+        }
 
     }
 }

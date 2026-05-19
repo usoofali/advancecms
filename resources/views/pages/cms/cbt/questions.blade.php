@@ -22,7 +22,7 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
     public bool $showModal = false;
     public bool $showImportModal = false;
     public $editingId = null;
-    
+
     public string $question_text = '';
     public string $type = 'single';
     public int $correct_index = 0;
@@ -173,7 +173,7 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
     public function importCsv(): void
     {
         Gate::authorize('cbt_questions.import');
-        
+
         $user = auth()->user();
         $isSuperAdmin = $user->hasRole('Super Admin');
         $isInstAdmin = $user->hasRole('Institutional Admin');
@@ -213,20 +213,34 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
 
         $path = $this->csvFile->getRealPath();
         $file = fopen($path, 'r');
-        
+
         // Skip header
         fgetcsv($file);
 
         $importCount = 0;
-        
+
         DB::transaction(function () use ($file, &$importCount) {
             while (($row = fgetcsv($file)) !== false) {
                 // Expected: Question Text, Opt1, Opt2, Opt3, Opt4, Correct Index (1-4), Marks
-                if (count($row) < 6) continue;
+                if (count($row) < 6)
+                    continue;
+
+                // Ensure all columns in the row are valid UTF-8
+                $row = array_map(function ($value) {
+                    if ($value === null) {
+                        return null;
+                    }
+                    if (!mb_check_encoding($value, 'UTF-8')) {
+                        // Attempt to convert from Windows-1252 to UTF-8
+                        $value = mb_convert_encoding($value, 'UTF-8', 'Windows-1252');
+                    }
+                    // Strip/replace any remaining invalid UTF-8 sequences just in case
+                    return mb_convert_encoding($value, 'UTF-8', 'UTF-8');
+                }, $row);
 
                 $qText = $row[0];
                 $opts = [$row[1], $row[2], $row[3], $row[4]];
-                $correctIdx = (int)$row[5] - 1; // Convert 1-4 to 0-3
+                $correctIdx = (int) $row[5] - 1; // Convert 1-4 to 0-3
 
                 $question = CbtQuestion::create([
                     'uuid' => (string) Str::uuid(),
@@ -237,7 +251,8 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
                 ]);
 
                 foreach ($opts as $idx => $optText) {
-                    if (empty($optText)) continue;
+                    if (empty($optText))
+                        continue;
                     $question->options()->create([
                         'uuid' => (string) Str::uuid(),
                         'option_text' => $optText,
@@ -251,7 +266,7 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
         fclose($file);
         $this->showImportModal = false;
         $this->reset('csvFile');
-        
+
         $this->dispatch('notify', [
             'type' => 'success',
             'message' => "Successfully imported {$importCount} questions.",
@@ -303,7 +318,7 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
         $this->editingId = $question->id;
         $this->question_text = $question->question_text;
         $this->type = $question->type;
-        
+
         $this->options = $question->options->map(fn($o) => [
             'text' => $o->option_text,
             'is_correct' => (bool) $o->is_correct,
@@ -315,7 +330,7 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
                 break;
             }
         }
-        
+
         $this->showModal = true;
     }
 
@@ -386,7 +401,8 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
         return [
             'sessions' => AcademicSession::all(),
             'programs' => Program::where('institution_id', $instId)->get(),
-            'exams' => CbtExam::where('institution_id', $instId)
+            'exams' => CbtExam::with(['course.program'])
+                ->where('institution_id', $instId)
                 ->when($this->filter_session_id, fn($q) => $q->where('academic_session_id', $this->filter_session_id))
                 ->when($this->filter_program_id, function ($q) {
                     $q->whereHas('course', function ($cq) {
@@ -417,7 +433,7 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
                 'required' => $currentExam?->total_questions ?? 0,
                 'is_ready' => $currentExam && $addedCount >= $currentExam->total_questions,
             ],
-            'questions' => $this->selectedExamId 
+            'questions' => $this->selectedExamId
                 ? CbtQuestion::where('cbt_exam_id', $this->selectedExamId)
                     ->with('options')
                     ->latest()
@@ -475,7 +491,7 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
                 <flux:select label="{{ __('Target Examination') }}" wire:model.live="selectedExamId">
                     <option value="">{{ __('-- Choose an exam to manage --') }}</option>
                     @foreach ($exams as $exam)
-                        <option value="{{ $exam->id }}">{{ $exam->title }} ({{ $exam->course->course_code }})</option>
+                        <option value="{{ $exam->id }}">{{ $exam->title }} ({{ $exam->course?->course_code }}) - {{ $exam->course?->program?->acronym }} {{ $exam->course?->level }}L</option>
                     @endforeach
                 </flux:select>
             </div>

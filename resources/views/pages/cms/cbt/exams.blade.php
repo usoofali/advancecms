@@ -30,6 +30,9 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
     #[Url]
     public string $search = '';
 
+    #[Url]
+    public string $filter_status = 'active';
+
     public $exam_date = '';
     public $course_id = '';
     public $academic_session_id = '';
@@ -326,6 +329,7 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
         return [
             'exams' => CbtExam::where('institution_id', $instId)
                 ->with(['course', 'academicSession', 'semester'])
+                ->when($this->filter_status, fn($q) => $q->where('status', $this->filter_status))
                 ->when($this->search, fn($q) => $q->where('title', 'like', "%{$this->search}%")
                     ->orWhereHas('course', fn($cq) => $cq->where('course_code', 'like', "%{$this->search}%")))
                 ->when($isRestrictedLecturer, function ($q) use ($user) {
@@ -382,6 +386,13 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
     <div class="mb-8 flex flex-col md:flex-row md:items-center gap-4">
         <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass"
             placeholder="{{ __('Search exams by title or course code...') }}" class="w-full md:max-w-md" />
+        <div class="w-full md:w-48">
+            <flux:select wire:model.live="filter_status">
+                <option value="">{{ __('All Statuses') }}</option>
+                <option value="active">{{ __('Active') }}</option>
+                <option value="draft">{{ __('Draft') }}</option>
+            </flux:select>
+        </div>
         <flux:spacer class="hidden md:block" />
         <div class="flex items-center gap-2">
             <flux:badge color="zinc" variant="outline">{{ $exams->total() }} {{ __('Total Exams') }}</flux:badge>

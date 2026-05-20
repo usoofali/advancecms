@@ -15,10 +15,21 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
     public $selectedResultId = null;
     public bool $showReviewModal = false;
     public string $filter_exam_id = '';
+    
+    #[\Livewire\Attributes\Url]
+    public string $filter_status = 'pending';
+    
     public string $search = '';
     public array $selectedResults = [];
     public bool $selectAll = false;
     public bool $showApproveAllModal = false;
+
+    public function updatedFilterStatus(): void
+    {
+        $this->resetPage();
+        $this->selectedResults = [];
+        $this->selectAll = false;
+    }
 
     public function updatedSearch(): void
     {
@@ -191,6 +202,10 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
                 });
         });
 
+        if ($this->filter_status) {
+            $query->where('status', $this->filter_status);
+        }
+
         if ($this->filter_exam_id) {
             $query->where('cbt_exam_id', $this->filter_exam_id);
         }
@@ -314,14 +329,23 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
     </div>
     <div class="flex flex-col md:flex-row mb-8 gap-4">
         <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass"
-                placeholder="{{ __('Search student, matric, exam or course...') }}" class="w-full md:w-[300px]" />
+                placeholder="{{ __('Search student, matric, exam or course...') }}" class="w-full md:w-[250px]" />
 
-            <flux:select wire:model.live="filter_exam_id" placeholder="{{ __('Choose Examination...') }}" class="w-full md:min-w-[300px]">
-                <flux:select.option value="">{{ __('--- All Exams ---') }}</flux:select.option>
-                @foreach($exams as $exam)
-                    <flux:select.option :value="$exam->id">{{ $exam->course->course_code }} - {{ $exam->title }} ({{ $exam->exam_date->format('M d, Y') }})</flux:select.option>
-                @endforeach
+        <div class="w-full md:w-[200px]">
+            <flux:select wire:model.live="filter_status">
+                <option value="">{{ __('All Statuses') }}</option>
+                <option value="pending">{{ __('Pending') }}</option>
+                <option value="approved">{{ __('Approved') }}</option>
+                <option value="rejected">{{ __('Rejected') }}</option>
             </flux:select>
+        </div>
+
+        <flux:select wire:model.live="filter_exam_id" placeholder="{{ __('Choose Examination...') }}" class="w-full md:min-w-[250px]">
+            <flux:select.option value="">{{ __('--- All Exams ---') }}</flux:select.option>
+            @foreach($exams as $exam)
+                <flux:select.option :value="$exam->id">{{ $exam->course->course_code }} - {{ $exam->title }} ({{ $exam->exam_date->format('M d, Y') }})</flux:select.option>
+            @endforeach
+        </flux:select>
     </div>
 
     {{-- High-Density Stats Grid --}}

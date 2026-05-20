@@ -148,7 +148,7 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
             $result->institution_id = $exam->institution_id;
             
             $weightedExamScore = ($staging->score_raw / max(1, $exam->total_questions)) * 70;
-            $result->exam_score = round($weightedExamScore, 2);
+            $result->exam_score = max($result->exam_score, round($weightedExamScore, 2));
             $result->total_score = ($result->ca_score ?? 0) + $result->exam_score;
             
             $gradingService = new GradingService();

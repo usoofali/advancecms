@@ -130,16 +130,17 @@ function process_manifest($data, $pdo)
     }
 
     // 3. Sync Students
-    $stmtCheck = $pdo->prepare('SELECT user_id FROM users WHERE username = ?');
-    $stmtInsert = $pdo->prepare("INSERT INTO users (username, fullname, password, dept, level, role) VALUES (?, ?, ?, ?, ?, 'student')");
-    $stmtUpdate = $pdo->prepare('UPDATE users SET fullname = ?, password = ?, dept = ?, level = ? WHERE username = ?');
+    $examSemester = $exam['semester'] ?? 'First';
+    $stmtCheck = $pdo->prepare('SELECT user_id FROM users WHERE username = ? AND semester = ?');
+    $stmtInsert = $pdo->prepare("INSERT INTO users (username, fullname, password, dept, level, role, semester) VALUES (?, ?, ?, ?, ?, 'student', ?)");
+    $stmtUpdate = $pdo->prepare('UPDATE users SET fullname = ?, password = ?, dept = ?, level = ? WHERE username = ? AND semester = ?');
 
     foreach ($data['students'] as $s) {
-        $stmtCheck->execute([$s['matric_no']]);
+        $stmtCheck->execute([$s['matric_no'], $examSemester]);
         if ($stmtCheck->fetchColumn()) {
-            $stmtUpdate->execute([$s['name'], $s['pin'], $exam['dept'] ?? 1, $exam['level'] ?? '100', $s['matric_no']]);
+            $stmtUpdate->execute([$s['name'], $s['pin'], $exam['dept'] ?? 1, $exam['level'] ?? '100', $s['matric_no'], $examSemester]);
         } else {
-            $stmtInsert->execute([$s['matric_no'], $s['name'], $s['pin'], $exam['dept'] ?? 1, $exam['level'] ?? '100']);
+            $stmtInsert->execute([$s['matric_no'], $s['name'], $s['pin'], $exam['dept'] ?? 1, $exam['level'] ?? '100', $examSemester]);
         }
     }
 }

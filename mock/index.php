@@ -11,14 +11,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = strtoupper($_POST['password']);
     $exam = $_POST['exam'];
 
-    // Check if user exists
-    $stmt = $pdo->prepare('SELECT * FROM users WHERE username = ?');
-    $stmt->execute([$username]);
-    $user = $stmt->fetch();
+    // Determine chosen exam and its semester
+    $examSemester = 'First';
+    $user_exam = null;
+    if ($exam != '') {
+        $stmt = $pdo->prepare('SELECT * FROM exams WHERE id = ?');
+        $stmt->execute([$exam]);
+        $user_exam = $stmt->fetch();
+        if ($user_exam) {
+            $examSemester = $user_exam['semester'] ?? 'First';
+        }
+    }
 
-    $stmt = $pdo->prepare('SELECT * FROM exams WHERE id = ?');
-    $stmt->execute([$exam]);
-    $user_exam = $stmt->fetch();
+    // Check if user exists (scope by semester for students, globally for admin)
+    $stmt = $pdo->prepare('SELECT * FROM users WHERE username = ? AND (semester = ? OR role = \'admin\')');
+    $stmt->execute([$username, $examSemester]);
+    $user = $stmt->fetch();
 
     if ($user && $password == $user['password']) {
         $_SESSION['user_id'] = $user['user_id'];
@@ -323,9 +331,29 @@ if (isset($_GET['error'])) {
 
                 <button type="submit">Login</button>
             </form>
-
         </div>
     </div>
+    <?php if (isset($error) && ! empty($error)) { ?>
+        <script>
+            $(document).ready(function() {
+                Swal.mixin({
+                    toast: true,
+                    position: "top-end",
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.onmouseenter = Swal.stopTimer;
+                        toast.onmouseleave = Swal.resumeTimer;
+                    }
+                }).fire({
+                    icon: "error",
+                    title: "Authentication Failed",
+                    text: '<?php echo htmlspecialchars($error); ?>'
+                });
+            });
+        </script>
+    <?php } ?>
 </body>
 
 </html>

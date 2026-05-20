@@ -178,7 +178,8 @@ CREATE TABLE `users` (
   `fullname` varchar(255) NOT NULL,
   `dept` int(11) NOT NULL,
   `level` varchar(55) NOT NULL,
-  `role` varchar(11) NOT NULL DEFAULT 'student'
+  `role` varchar(11) NOT NULL DEFAULT 'student',
+  `semester` varchar(20) NOT NULL DEFAULT 'First'
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 --

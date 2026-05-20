@@ -102,7 +102,8 @@ class ExamPackagingService
 
         return $query->with(['student' => function ($q) use ($exam) {
             $q->with(['cbtProfiles' => function ($pq) use ($exam) {
-                $pq->where('semester_id', $exam->semester_id);
+                $pq->where('academic_session_id', $exam->academic_session_id)
+                    ->where('semester_id', $exam->semester_id);
             }]);
         }])
             ->get()

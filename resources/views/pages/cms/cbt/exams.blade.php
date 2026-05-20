@@ -548,7 +548,7 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
                 <flux:select label="{{ __('Target Course') }}" wire:model="course_id" required>
                     <option value="">{{ __('-- Select Course --') }}</option>
                     @foreach ($availableCourses as $course)
-                        <option value="{{ $course->id }}">{{ $course->course_code }} - {{ $course->title }}</option>
+                        <option value="{{ $course->id }}">{{ $course->course_code }} - {{ $course->title }} ({{ $course->semester }})</option>
                     @endforeach
                 </flux:select>
             </div>

@@ -356,6 +356,8 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
                     });
                 })
                 ->when(!empty($scopedDeptIds), fn($q) => $q->whereIn('department_id', $scopedDeptIds))
+                ->orderBy('semester')
+                ->orderBy('course_code')
                 ->get(),
         ];
     }
@@ -547,7 +549,7 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
 
                 <flux:select label="{{ __('Target Course') }}" wire:model="course_id" required>
                     <option value="">{{ __('-- Select Course --') }}</option>
-                    @foreach ($availableCourses as $course)
+                    @foreach ($availableCourses->sortBy(['semester', 'course_code']) as $course)
                         <option value="{{ $course->id }}">{{ $course->course_code }} - {{ $course->title }} ({{ $course->semester }})</option>
                     @endforeach
                 </flux:select>

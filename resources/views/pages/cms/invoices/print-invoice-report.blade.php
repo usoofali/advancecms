@@ -45,7 +45,7 @@ new #[Layout('layouts.guest')] #[Title('Invoice Report')] class extends Componen
                     });
                 });
             })
-            ->when($this->status !== 'all', fn ($q) => $q->where('status', $this->status))
+            ->when($this->status !== 'all', fn ($q) => $q->where('student_invoices.status', $this->status))
             ->when($this->level !== 'all', function ($q) use ($sessionYear) {
                 $q->where(function ($qq) use ($sessionYear) {
                     $qq->whereHas('student', function ($sq) use ($sessionYear) {

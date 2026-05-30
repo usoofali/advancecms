@@ -143,3 +143,50 @@ it('scopes invoice metrics by department filter', function (): void {
         ->and($stats['total_paid'])->toBe(0.0)
         ->and($stats['outstanding'])->toBe(3000.0);
 });
+
+it('can filter student invoices by status without ambiguous column query exception', function (): void {
+    $institution = Institution::factory()->create();
+    $session = AcademicSession::factory()->create(['name' => '2025/2026']);
+    $department = Department::factory()->for($institution)->create();
+    $program = Program::factory()->create([
+        'department_id' => $department->id,
+        'institution_id' => $institution->id,
+    ]);
+
+    $student = Student::factory()->create([
+        'institution_id' => $institution->id,
+        'program_id' => $program->id,
+    ]);
+
+    $invoice = Invoice::query()->create([
+        'institution_id' => $institution->id,
+        'title' => 'Test Invoice',
+        'academic_session_id' => $session->id,
+        'due_date' => now()->addMonth()->toDateString(),
+        'target_type' => 'dept',
+        'department_id' => $department->id,
+        'status' => 'published',
+        'created_by' => User::factory()->create()->id,
+    ]);
+
+    $studentInvoice = StudentInvoice::query()->create([
+        'institution_id' => $institution->id,
+        'student_id' => $student->id,
+        'invoice_id' => $invoice->id,
+        'total_amount' => 1000,
+        'amount_paid' => 0,
+        'balance' => 1000,
+        'status' => 'pending',
+    ]);
+
+    $user = User::factory()->withRole('Institutional Admin')->create([
+        'institution_id' => $institution->id,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::cms.invoices.student-invoices', ['invoice' => $invoice])
+        ->assertOk()
+        ->set('statusFilter', 'pending')
+        ->assertSee($student->first_name);
+});

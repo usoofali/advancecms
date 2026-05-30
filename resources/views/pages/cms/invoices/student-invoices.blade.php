@@ -55,7 +55,7 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
                     });
                 });
             })
-            ->when($this->statusFilter !== 'all', fn($q) => $q->where('status', $this->statusFilter))
+            ->when($this->statusFilter !== 'all', fn($q) => $q->where('student_invoices.status', $this->statusFilter))
             ->when($this->levelFilter !== 'all', function ($q) use ($sessionYear) {
                 $q->where(function ($qq) use ($sessionYear) {
                     $qq->whereHas('student', function ($sq) use ($sessionYear) {
@@ -92,7 +92,7 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
                     });
                 });
             })
-            ->when($this->statusFilter !== 'all', fn($q) => $q->where('status', $this->statusFilter))
+            ->when($this->statusFilter !== 'all', fn($q) => $q->where('student_invoices.status', $this->statusFilter))
             ->when($this->levelFilter !== 'all', function ($q) use ($sessionYear) {
                 $q->where(function ($qq) use ($sessionYear) {
                     $qq->whereHas('student', function ($sq) use ($sessionYear) {
@@ -186,7 +186,7 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
                     });
                 });
             })
-            ->when($this->statusFilter !== 'all', fn($q) => $q->where('status', $this->statusFilter))
+            ->when($this->statusFilter !== 'all', fn($q) => $q->where('student_invoices.status', $this->statusFilter))
             ->when($this->levelFilter !== 'all', function ($q) use ($sessionYear) {
                 $q->where(function ($qq) use ($sessionYear) {
                     $qq->whereHas('student', function ($sq) use ($sessionYear) {

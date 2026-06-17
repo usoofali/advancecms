@@ -390,7 +390,14 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
                         <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
                             @foreach ($students as $stu)
                                 <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors"
-                                    wire:key="{{ $stu->id }}">
+                                    wire:key="{{ $stu->id }}"
+                                    x-data="{
+                                        ca: {{ (float) (($scores[$stu->id]['ca'] ?? 0) ?: 0) }},
+                                        exam: {{ (float) (($scores[$stu->id]['exam'] ?? 0) ?: 0) }},
+                                        get total() {
+                                            return ((parseFloat(this.ca) || 0) + (parseFloat(this.exam) || 0));
+                                        }
+                                    }">
                                     <td class="px-4 py-3">
                                         <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ $stu->full_name }}
                                         </div>
@@ -398,15 +405,15 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
                                             {{ $stu->matric_number }}</div>
                                     </td>
                                     <td class="px-4 py-3">
-                                        <flux:input type="number" step="0.5" wire:model.blur="scores.{{ $stu->id }}.ca"
+                                        <flux:input type="number" step="0.5" x-model.number="ca" wire:model.blur="scores.{{ $stu->id }}.ca"
                                             wire:change="saveSingleResult({{ $stu->id }})" size="sm" class="w-24" />
                                     </td>
                                     <td class="px-4 py-3">
-                                        <flux:input type="number" step="0.5" wire:model.blur="scores.{{ $stu->id }}.exam"
+                                        <flux:input type="number" step="0.5" x-model.number="exam" wire:model.blur="scores.{{ $stu->id }}.exam"
                                             wire:change="saveSingleResult({{ $stu->id }})" size="sm" class="w-24" />
                                     </td>
                                     <td class="px-4 py-3">
-                                        <div class="font-bold text-center text-zinc-900 dark:text-zinc-100">
+                                        <div class="font-bold text-center text-zinc-900 dark:text-zinc-100" x-text="total">
                                             {{ (float) (($scores[$stu->id]['ca'] ?? 0) ?: 0) + (float) (($scores[$stu->id]['exam'] ?? 0) ?: 0) }}
                                         </div>
                                     </td>

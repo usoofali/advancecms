@@ -328,12 +328,6 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
             @forelse ($students as $student)
                 <flux:table.row wire:key="{{ $student->id }}">
                     <flux:table.cell class="font-medium font-mono uppercase">
-                        <a href="{{ route('cms.students.show', $student) }}" wire:navigate
-                            class="hover:text-blue-600 transition-colors">
-                            {{ $student->matric_number }}
-                        </a>
-                    </flux:table.cell>
-                    <flux:table.cell>
                         <div class="flex items-center gap-3">
                             <div
                                 class="h-10 w-10 flex-shrink-0 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 overflow-hidden flex items-center justify-center">
@@ -345,6 +339,16 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
                             </div>
                             <div>
                                 <a href="{{ route('cms.students.show', $student) }}" wire:navigate
+                                    class="hover:text-blue-600 transition-colors">
+                                    {{ $student->matric_number }}
+                                </a>
+                            </div>
+                        </div>
+                    </flux:table.cell>
+                    <flux:table.cell>
+                        <div class="flex items-center gap-3">
+                            <div>
+                                <a href="{{ route('cms.students.show', $student) }}" wire:navigate
                                     class="font-medium text-zinc-900 dark:text-zinc-100 hover:text-blue-600 transition-colors">
                                     {{ $student->full_name }}
                                 </a>
@@ -353,20 +357,21 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
                         </div>
                     </flux:table.cell>
                     <flux:table.cell class="text-zinc-600 dark:text-zinc-400">
-                        {{ $student->program->name }}
-                        <div class="text-xs text-zinc-500 mt-0.5">{{ $student->program->department->institution->acronym }}</div>
+                        {{ $student->program->acronym }}
+                        <div class="text-xs text-zinc-500 mt-0.5">{{ $student->program->department->institution->acronym }}
+                        </div>
                     </flux:table.cell>
                     <flux:table.cell class="text-zinc-600 dark:text-zinc-400 font-mono">
                         {{ $activeSession ? $student->currentLevel($activeSession) : $student->entry_level }}L
                     </flux:table.cell>
                     <flux:table.cell>
                         <flux:badge :color="match($student->status) {
-                                    'active' => 'green',
-                                    'graduated' => 'indigo',
-                                    'suspended' => 'orange',
-                                    'withdrawn' => 'red',
-                                    default => 'zinc'
-                                }" size="sm">
+                                                'active' => 'green',
+                                                'graduated' => 'indigo',
+                                                'suspended' => 'orange',
+                                                'withdrawn' => 'red',
+                                                default => 'zinc'
+                                            }" size="sm">
                             {{ ucfirst($student->status) }}
                         </flux:badge>
                     </flux:table.cell>
@@ -409,7 +414,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
                 <div
                     class="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 p-4 space-y-1 max-h-48 overflow-y-auto">
                     <p class="text-sm font-medium text-red-700 dark:text-red-400">{{ count($importFailures) }} {{ __('row(s)
-                        failed:') }}</p>
+                                    failed:') }}</p>
                     @foreach ($importFailures as $failure)
                         <p class="text-xs text-red-600 dark:text-red-500">{{ $failure }}</p>
                     @endforeach

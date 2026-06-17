@@ -25,7 +25,7 @@
                 </flux:sidebar.group>
             @endcanany
 
-            @canany(['institutions.view', 'departments.view', 'programs.view', 'applications.view', 'application_forms.view', 'staff.view', 'id_cards.manage', 'grading_systems.view', 'academic_sessions.view', 'roles.view', 'system.manage', 'system.manage_addons'])
+            @canany(['institutions.view', 'departments.view', 'programs.view', 'staff.view', 'id_cards.manage', 'grading_systems.view', 'academic_sessions.view'])
                 <flux:sidebar.group :heading="__('Administration')" class="grid" expandable expanded="false">
                     @can('institutions.view')
                         <flux:sidebar.item icon="building-office-2" :href="route('cms.institutions.index')"
@@ -45,28 +45,6 @@
                         <flux:sidebar.item icon="academic-cap" :href="route('cms.programs.index')"
                             :current="request()->routeIs('cms.programs.*')" wire:navigate>
                             {{ __('Programs') }}
-                        </flux:sidebar.item>
-                    @endcan
-
-                    @can('applications.view')
-                        <flux:sidebar.item icon="document-magnifying-glass" :href="route('cms.admissions.index')"
-                            :current="request()->routeIs('cms.admissions.index') || request()->routeIs('cms.admissions.show')"
-                            wire:navigate>
-                            {{ __('Applications') }}
-                        </flux:sidebar.item>
-                    @endcan
-
-                    @can('applications.notify')
-                        <flux:sidebar.item icon="document-text" :href="route('cms.admissions.issue-notification')"
-                            :current="request()->routeIs('cms.admissions.issue-notification')" wire:navigate>
-                            {{ __('Issue notification') }}
-                        </flux:sidebar.item>
-                    @endcan
-
-                    @can('application_forms.view')
-                        <flux:sidebar.item icon="document-plus" :href="route('cms.admissions.forms.index')"
-                            :current="request()->routeIs('cms.admissions.forms.*')" wire:navigate>
-                            {{ __('Admission Forms') }}
                         </flux:sidebar.item>
                     @endcan
 
@@ -98,6 +76,41 @@
                         </flux:sidebar.item>
                     @endcan
 
+                </flux:sidebar.group>
+            @endcanany
+
+            @canany(['applications.view', 'application_forms.view', 'applications.notify', 'students.create'])
+                <flux:sidebar.group :heading="__('Admissions')" class="grid" expandable expanded="false">
+                    @can('students.create')
+                        <flux:sidebar.item icon="user-plus" :href="route('cms.admissions.index')"
+                            :current="request()->routeIs('cms.students.create') || request()->routeIs('cms.students.create')"
+                            wire:navigate>
+                            {{ __('Enrol Student') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('applications.view')
+                        <flux:sidebar.item icon="document-magnifying-glass" :href="route('cms.admissions.index')"
+                            :current="request()->routeIs('cms.admissions.index') || request()->routeIs('cms.admissions.show')"
+                            wire:navigate>
+                            {{ __('Applications') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+
+                    @can('applications.notify')
+                        <flux:sidebar.item icon="document-text" :href="route('cms.admissions.issue-notification')"
+                            :current="request()->routeIs('cms.admissions.issue-notification')" wire:navigate>
+                            {{ __('Issue notification') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('application_forms.view')
+                        <flux:sidebar.item icon="document-plus" :href="route('cms.admissions.forms.index')"
+                            :current="request()->routeIs('cms.admissions.forms.*')" wire:navigate>
+                            {{ __('Admission Forms') }}
+                        </flux:sidebar.item>
+                    @endcan
                 </flux:sidebar.group>
             @endcanany
 

@@ -12,16 +12,27 @@ class Invoice extends Model
     use HasFactory;
 
     public const CATEGORY_GENERAL = 'general';
+
     public const CATEGORY_ADMISSION = 'admission';
+
     public const CATEGORY_EXAM = 'exam_fee';
+
     public const CATEGORY_RESULT = 'result_fee';
+
     public const CATEGORY_REGISTRATION = 'registration';
+
     public const CATEGORY_INDEXING = 'indexing';
+
     public const CATEGORY_PRACTICAL = 'practical';
+
     public const CATEGORY_PROJECT = 'project';
+
     public const CATEGORY_REFRESHMENT = 'refreshment';
+
     public const CATEGORY_NATIONAL = 'national';
+
     public const CATEGORY_INDUCTION = 'induction';
+
     public const CATEGORY_CERTIFICATE = 'certificate';
 
     protected $fillable = [
@@ -38,12 +49,14 @@ class Invoice extends Model
         'status',
         'is_required_for_results',
         'is_required_for_exams',
+        'is_required_for_registration',
+        'is_required_for_course_form',
         'account_name',
         'account_number',
         'bank_name',
         'created_by',
     ];
-                                                                                                                                                                                                                    
+
     public function institution(): BelongsTo
     {
         return $this->belongsTo(Institution::class);
@@ -90,6 +103,8 @@ class Invoice extends Model
             'due_date' => 'datetime',
             'is_required_for_results' => 'boolean',
             'is_required_for_exams' => 'boolean',
+            'is_required_for_registration' => 'boolean',
+            'is_required_for_course_form' => 'boolean',
         ];
     }
 

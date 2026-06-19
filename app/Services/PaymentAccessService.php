@@ -40,16 +40,47 @@ class PaymentAccessService
     }
 
     /**
-     * Generic logic to retrieve missing required invoices based on a boolean flag.
+     * Get missing required invoices for course registration (session-scoped, no semester filter).
+     * Returns an empty collection if access is granted.
      */
-    protected function getMissingRequiredInvoices(Student $student, AcademicSession $session, Semester $semester, string $flagColumn): Collection
+    public function getMissingInvoicesForRegistration(Student $student, AcademicSession $session): Collection
+    {
+        return $this->getMissingRequiredInvoices(
+            $student,
+            $session,
+            null,
+            'is_required_for_registration'
+        );
+    }
+
+    /**
+     * Get missing required invoices for printing the course form (semester-scoped).
+     * Returns an empty collection if access is granted.
+     */
+    public function getMissingInvoicesForCourseForm(Student $student, AcademicSession $session, Semester $semester): Collection
+    {
+        return $this->getMissingRequiredInvoices(
+            $student,
+            $session,
+            $semester,
+            'is_required_for_course_form'
+        );
+    }
+
+    /**
+     * Generic logic to retrieve missing required invoices based on a boolean flag.
+     * When $semester is null, the query is session-scoped only (no semester filtering).
+     */
+    protected function getMissingRequiredInvoices(Student $student, AcademicSession $session, ?Semester $semester, string $flagColumn): Collection
     {
         // 1. Check if there are ANY invoice templates flagged for this context/session/semester
         // that apply to this student (matching program/level etc.)
         $applicableInvoices = Invoice::where($flagColumn, true)
             ->where('academic_session_id', $session->id)
-            ->where(function ($q) use ($semester) {
-                $q->whereNull('semester_id')->orWhere('semester_id', $semester->id);
+            ->when($semester !== null, function ($q) use ($semester) {
+                $q->where(function ($inner) use ($semester) {
+                    $inner->whereNull('semester_id')->orWhere('semester_id', $semester->id);
+                });
             })
             ->where('status', 'published')
             ->where('department_id', $student->program?->department_id)

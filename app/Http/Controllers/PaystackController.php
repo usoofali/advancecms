@@ -24,6 +24,7 @@ class PaystackController extends Controller
 
         if (! $signature || ! $this->paystackService->verifyWebhookSignature($payloadJson, $signature)) {
             Log::warning('Paystack Webhook: Invalid signature received.');
+
             return response()->json(['status' => false, 'message' => 'Invalid signature'], 400);
         }
 
@@ -44,6 +45,7 @@ class PaystackController extends Controller
 
                 if (! $applicant) {
                     Log::error("Paystack Webhook: Applicant not found for reference {$reference}");
+
                     return response()->json(['status' => false, 'message' => 'Applicant not found'], 404);
                 }
 
@@ -52,6 +54,7 @@ class PaystackController extends Controller
                 }
 
                 $this->processSuccessfulApplicationPayment($applicant, $data);
+
                 return response()->json(['status' => true, 'message' => 'SUCCESS']);
             }
 
@@ -60,6 +63,7 @@ class PaystackController extends Controller
 
             if (! $payment) {
                 Log::error("Paystack Webhook: Payment not found for reference {$reference}");
+
                 return response()->json(['status' => false, 'message' => 'Payment not found'], 404);
             }
 
@@ -94,7 +98,7 @@ class PaystackController extends Controller
                         $this->processSuccessfulPayment($payment, $statusData);
                     }
                 }
-                
+
                 return redirect()->route('applicant.portal', ['application_number' => $appNumber])->with('notify', [
                     'type' => ($payment && $payment->status === 'success') ? 'success' : 'warning',
                     'message' => ($payment && $payment->status === 'success')
@@ -106,7 +110,7 @@ class PaystackController extends Controller
             if ($applicant && $applicant->payment_status === 'pending') {
                 $queryRef = $trxref ?? $reference ?? $applicant->gateway_reference;
                 $statusData = $this->paystackService->queryStatus($queryRef);
-                
+
                 if ($statusData && $statusData['status'] === 'success') {
                     $this->processSuccessfulApplicationPayment($applicant, $statusData);
                 }

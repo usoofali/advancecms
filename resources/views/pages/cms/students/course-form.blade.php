@@ -53,21 +53,36 @@ new #[Layout('layouts.app')] #[Title('Course Form')] class extends Component
         $regStatus = null;
         $session = null;
         $semester = null;
+        $missingInvoices = collect();
+        $isBlockedByPayment = false;
 
         if ($this->student && $this->session_id && $this->semester_id) {
             $session = AcademicSession::find($this->session_id);
             $semester = Semester::find($this->semester_id);
 
-            $registrations = CourseRegistration::with('course')
-                ->where('student_id', $this->student->id)
-                ->where('academic_session_id', $this->session_id)
-                ->where('semester_id', $this->semester_id)
-                ->get();
+            $missingTemplates = app(\App\Services\PaymentAccessService::class)->getMissingInvoicesForCourseForm($this->student, $session, $semester);
 
-            $regStatus = RegistrationStatus::where('student_id', $this->student->id)
-                ->where('academic_session_id', $this->session_id)
-                ->where('semester_id', $this->semester_id)
-                ->first();
+            if ($missingTemplates->isNotEmpty()) {
+                $isBlockedByPayment = true;
+                $invoiceService = app(\App\Services\StudentInvoiceService::class);
+                foreach ($missingTemplates as $template) {
+                    $inv = $invoiceService->materializeInvoice($this->student, $template);
+                    if ($inv) {
+                        $missingInvoices->push($inv);
+                    }
+                }
+            } else {
+                $registrations = CourseRegistration::with('course')
+                    ->where('student_id', $this->student->id)
+                    ->where('academic_session_id', $this->session_id)
+                    ->where('semester_id', $this->semester_id)
+                    ->get();
+
+                $regStatus = RegistrationStatus::where('student_id', $this->student->id)
+                    ->where('academic_session_id', $this->session_id)
+                    ->where('semester_id', $this->semester_id)
+                    ->first();
+            }
         }
 
         return [
@@ -77,6 +92,8 @@ new #[Layout('layouts.app')] #[Title('Course Form')] class extends Component
             'regStatus' => $regStatus,
             'session' => $session,
             'semester' => $semester,
+            'isBlockedByPayment' => $isBlockedByPayment,
+            'missingInvoices' => $missingInvoices,
         ];
     }
 }; ?>
@@ -101,7 +118,7 @@ new #[Layout('layouts.app')] #[Title('Course Form')] class extends Component
             </flux:select>
         </div>
 
-        @if ($student && $session_id && $semester_id)
+        @if ($student && $session_id && $semester_id && !$isBlockedByPayment)
         <div class="flex justify-end">
             @can('registrations.print_form')
                 <flux:button icon="printer" variant="primary" onclick="window.print()">
@@ -113,6 +130,37 @@ new #[Layout('layouts.app')] #[Title('Course Form')] class extends Component
     </flux:card>
 
     @if ($student && $session_id && $semester_id)
+    @if ($isBlockedByPayment)
+    <flux:card class="p-8 text-center bg-zinc-50 dark:bg-zinc-900 border-2 border-red-200 dark:border-red-900/50 mt-8">
+        <flux:icon.lock-closed class="size-12 mx-auto text-red-500 mb-4" />
+        <flux:heading size="xl" class="mb-2">{{ __('Course Form Locked') }}</flux:heading>
+        <p class="text-zinc-600 dark:text-zinc-400 mb-6 max-w-lg mx-auto">
+            {{ __('You have unpaid invoices that are required before you can access this course form.') }}
+        </p>
+        <div class="space-y-3 max-w-md mx-auto mb-6 text-left">
+            @foreach ($missingInvoices as $inv)
+            <div class="flex items-center justify-between p-3 bg-white dark:bg-zinc-800 rounded-lg border border-red-100 dark:border-red-900/30">
+                <div class="flex flex-col">
+                    <span class="font-bold text-sm">{{ $inv->invoice->category ?? 'Invoice' }}</span>
+                    <span class="text-xs text-zinc-500">{{ $inv->invoice->academicSession?->name ?? 'All Sessions' }}</span>
+                </div>
+                <span class="font-mono font-bold text-red-600 dark:text-red-400">
+                    ₦{{ number_format($inv->balance, 2) }}
+                </span>
+            </div>
+            @endforeach
+        </div>
+        @if(auth()->user()->hasRole('Student'))
+        <flux:button variant="primary" href="{{ route('cms.students.portal-invoices') }}" icon="credit-card">
+            {{ __('Pay Outstanding Invoices') }}
+        </flux:button>
+        @else
+        <div class="text-sm font-semibold text-red-600 dark:text-red-400">
+            {{ __('Student must clear these invoices before their course form can be viewed/printed.') }}
+        </div>
+        @endif
+    </flux:card>
+    @else
     {{-- Printable Form --}}
     <div
         class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 p-4 sm:p-6 shadow-sm rounded-xl print:shadow-none print:border-none print:p-0">
@@ -124,7 +172,7 @@ new #[Layout('layouts.app')] #[Title('Course Form')] class extends Component
             @endif
             <h1 class="text-xl font-black uppercase tracking-tight text-zinc-900 dark:text-white">{{ $inst->name }}
             </h1>
-            <h2 class="text-lg font-bold uppercase text-zinc-700 dark:text-zinc-300">{{ __('Course Registration Form')
+            <h2 class="text-lg font-bold uppercase text-zinc-700 dark:text-zinc-300">{{ __('Departmenta Course Registration Form')
                 }}</h2>
             <div class="flex items-center justify-center gap-3 text-xs font-semibold text-zinc-500">
                 <span>{{ $session?->name }}</span>
@@ -227,6 +275,7 @@ new #[Layout('layouts.app')] #[Title('Course Form')] class extends Component
             {{ __('This document was generated by the Academic Management System on') }} {{ now()->format('d/m/Y H:i') }}
         </div>
     </div>
+    @endif
     @else
     <div class="p-12 text-center border-2 border-dashed rounded-2xl text-zinc-400">
         {{ __('Please select a session and semester to generate the course form.') }}

@@ -6,8 +6,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
-new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component
-{
+new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component {
     use WithFileUploads;
 
     public int|string $institution_id = '';
@@ -74,7 +73,7 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component
             'date_of_birth' => ['nullable', 'date'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],
-            'admission_year' => ['required', 'integer', 'min:1990', 'max:'.((int) date('Y') + 1)],
+            'admission_year' => ['required', 'integer', 'min:1990', 'max:' . ((int) date('Y') + 1)],
             'entry_level' => ['required', 'integer', 'multiple_of:100', 'min:100', 'max:600'],
             'status' => ['required', 'in:active,suspended,withdrawn,graduated,deceased'],
             'photo' => ['nullable', 'image', 'max:1024'], // 1MB Max
@@ -100,26 +99,6 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component
     </div>
 
     <form wire:submit="save" class="space-y-8" enctype="multipart/form-data">
-        <flux:fieldset>
-            <flux:legend>{{ __('Profile Photo') }}</flux:legend>
-            <div class="flex flex-col sm:flex-row items-center gap-6">
-                <div class="relative group">
-                    <div
-                        class="w-32 h-32 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border-2 border-dashed border-zinc-200 dark:border-zinc-700 flex items-center justify-center overflow-hidden">
-                        @if ($photo)
-                        <img src="{{ $photo->temporaryUrl() }}" class="w-full h-full object-cover">
-                        @else
-                        <flux:icon icon="camera" class="w-8 h-8 text-zinc-400" />
-                        @endif
-                    </div>
-                </div>
-                <div class="flex-1 space-y-2">
-                    <flux:input type="file" wire:model="photo" accept="image/*" :label="__('Choose Photo')" />
-                    <flux:description>{{ __('Max 1MB. JPEG, PNG, or WEBP.') }}</flux:description>
-                    <flux:error name="photo" />
-                </div>
-            </div>
-        </flux:fieldset>
 
         <flux:fieldset>
             <flux:legend>{{ __('Personal Information') }}</flux:legend>
@@ -149,19 +128,20 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component
             <flux:legend>{{ __('Academic Information') }}</flux:legend>
             <div class="grid gap-6">
                 @if (!auth()->user()->institution_id)
-                <flux:select wire:model.live="institution_id" :label="__('Institution')" required>
-                    <flux:select.option value="null">{{ __('Select institution...') }}</flux:select.option>
-                    @foreach (App\Models\Institution::query()->where('status', 'active')->orderBy('name')->get() as $inst)
-                    <flux:select.option :value="$inst->id">{{ $inst->name }}</flux:select.option>
-                    @endforeach
-                </flux:select>
+                    <flux:select wire:model.live="institution_id" :label="__('Institution')" required>
+                        <flux:select.option value="null">{{ __('Select institution...') }}</flux:select.option>
+                        @foreach (App\Models\Institution::query()->where('status', 'active')->orderBy('name')->get() as $inst)
+                            <flux:select.option :value="$inst->id">{{ $inst->name }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
                 @endif
 
-                <flux:select wire:model.live="department_id" :label="__('Department')" required :disabled="!$institution_id">
+                <flux:select wire:model.live="department_id" :label="__('Department')" required
+                    :disabled="!$institution_id">
                     <flux:select.option value="null">{{ __('Select department...') }}</flux:select.option>
                     @if ($institution_id)
                         @foreach (\App\Models\Department::where('institution_id', $this->institution_id)->orderBy('name')->get() as $dept)
-                        <flux:select.option :value="$dept->id">{{ $dept->name }}</flux:select.option>
+                            <flux:select.option :value="$dept->id">{{ $dept->name }}</flux:select.option>
                         @endforeach
                     @endif
                 </flux:select>
@@ -170,9 +150,9 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component
                     <flux:select.option value="null">{{ __('Select program...') }}</flux:select.option>
                     @if ($department_id)
                         @foreach (\App\Models\Program::query()->where('department_id', $this->department_id)->where('status', 'active')->orderBy('name')->get() as $program)
-                        <flux:select.option :value="$program->id">
-                            {{ $program->name }}
-                        </flux:select.option>
+                            <flux:select.option :value="$program->id">
+                                {{ $program->name }}
+                            </flux:select.option>
                         @endforeach
                     @endif
                 </flux:select>
@@ -195,16 +175,40 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component
             </div>
         </flux:fieldset>
 
+        <flux:fieldset>
+            <flux:legend>{{ __('Profile Photo') }}</flux:legend>
+            <div class="flex flex-col sm:flex-row items-center gap-6">
+                <div class="relative group">
+                    <div
+                        class="w-32 h-32 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border-2 border-dashed border-zinc-200 dark:border-zinc-700 flex items-center justify-center overflow-hidden">
+                        @if ($photo)
+                            <img src="{{ $photo->temporaryUrl() }}" class="w-full h-full object-cover">
+                        @else
+                            <flux:icon icon="camera" class="w-8 h-8 text-zinc-400" />
+                        @endif
+                    </div>
+                </div>
+                <div class="flex-1 space-y-2">
+                    <flux:input type="file" wire:model="photo" accept="image/*" :label="__('Choose Photo')" />
+                    <flux:description>{{ __('Max 1MB. JPEG, PNG, or WEBP.') }}</flux:description>
+                    <flux:error name="photo" />
+                </div>
+            </div>
+        </flux:fieldset>
+
         <div class="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3">
-            <flux:button :href="route('cms.students.index')" wire:navigate class="w-full sm:w-auto">{{ __('Cancel') }}</flux:button>
-            <flux:button type="submit" variant="primary" class="w-full sm:w-auto">{{ __('Register Student') }}</flux:button>
+            <flux:button :href="route('cms.students.index')" wire:navigate class="w-full sm:w-auto">{{ __('Cancel') }}
+            </flux:button>
+            <flux:button type="submit" variant="primary" class="w-full sm:w-auto">{{ __('Register Student') }}
+            </flux:button>
         </div>
     </form>
 
     <flux:modal name="success-modal" class="md:w-96" :dismissable="false">
         <div class="space-y-6 text-center">
             <div class="flex justify-center">
-                <div class="w-12 h-12 rounded-full bg-green-50 dark:bg-green-950/30 flex items-center justify-center border border-green-200 dark:border-green-800">
+                <div
+                    class="w-12 h-12 rounded-full bg-green-50 dark:bg-green-950/30 flex items-center justify-center border border-green-200 dark:border-green-800">
                     <flux:icon icon="check" class="w-6 h-6 text-green-600 dark:text-green-400" />
                 </div>
             </div>
@@ -214,20 +218,26 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component
                     {{ __('The student record has been successfully created with the following details:') }}
                 </flux:subheading>
             </div>
-            
-            <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 p-4 space-y-2 text-left font-sans overflow-hidden">
+
+            <div
+                class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/50 p-4 space-y-2 text-left font-sans overflow-hidden">
                 <div class="break-words">
-                    <span class="text-xs text-zinc-500 font-medium uppercase tracking-wider block">{{ __('Full Name') }}</span>
-                    <span class="text-sm font-semibold text-zinc-900 dark:text-zinc-100 block mt-0.5">{{ $successStudentName }}</span>
+                    <span
+                        class="text-xs text-zinc-500 font-medium uppercase tracking-wider block">{{ __('Full Name') }}</span>
+                    <span
+                        class="text-sm font-semibold text-zinc-900 dark:text-zinc-100 block mt-0.5">{{ $successStudentName }}</span>
                 </div>
                 <div class="border-t border-zinc-200 dark:border-zinc-700/60 pt-2 mt-2 break-words">
-                    <span class="text-xs text-zinc-500 font-medium uppercase tracking-wider block">{{ __('Matriculation Number') }}</span>
-                    <span class="text-sm font-bold font-mono text-blue-600 dark:text-blue-400 block mt-0.5">{{ $successMatricNumber }}</span>
+                    <span
+                        class="text-xs text-zinc-500 font-medium uppercase tracking-wider block">{{ __('Matriculation Number') }}</span>
+                    <span
+                        class="text-sm font-bold font-mono text-blue-600 dark:text-blue-400 block mt-0.5">{{ $successMatricNumber }}</span>
                 </div>
             </div>
 
             <div class="flex justify-center">
-                <flux:button :href="route('cms.students.index')" wire:navigate variant="primary" class="w-full sm:w-auto min-w-[8rem]">
+                <flux:button :href="route('cms.students.index')" wire:navigate variant="primary"
+                    class="w-full sm:w-auto min-w-[8rem]">
                     {{ __('OK') }}
                 </flux:button>
             </div>

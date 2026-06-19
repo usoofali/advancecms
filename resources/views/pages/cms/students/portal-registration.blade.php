@@ -91,6 +91,16 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
             return;
         }
 
+        // Check payment restriction
+        if ($this->session_id) {
+            $session = AcademicSession::find($this->session_id);
+            $missingInvoices = app(\App\Services\PaymentAccessService::class)->getMissingInvoicesForRegistration(Student::find($this->student_id), $session);
+            if ($missingInvoices->isNotEmpty()) {
+                $this->addError('selected_courses', 'You must pay all required invoices before registering.');
+                return;
+            }
+        }
+
         $student = Student::find($this->student_id);
         $semesters = Semester::where('academic_session_id', $this->session_id)->get();
         
@@ -207,6 +217,18 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
             return;
         }
 
+        if ($this->session_id) {
+            $session = AcademicSession::find($this->session_id);
+            $missingInvoices = app(\App\Services\PaymentAccessService::class)->getMissingInvoicesForRegistration(Student::find($this->student_id), $session);
+            if ($missingInvoices->isNotEmpty()) {
+                 $this->dispatch('notify', [
+                    'type' => 'error',
+                    'message' => 'You must pay all required invoices before managing registration.',
+                ]);
+                return;
+            }
+        }
+
         $dropped = CourseRegistration::query()
             ->where('institution_id', $this->institution_id)
             ->where('student_id', $this->student_id)
@@ -237,8 +259,29 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
                 ->sortByDesc('name')
             : collect();
 
-        // Detect level and load courses as soon as session is picked
+        $isBlockedByPayment = false;
+        $missingInvoices = collect();
+
+        // Check payment restrictions
         if ($student && $this->session_id && $this->session_id !== 'null') {
+            $session = AcademicSession::find($this->session_id);
+            if ($session) {
+                $missingTemplates = app(\App\Services\PaymentAccessService::class)->getMissingInvoicesForRegistration($student, $session);
+                if ($missingTemplates->isNotEmpty()) {
+                    $isBlockedByPayment = true;
+                    $invoiceService = app(\App\Services\StudentInvoiceService::class);
+                    foreach ($missingTemplates as $template) {
+                        $inv = $invoiceService->materializeInvoice($student, $template);
+                        if ($inv) {
+                            $missingInvoices->push($inv);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Detect level and load courses as soon as session is picked
+        if ($student && $this->session_id && $this->session_id !== 'null' && !$isBlockedByPayment) {
             $session = AcademicSession::find($this->session_id);
             if ($session) {
                 $currentLevel = $student->currentLevel($session);
@@ -303,6 +346,8 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
                                         ->where('status', 'closed')
                                         ->exists()
                                     : false,
+            'isBlockedByPayment' => $isBlockedByPayment,
+            'missingInvoices'    => $missingInvoices,
         ]);
     }
 }; ?>
@@ -354,6 +399,31 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
         </div>
         @endif
 
+        @if ($isBlockedByPayment)
+        <flux:card class="p-8 text-center bg-zinc-50 dark:bg-zinc-900 border-2 border-red-200 dark:border-red-900/50">
+            <flux:icon.lock-closed class="size-12 mx-auto text-red-500 mb-4" />
+            <flux:heading size="xl" class="mb-2">{{ __('Registration Locked') }}</flux:heading>
+            <p class="text-zinc-600 dark:text-zinc-400 mb-6 max-w-lg mx-auto">
+                {{ __('You have unpaid invoices that are required before you can access academic registration for this session.') }}
+            </p>
+            <div class="space-y-3 max-w-md mx-auto mb-6 text-left">
+                @foreach ($missingInvoices as $inv)
+                <div class="flex items-center justify-between p-3 bg-white dark:bg-zinc-800 rounded-lg border border-red-100 dark:border-red-900/30">
+                    <div class="flex flex-col">
+                        <span class="font-bold text-sm">{{ $inv->invoice->category ?? 'Invoice' }}</span>
+                        <span class="text-xs text-zinc-500">{{ $inv->invoice->academicSession?->name ?? 'All Sessions' }}</span>
+                    </div>
+                    <span class="font-mono font-bold text-red-600 dark:text-red-400">
+                        ₦{{ number_format($inv->balance, 2) }}
+                    </span>
+                </div>
+                @endforeach
+            </div>
+            <flux:button variant="primary" href="{{ route('cms.students.portal-invoices') }}" icon="credit-card">
+                {{ __('Pay Outstanding Invoices') }}
+            </flux:button>
+        </flux:card>
+        @else
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {{-- Left: Registration Columns --}}
             <div class="lg:col-span-2 space-y-8">
@@ -498,6 +568,7 @@ new #[Layout('layouts.app')] #[Title('My Registrations')] class extends Componen
                 </flux:card>
             </div>
         </div>
+        @endif
         @else
         <div class="p-12 text-center border-2 border-dashed rounded-2xl border-zinc-200 dark:border-zinc-800">
             <flux:icon.calendar class="mx-auto size-12 text-zinc-300 dark:text-zinc-700 mb-4" />

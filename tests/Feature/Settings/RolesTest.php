@@ -1,8 +1,8 @@
 <?php
 
-use App\Models\User;
-use App\Models\Role;
 use App\Models\Permission;
+use App\Models\Role;
+use App\Models\User;
 use Livewire\Volt\Volt;
 
 test('roles page is displayed to authorized users', function () {

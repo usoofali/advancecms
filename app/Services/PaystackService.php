@@ -12,7 +12,9 @@ use Illuminate\Support\Facades\Log;
 class PaystackService
 {
     protected string $publicKey;
+
     protected string $secretKey;
+
     protected string $baseUrl;
 
     public function __construct()
@@ -47,16 +49,16 @@ class PaystackService
                         'display_name' => 'Student ID',
                         'variable_name' => 'student_id',
                         'value' => $student->matric_number,
-                    ]
-                ]
-            ]
+                    ],
+                ],
+            ],
         ];
 
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->secretKey,
+            'Authorization' => 'Bearer '.$this->secretKey,
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
-        ])->post($this->baseUrl . '/transaction/initialize', $payload);
+        ])->post($this->baseUrl.'/transaction/initialize', $payload);
 
         if ($response->successful()) {
             $data = $response->json();
@@ -66,9 +68,9 @@ class PaystackService
                     'gateway_order_no' => $data['data']['reference'],
                 ];
             }
-            Log::error('Paystack Initialization Error: ' . json_encode($data));
+            Log::error('Paystack Initialization Error: '.json_encode($data));
         } else {
-            Log::error('Paystack API Request Failed: ' . $response->body());
+            Log::error('Paystack API Request Failed: '.$response->body());
         }
 
         return null;
@@ -84,7 +86,7 @@ class PaystackService
         }
 
         // Generate a unique reference for every attempt
-        $reference = $applicant->application_number . '-' . time();
+        $reference = $applicant->application_number.'-'.time();
 
         $applicant->update(['gateway_reference' => $reference]);
 
@@ -105,16 +107,16 @@ class PaystackService
                         'display_name' => 'Applicant Ref',
                         'variable_name' => 'applicant_ref',
                         'value' => $applicant->application_number,
-                    ]
-                ]
-            ]
+                    ],
+                ],
+            ],
         ];
 
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->secretKey,
+            'Authorization' => 'Bearer '.$this->secretKey,
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
-        ])->post($this->baseUrl . '/transaction/initialize', $payload);
+        ])->post($this->baseUrl.'/transaction/initialize', $payload);
 
         if ($response->successful()) {
             $data = $response->json();
@@ -124,9 +126,9 @@ class PaystackService
                     'gateway_order_no' => $data['data']['reference'],
                 ];
             }
-            Log::error('Paystack Applicant Init Error: ' . json_encode($data));
+            Log::error('Paystack Applicant Init Error: '.json_encode($data));
         } else {
-            Log::error('Paystack Applicant API Failed: ' . $response->body());
+            Log::error('Paystack Applicant API Failed: '.$response->body());
         }
 
         return null;
@@ -141,7 +143,7 @@ class PaystackService
             return null;
         }
 
-        $reference = 'ADM-' . $applicant->application_number . '-' . time();
+        $reference = 'ADM-'.$applicant->application_number.'-'.time();
         $balance = $studentInvoice->balance;
         $amountToPay = $amount !== null ? min($amount, $balance) : $balance;
 
@@ -170,16 +172,16 @@ class PaystackService
                         'display_name' => 'Invoice Title',
                         'variable_name' => 'invoice_title',
                         'value' => $invoice->title,
-                    ]
-                ]
-            ]
+                    ],
+                ],
+            ],
         ];
 
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->secretKey,
+            'Authorization' => 'Bearer '.$this->secretKey,
             'Content-Type' => 'application/json',
             'Accept' => 'application/json',
-        ])->post($this->baseUrl . '/transaction/initialize', $payload);
+        ])->post($this->baseUrl.'/transaction/initialize', $payload);
 
         if ($response->successful()) {
             $data = $response->json();
@@ -191,12 +193,13 @@ class PaystackService
                     'gateway_order_no' => $data['data']['reference'],
                 ];
             }
-            Log::error('Paystack Admission Init Error: ' . json_encode($data));
+            Log::error('Paystack Admission Init Error: '.json_encode($data));
         } else {
-            Log::error('Paystack Admission API Failed: ' . $response->body());
+            Log::error('Paystack Admission API Failed: '.$response->body());
         }
 
         $payment->delete();
+
         return null;
     }
 
@@ -206,8 +209,8 @@ class PaystackService
     public function queryStatus(string $reference): ?array
     {
         $response = Http::withHeaders([
-            'Authorization' => 'Bearer ' . $this->secretKey,
-        ])->get($this->baseUrl . '/transaction/verify/' . rawurlencode($reference));
+            'Authorization' => 'Bearer '.$this->secretKey,
+        ])->get($this->baseUrl.'/transaction/verify/'.rawurlencode($reference));
 
         if ($response->successful()) {
             $data = $response->json();
@@ -225,6 +228,7 @@ class PaystackService
     public function verifyWebhookSignature(string $payloadJson, string $signatureHeader): bool
     {
         $calculatedSignature = hash_hmac('sha512', $payloadJson, $this->secretKey);
+
         return hash_equals($calculatedSignature, $signatureHeader);
     }
 }

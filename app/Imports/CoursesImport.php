@@ -4,7 +4,6 @@ namespace App\Imports;
 
 use App\Models\Course;
 use App\Models\Program;
-use Illuminate\Support\Str;
 
 class CoursesImport
 {

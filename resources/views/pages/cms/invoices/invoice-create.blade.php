@@ -28,6 +28,8 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
     
     public bool $is_required_for_results = false;
     public bool $is_required_for_exams = false;
+    public bool $is_required_for_registration = false;
+    public bool $is_required_for_course_form = false;
 
     public string $account_name = '';
     public string $account_number = '';
@@ -49,6 +51,8 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
             $this->level = $invoice->level ?? '';
             $this->is_required_for_results = (bool) $invoice->is_required_for_results;
             $this->is_required_for_exams = (bool) $invoice->is_required_for_exams;
+            $this->is_required_for_registration = (bool) $invoice->is_required_for_registration;
+            $this->is_required_for_course_form = (bool) $invoice->is_required_for_course_form;
             $this->category = $invoice->category ?? Invoice::CATEGORY_GENERAL;
             $this->semester_id = $invoice->semester_id;
             $this->account_name = $invoice->account_name ?? '';
@@ -174,6 +178,8 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
             'category' => 'required|string',
             'is_required_for_results' => 'boolean',
             'is_required_for_exams' => 'boolean',
+            'is_required_for_registration' => 'boolean',
+            'is_required_for_course_form' => 'boolean',
             'semester_id' => 'required_if:category,'.Invoice::CATEGORY_EXAM.','.Invoice::CATEGORY_RESULT.'|nullable|exists:semesters,id',
             'account_name' => 'nullable|string|max:255',
             'account_number' => 'nullable|string|max:20',
@@ -224,6 +230,8 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
             'level' => $this->level ?: null,
             'is_required_for_results' => $this->is_required_for_results,
             'is_required_for_exams' => $this->is_required_for_exams,
+            'is_required_for_registration' => $this->is_required_for_registration,
+            'is_required_for_course_form' => $this->is_required_for_course_form,
             'category' => $this->category,
             'semester_id' => $this->semester_id ?: null,
             'account_name' => $this->account_name,
@@ -344,6 +352,8 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-100 dark:border-zinc-800">
                 <flux:switch wire:model="is_required_for_results" label="{{ __('Required for Result Checking') }}" description="{{ __('Students must pay this invoice before viewing their results.') }}" />
                 <flux:switch wire:model="is_required_for_exams" label="{{ __('Required for Exam Card') }}" description="{{ __('Students must pay this invoice before downloading their exam card.') }}" />
+                <flux:switch wire:model="is_required_for_registration" label="{{ __('Required for Registration') }}" description="{{ __('Students must pay this invoice before registering for courses in this session.') }}" />
+                <flux:switch wire:model="is_required_for_course_form" label="{{ __('Required for Course Form') }}" description="{{ __('Students must pay this invoice before viewing or printing their course form.') }}" />
             </div>
 
             <!-- Bank Details -->

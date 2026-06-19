@@ -133,8 +133,6 @@ class RegradeResultsCommand extends Command
     }
 }
 
-
 // php artisan results:regrade --student=GUS/CHEW/2023/007
 // php artisan results:regrade --department=1
 // php artisan results:regrade --all
-

@@ -15,7 +15,7 @@ return new class extends Migration
             Schema::table('courses', function (Blueprint $table) {
                 $table->dropUnique(['course_code']);
             });
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Index might not exist in some environments (e.g. fresh test DB)
         }
     }

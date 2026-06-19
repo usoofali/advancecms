@@ -6,6 +6,7 @@ use App\Models\Applicant;
 use App\Models\ApplicantCredential;
 use App\Models\Payment;
 use App\Models\Receipt;
+use App\Services\AdmissionService;
 use App\Services\PaystackService;
 use Illuminate\Support\Str;
 use Livewire\Component;
@@ -29,7 +30,7 @@ class ApplicantPortal extends Component
         $studentInvoice = $this->applicant->studentInvoices()->latest()->first();
         if ($this->applicant->admission_status === 'admitted' && ! $this->applicant->enrolled_at) {
             if ($studentInvoice && in_array($studentInvoice->status, ['paid', 'partial'])) {
-                app(\App\Services\AdmissionService::class)->enrollApplicant($this->applicant);
+                app(AdmissionService::class)->enrollApplicant($this->applicant);
                 $this->applicant->refresh();
             }
         }

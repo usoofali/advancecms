@@ -114,7 +114,7 @@ class Apply extends Component
 
         $this->applicant = $applicant;
         $this->showConfirmation = true;
-        
+
         $this->js('$flux.modal("purchase-form").close();');
     }
 
@@ -169,7 +169,7 @@ class Apply extends Component
             'forms' => ApplicationForm::with(['academicSession', 'institution'])
                 ->where('is_active', true)
                 ->get()
-                ->filter(fn($form) => $form->institution?->isAdmissionActive()),
+                ->filter(fn ($form) => $form->institution?->isAdmissionActive()),
             'programs' => $this->institution_id
                 ? Program::where('institution_id', $this->institution_id)->get()
                 : [],

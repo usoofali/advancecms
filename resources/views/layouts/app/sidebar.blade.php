@@ -82,9 +82,8 @@
             @canany(['applications.view', 'application_forms.view', 'applications.notify', 'students.create'])
                 <flux:sidebar.group :heading="__('Admissions')" class="grid" expandable expanded="false">
                     @can('students.create')
-                        <flux:sidebar.item icon="user-plus" :href="route('cms.admissions.index')"
-                            :current="request()->routeIs('cms.students.create') || request()->routeIs('cms.students.create')"
-                            wire:navigate>
+                        <flux:sidebar.item icon="user-plus" :href="route('cms.students.create')"
+                            :current="request()->routeIs('cms.students.create')" wire:navigate>
                             {{ __('Enrol Student') }}
                         </flux:sidebar.item>
                     @endcan
@@ -197,38 +196,6 @@
                 </flux:sidebar.group>
             @endcanany
 
-            @canany(['attendance.take', 'attendance.manage', 'attendance.view_history', 'attendance.view_own'])
-                <flux:sidebar.group :heading="__('Attendance')" class="grid" expandable expanded="false">
-                    @can('attendance.take')
-                        <flux:sidebar.item icon="check-badge" :href="route('cms.attendance.take')"
-                            :current="request()->routeIs('cms.attendance.take')" wire:navigate>
-                            {{ __('Take Attendance') }}
-                        </flux:sidebar.item>
-                    @endcan
-
-                    @can('attendance.manage')
-                        <flux:sidebar.item icon="calendar-days" :href="route('cms.attendance.manage')"
-                            :current="request()->routeIs('cms.attendance.manage')" wire:navigate>
-                            {{ __('Manage Attendance') }}
-                        </flux:sidebar.item>
-                    @endcan
-
-                    @can('attendance.view_history')
-                        <flux:sidebar.item icon="clock" :href="route('cms.attendance.history')"
-                            :current="request()->routeIs('cms.attendance.history')" wire:navigate>
-                            {{ __('Attendance History') }}
-                        </flux:sidebar.item>
-                    @endcan
-
-                    @can('attendance.view_own')
-                        <flux:sidebar.item icon="chart-bar" :href="route('cms.attendance.participation')"
-                            :current="request()->routeIs('cms.attendance.participation')" wire:navigate>
-                            {{ __('My Attendance') }}
-                        </flux:sidebar.item>
-                    @endcan
-                </flux:sidebar.group>
-            @endcanany
-
             @if(auth()->user()->institution?->hasAddon('exam_module'))
                 @canany(['cbt_exams.view', 'cbt_questions.view', 'cbt_sync.view', 'cbt_results.view'])
                     <flux:sidebar.group :heading="__('Examinations')" class="grid" expandable expanded="false">
@@ -297,12 +264,12 @@
 
             @canany(['attendance_payments.process', 'invoices.view', 'payments.view', 'payments.verify', 'invoices.view_personal'])
                 <flux:sidebar.group :heading="__('Finance')" class="grid" expandable expanded="false">
-                    @can('attendance_payments.process')
-                        <flux:sidebar.item icon="banknotes" :href="route('cms.attendance.payments')"
-                            :current="request()->routeIs('cms.attendance.payments')" wire:navigate>
-                            {{ __('Attendance Payments') }}
-                        </flux:sidebar.item>
-                    @endcan
+                    {{-- @can('attendance_payments.process')
+                    <flux:sidebar.item icon="banknotes" :href="route('cms.attendance.payments')"
+                        :current="request()->routeIs('cms.attendance.payments')" wire:navigate>
+                        {{ __('Attendance Payments') }}
+                    </flux:sidebar.item>
+                    @endcan --}}
 
                     @can('invoices.view')
                         <flux:sidebar.item icon="banknotes" :href="route('cms.invoices.index')"
@@ -323,6 +290,38 @@
                         <flux:sidebar.item icon="credit-card" :href="route('cms.students.portal-invoices')"
                             :current="request()->routeIs('cms.students.portal-invoices')" wire:navigate>
                             {{ __('My Invoices') }}
+                        </flux:sidebar.item>
+                    @endcan
+                </flux:sidebar.group>
+            @endcanany
+
+            @canany(['attendance.take', 'attendance.manage', 'attendance.view_history', 'attendance.view_own'])
+                <flux:sidebar.group :heading="__('Attendance')" class="grid" expandable expanded="false">
+                    @can('attendance.take')
+                        <flux:sidebar.item icon="check-badge" :href="route('cms.attendance.take')"
+                            :current="request()->routeIs('cms.attendance.take')" wire:navigate>
+                            {{ __('Take Attendance') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('attendance.manage')
+                        <flux:sidebar.item icon="calendar-days" :href="route('cms.attendance.manage')"
+                            :current="request()->routeIs('cms.attendance.manage')" wire:navigate>
+                            {{ __('Manage Attendance') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('attendance.view_history')
+                        <flux:sidebar.item icon="clock" :href="route('cms.attendance.history')"
+                            :current="request()->routeIs('cms.attendance.history')" wire:navigate>
+                            {{ __('Attendance History') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('attendance.view_own')
+                        <flux:sidebar.item icon="chart-bar" :href="route('cms.attendance.participation')"
+                            :current="request()->routeIs('cms.attendance.participation')" wire:navigate>
+                            {{ __('My Attendance') }}
                         </flux:sidebar.item>
                     @endcan
                 </flux:sidebar.group>

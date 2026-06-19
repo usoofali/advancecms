@@ -7,8 +7,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
-new #[Layout('layouts.app')] #[Title('Edit Student')] class extends Component
-{
+new #[Layout('layouts.app')] #[Title('Edit Student')] class extends Component {
     use WithFileUploads;
 
     public Student $student;
@@ -33,7 +32,7 @@ new #[Layout('layouts.app')] #[Title('Edit Student')] class extends Component
 
     public string $phone = '';
 
-    public int $admission_year;
+    public int|string $session_id = '';
 
     public int $entry_level = 100;
 
@@ -61,7 +60,12 @@ new #[Layout('layouts.app')] #[Title('Edit Student')] class extends Component
         $this->date_of_birth = $student->date_of_birth?->format('Y-m-d') ?? '';
         $this->email = $student->email ?? '';
         $this->phone = $student->phone ?? '';
-        $this->admission_year = $student->admission_year;
+
+        $session = \App\Models\AcademicSession::where('name', 'like', $student->admission_year . '/%')->first();
+        if ($session) {
+            $this->session_id = $session->id;
+        }
+
         $this->entry_level = $student->entry_level;
         $this->status = $student->status;
     }
@@ -84,18 +88,26 @@ new #[Layout('layouts.app')] #[Title('Edit Student')] class extends Component
         $validated = $this->validate([
             'institution_id' => ['required', 'exists:institutions,id'],
             'program_id' => ['required', 'exists:programs,id'],
-            'matric_number' => ['required', 'string', 'max:30', 'unique:students,matric_number,'.$this->student->id],
+            'matric_number' => ['required', 'string', 'max:30', 'unique:students,matric_number,' . $this->student->id],
             'first_name' => ['required', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'gender' => ['required', 'in:male,female'],
             'date_of_birth' => ['nullable', 'date'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],
-            'admission_year' => ['required', 'integer', 'min:1990', 'max:'.((int) date('Y') + 1)],
+            'session_id' => ['required', 'exists:academic_sessions,id'],
             'entry_level' => ['required', 'integer', 'multiple_of:100', 'min:100', 'max:600'],
             'status' => ['required', 'in:active,suspended,withdrawn,graduated,deceased'],
             'photo' => ['nullable', 'image', 'max:1024'],
         ]);
+
+        $session = \App\Models\AcademicSession::find($this->session_id);
+        $validated['admission_year'] = (int) explode('/', $session->name)[0];
+        unset($validated['session_id']);
+
+        $validated['date_of_birth'] = $validated['date_of_birth'] ?: null;
+        $validated['email'] = $validated['email'] ?: null;
+        $validated['phone'] = $validated['phone'] ?: null;
 
         if ($this->photo) {
             // Delete old photo if exists
@@ -127,11 +139,11 @@ new #[Layout('layouts.app')] #[Title('Edit Student')] class extends Component
                     <div
                         class="w-32 h-32 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border-2 border-dashed border-zinc-200 dark:border-zinc-700 flex items-center justify-center overflow-hidden">
                         @if ($photo)
-                        <img src="{{ $photo->temporaryUrl() }}" class="w-full h-full object-cover">
+                            <img src="{{ $photo->temporaryUrl() }}" class="w-full h-full object-cover">
                         @elseif ($student->photo_path)
-                        <img src="{{ $student->photo_url }}" class="w-full h-full object-cover">
+                            <img src="{{ $student->photo_url }}" class="w-full h-full object-cover">
                         @else
-                        <flux:icon icon="camera" class="w-8 h-8 text-zinc-400" />
+                            <flux:icon icon="camera" class="w-8 h-8 text-zinc-400" />
                         @endif
                     </div>
                 </div>
@@ -170,19 +182,20 @@ new #[Layout('layouts.app')] #[Title('Edit Student')] class extends Component
             <flux:legend>{{ __('Academic Information') }}</flux:legend>
             <div class="grid gap-6">
                 @if (!auth()->user()->institution_id)
-                <flux:select wire:model="institution_id" :label="__('Institution')" required>
-                    <flux:select.option value="null">{{ __('Select institution...') }}</flux:select.option>
-                    @foreach (App\Models\Institution::query()->where('status', 'active')->orderBy('name')->get() as $inst)
-                    <flux:select.option :value="$inst->id">{{ $inst->name }}</flux:select.option>
-                    @endforeach
-                </flux:select>
+                    <flux:select wire:model="institution_id" :label="__('Institution')" required>
+                        <flux:select.option value="null">{{ __('Select institution...') }}</flux:select.option>
+                        @foreach (App\Models\Institution::query()->where('status', 'active')->orderBy('name')->get() as $inst)
+                            <flux:select.option :value="$inst->id">{{ $inst->name }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
                 @endif
 
-                <flux:select wire:model.live="department_id" :label="__('Department')" required :disabled="!$institution_id">
+                <flux:select wire:model.live="department_id" :label="__('Department')" required
+                    :disabled="!$institution_id">
                     <flux:select.option value="null">{{ __('Select department...') }}</flux:select.option>
                     @if ($institution_id)
                         @foreach (\App\Models\Department::where('institution_id', $this->institution_id)->orderBy('name')->get() as $dept)
-                        <flux:select.option :value="$dept->id">{{ $dept->name }}</flux:select.option>
+                            <flux:select.option :value="$dept->id">{{ $dept->name }}</flux:select.option>
                         @endforeach
                     @endif
                 </flux:select>
@@ -191,9 +204,9 @@ new #[Layout('layouts.app')] #[Title('Edit Student')] class extends Component
                     <flux:select.option value="null">{{ __('Select program...') }}</flux:select.option>
                     @if ($department_id)
                         @foreach (\App\Models\Program::query()->where('department_id', $this->department_id)->where('status', 'active')->orderBy('name')->get() as $program)
-                        <flux:select.option :value="$program->id">
-                            {{ $program->name }}
-                        </flux:select.option>
+                            <flux:select.option :value="$program->id">
+                                {{ $program->name }}
+                            </flux:select.option>
                         @endforeach
                     @endif
                 </flux:select>
@@ -201,14 +214,15 @@ new #[Layout('layouts.app')] #[Title('Edit Student')] class extends Component
                 <flux:input wire:model="matric_number" :label="__('Matric Number')" readonly />
 
                 <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    <flux:input wire:model="admission_year" :label="__('Admission Year')" type="number" required />
+                    <flux:select wire:model="session_id" :label="__('Admission Session')" required>
+                        <flux:select.option value="">{{ __('Select session...') }}</flux:select.option>
+                        @foreach (\App\Models\AcademicSession::orderByDesc('name')->get() as $session)
+                            <flux:select.option :value="$session->id">{{ $session->name }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
                     <flux:select wire:model="entry_level" :label="__('Entry Level')">
                         <flux:select.option value="100">100</flux:select.option>
                         <flux:select.option value="200">200</flux:select.option>
-                        <flux:select.option value="300">300</flux:select.option>
-                        <flux:select.option value="400">400</flux:select.option>
-                        <flux:select.option value="500">500</flux:select.option>
-                        <flux:select.option value="600">600</flux:select.option>
                     </flux:select>
                 </div>
 

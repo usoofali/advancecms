@@ -2,6 +2,7 @@
 
 use App\Models\AcademicSession;
 use App\Models\Semester;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -28,7 +29,22 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
         }
 
         $validated = $this->validate([
-            'new_session_name' => ['required', 'string', 'unique:academic_sessions,name', 'regex:/^\d{4}\/\d{4}$/'],
+            'new_session_name' => [
+                'required', 
+                'string', 
+                'unique:academic_sessions,name', 
+                'regex:/^\d{4}\/\d{4}$/',
+                function (string $attribute, mixed $value, Closure $fail) {
+                    $years = explode('/', $value);
+                    if (count($years) === 2) {
+                        $firstYear = (int) $years[0];
+                        $secondYear = (int) $years[1];
+                        if ($secondYear - $firstYear !== 1) {
+                            $fail('The session years must be consecutive (e.g. 2025/2026).');
+                        }
+                    }
+                },
+            ],
             'start_date'       => ['nullable', 'date'],
             'end_date'         => ['nullable', 'date', 'after_or_equal:start_date'],
         ]);

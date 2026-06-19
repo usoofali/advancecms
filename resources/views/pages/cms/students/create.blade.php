@@ -27,7 +27,7 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component {
 
     public string $phone = '';
 
-    public int $admission_year;
+    public int|string $session_id = '';
 
     public int $entry_level = 100;
 
@@ -54,7 +54,6 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component {
     {
         Gate::authorize('students.create');
 
-        $this->admission_year = (int) date('Y');
         if (auth()->user()->institution_id) {
             $this->institution_id = auth()->user()->institution_id;
         }
@@ -73,11 +72,19 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component {
             'date_of_birth' => ['nullable', 'date'],
             'email' => ['nullable', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:30'],
-            'admission_year' => ['required', 'integer', 'min:1990', 'max:' . ((int) date('Y') + 1)],
+            'session_id' => ['required', 'exists:academic_sessions,id'],
             'entry_level' => ['required', 'integer', 'multiple_of:100', 'min:100', 'max:600'],
             'status' => ['required', 'in:active,suspended,withdrawn,graduated,deceased'],
             'photo' => ['nullable', 'image', 'max:1024'], // 1MB Max
         ]);
+
+        $session = \App\Models\AcademicSession::find($this->session_id);
+        $validated['admission_year'] = (int) explode('/', $session->name)[0];
+        unset($validated['session_id']);
+
+        $validated['date_of_birth'] = $validated['date_of_birth'] ?: null;
+        $validated['email'] = $validated['email'] ?: null;
+        $validated['phone'] = $validated['phone'] ?: null;
 
         if ($this->photo) {
             $validated['photo_path'] = $this->photo->store('students/photos', 'public');
@@ -158,11 +165,15 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component {
                 </flux:select>
 
                 <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    <flux:input wire:model="admission_year" :label="__('Admission Year')" type="number" required />
+                    <flux:select wire:model="session_id" :label="__('Admission Session')" required>
+                        <flux:select.option value="">{{ __('Select session...') }}</flux:select.option>
+                        @foreach (\App\Models\AcademicSession::orderByDesc('name')->get() as $session)
+                            <flux:select.option :value="$session->id">{{ $session->name }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
                     <flux:select wire:model="entry_level" :label="__('Entry Level')">
                         <flux:select.option value="100">100</flux:select.option>
                         <flux:select.option value="200">200</flux:select.option>
-                        <flux:select.option value="300">300</flux:select.option>
                     </flux:select>
                 </div>
 

@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Middleware\CheckAddon;
 use App\Http\Middleware\ExamModuleMiddleware;
+use App\Http\Middleware\TenantScope;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -19,6 +21,8 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'exam.module' => ExamModuleMiddleware::class,
+            'tenant' => TenantScope::class,
+            'addon' => CheckAddon::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

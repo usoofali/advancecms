@@ -41,6 +41,12 @@ new #[Title('Module Add-ons')] class extends Component
             'icon' => 'user-circle',
             'color' => 'indigo',
         ],
+        'ca_module' => [
+            'label' => 'Continuous Assessment (CA)',
+            'description' => 'Enables online objective tests, practice exams, student leaderboards, and gamified coin rewards.',
+            'icon' => 'document-text',
+            'color' => 'teal',
+        ],
     ];
 
     public function mount(): void

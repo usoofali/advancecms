@@ -41,7 +41,7 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
     public int $total_questions = 50;
     public bool $randomize_questions = true;
     public bool $randomize_options = true;
-    public string $status = 'draft';
+    public string $status = 'active';
 
     // Cascading filters for course selection
     public $filter_program_id = '';
@@ -191,7 +191,7 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
 
         $exam = CbtExam::with('course')->findOrFail($id);
         $this->editingId = $exam->id;
-        $this->exam_date = $exam->exam_date ? $exam->exam_date->format('Y-m-d') : '';
+        $this->exam_date = $exam->exam_date ? \Carbon\Carbon::parse($exam->exam_date)->format('Y-m-d') : '';
         $this->course_id = $exam->course_id;
         $this->academic_session_id = $exam->academic_session_id;
         $this->semester_id = $exam->semester_id;
@@ -351,7 +351,6 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
             'availableCourses' => Course::where('institution_id', $instId)
                 ->when($this->filter_program_id, fn($q) => $q->where('program_id', $this->filter_program_id))
                 ->when($this->filter_level, fn($q) => $q->where('level', $this->filter_level))
-                ->when($this->semester_id, fn($q) => $q->where('semester', $this->semester_id))
                 ->when($isRestrictedLecturer, function ($q) use ($user) {
                     $q->whereIn('id', function ($sub) use ($user) {
                         $sub->select('course_id')

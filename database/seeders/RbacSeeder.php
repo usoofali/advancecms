@@ -18,7 +18,7 @@ class RbacSeeder extends Seeder
             'institutions', 'departments', 'programs', 'courses', 'staff',
             'roles', 'permissions', 'settings', 'application_forms', 'invoices',
             'payments', 'cbt_exams', 'cbt_questions', 'students', 'registrations',
-            'grading_systems', 'academic_sessions',
+            'grading_systems', 'academic_sessions', 'ca_tests', 'ca_results', 'ca_attempts', 'ca_questions', 'ca_answers', 'student_coins',
         ];
 
         // Define Permissions
@@ -142,7 +142,7 @@ class RbacSeeder extends Seeder
             'Institutional Admin' => [
                 'description' => 'Full administrative control within one institution',
                 'permissions' => array_merge(
-                    $crud(['staff', 'departments', 'programs', 'courses', 'application_forms', 'invoices', 'payments', 'cbt_exams', 'cbt_questions', 'students', 'registrations', 'grading_systems']),
+                    $crud(['staff', 'departments', 'programs', 'courses', 'application_forms', 'invoices', 'payments', 'cbt_exams', 'cbt_questions', 'students', 'registrations', 'grading_systems', 'ca_tests']),
                     [
                         'students.view_dept', 'courses.view_dept', 'results.view_dept',
                         'courses.view_assigned', 'results.enter', 'results.modify',
@@ -165,7 +165,7 @@ class RbacSeeder extends Seeder
             'Head of Department (HOD)' => [
                 'description' => 'Manage departmental academic activities',
                 'permissions' => array_merge(
-                    $crud(['cbt_questions', 'cbt_exams']),
+                    $crud(['cbt_questions', 'cbt_exams', 'ca_tests']),
                     [
                         'students.view_dept', 'courses.view_dept', 'results.view_dept',
                         'registration_status.update', 'attendance.view_history', 'attendance.manage',
@@ -180,7 +180,7 @@ class RbacSeeder extends Seeder
             'Lecturer' => [
                 'description' => 'Academic instruction and result entry',
                 'permissions' => array_merge(
-                    $crud(['cbt_questions']),
+                    $crud(['cbt_questions', 'ca_tests']),
                     ['cbt_exams.view', 'cbt_questions.import', 'courses.view_assigned', 'results.enter', 'results.modify', 'attendance.take', 'attendance.view_history', 'dashboard.view', 'id_cards.request']
                     // Note: Lecturers get attendance.view_history (own history) but NOT attendance.manage
                 ),
@@ -202,7 +202,7 @@ class RbacSeeder extends Seeder
             'Exam Officer' => [
                 'description' => 'Coordinate exams and academic results management',
                 'permissions' => array_merge(
-                    $crud(['cbt_exams', 'cbt_questions']),
+                    $crud(['cbt_exams', 'cbt_questions', 'ca_tests']),
                     [
                         'students.view_dept', 'courses.view_dept', 'results.view_dept', 'results.enter', 'results.modify',
                         'attendance.manage',

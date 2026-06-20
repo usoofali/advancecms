@@ -230,6 +230,29 @@
                 @endcanany
             @endif
 
+            @if(auth()->user()->institution?->hasAddon('ca_module'))
+                <flux:sidebar.group :heading="__('Continuous Assessment')" class="grid" expandable expanded="false">
+                    @canany(['courses.view', 'courses.view_dept', 'courses.view_assigned'])
+                        <flux:sidebar.item icon="document-text" :href="route('cms.ca-tests.lecturer.index')"
+                            :current="request()->routeIs('cms.ca-tests.lecturer.*') && !request()->routeIs('cms.ca-tests.lecturer.results')" wire:navigate>
+                            {{ __('Manage C.A Tests') }}
+                        </flux:sidebar.item>
+                        
+                        <flux:sidebar.item icon="chart-bar" :href="route('cms.ca-tests.lecturer.results')"
+                            :current="request()->routeIs('cms.ca-tests.lecturer.results')" wire:navigate>
+                            {{ __('C.A Test Results') }}
+                        </flux:sidebar.item>
+                    @endcanany
+
+                    @can('registrations.view_personal')
+                        <flux:sidebar.item icon="pencil-square" :href="route('cms.ca-tests.student.index')"
+                            :current="request()->routeIs('cms.ca-tests.student.*')" wire:navigate>
+                            {{ __('My C.A Tests') }}
+                        </flux:sidebar.item>
+                    @endcan
+                </flux:sidebar.group>
+            @endif
+
             @canany(['results.enter', 'results.view_dept', 'reports.generate', 'results.view_personal'])
                 <flux:sidebar.group :heading="__('Results')" class="grid" expandable expanded="false">
                     @can('results.enter')
@@ -256,7 +279,7 @@
                     @can('results.view_personal')
                         <flux:sidebar.item icon="identification" :href="route('cms.results.portal')"
                             :current="request()->routeIs('cms.results.portal')" wire:navigate>
-                            {{ __('Semester Results') }}
+                            {{ __('Examination Results') }}
                         </flux:sidebar.item>
                     @endcan
                 </flux:sidebar.group>

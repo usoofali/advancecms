@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Cms\Student\CaAttemptSubmissionController;
 use App\Http\Controllers\ExportFilteredResultsController;
 use App\Http\Controllers\PaystackController;
 use App\Livewire\Pages\Admissions\ApplicantPortal;
@@ -163,6 +164,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('questions', 'pages::cms.cbt.questions')->name('questions')->middleware('can:cbt_questions.view');
             Route::livewire('sync', 'pages::cms.cbt.sync')->name('sync')->middleware('can:cbt_sync.view');
             Route::livewire('results', 'pages::cms.cbt.results')->name('results')->middleware('can:cbt_results.view');
+        });
+    });
+
+    // CA Tests Add-on
+    Route::middleware(['addon:ca_module'])->group(function () {
+        Route::prefix('ca-tests')->name('cms.ca-tests.')->group(function () {
+            // Lecturer Portal
+            Route::prefix('lecturer')->name('lecturer.')->group(function () {
+                Route::livewire('/', 'pages::cms.ca-tests.lecturer.index')->name('index');
+                Route::livewire('/create', 'pages::cms.ca-tests.lecturer.create')->name('create');
+                Route::livewire('/questions', 'pages::cms.ca-tests.lecturer.questions')->name('questions');
+                Route::livewire('/results', 'pages::cms.ca-tests.lecturer.results')->name('results');
+                Route::livewire('/leaderboard', 'pages::cms.ca-tests.lecturer.leaderboard')->name('leaderboard');
+                Route::livewire('/access', 'pages::cms.ca-tests.lecturer.access')->name('access');
+            });
+            // Student Portal
+            Route::prefix('student')->name('student.')->group(function () {
+                Route::livewire('/', 'pages::cms.ca-tests.student.index')->name('index');
+                Route::livewire('/attempt', 'pages::cms.ca-tests.student.attempt')->name('attempt');
+                Route::post('/attempt/{attempt}/submit', \App\Http\Controllers\Cms\Student\CaAttemptSubmissionController::class)->name('attempt.submit');
+                Route::post('/attempt/{attempt}/extend-time', \App\Http\Controllers\Cms\Student\CaAttemptTimeExtensionController::class)->name('attempt.extend-time');
+                Route::livewire('/leaderboard', 'pages::cms.ca-tests.student.leaderboard')->name('leaderboard');
+            });
         });
     });
 });

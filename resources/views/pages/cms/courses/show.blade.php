@@ -9,8 +9,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-new #[Layout('layouts.app')] #[Title('Course Details')] class extends Component
-{
+new #[Layout('layouts.app')] #[Title('Course Details')] class extends Component {
     use WithPagination;
 
     public Course $course;
@@ -51,7 +50,7 @@ new #[Layout('layouts.app')] #[Title('Course Details')] class extends Component
 
         $allocations = CourseAllocation::with(['user', 'academicSession', 'semester'])
             ->where('course_id', $this->course->id)
-            ->when($this->selectedSessionId, fn ($q) => $q->where('academic_session_id', $this->selectedSessionId))
+            ->when($this->selectedSessionId, fn($q) => $q->where('academic_session_id', $this->selectedSessionId))
             ->latest()
             ->get();
 
@@ -59,9 +58,9 @@ new #[Layout('layouts.app')] #[Title('Course Details')] class extends Component
             ->where('course_id', $this->course->id)
             ->select('course_registrations.*')
             ->leftJoin('students', 'course_registrations.student_id', '=', 'students.id')
-            ->when($this->selectedSessionId, fn ($q) => $q->where('academic_session_id', $this->selectedSessionId))
+            ->when($this->selectedSessionId, fn($q) => $q->where('academic_session_id', $this->selectedSessionId))
             ->when($this->search, function ($q) {
-                $q->where(fn ($sq) => $sq
+                $q->where(fn($sq) => $sq
                     ->where('students.first_name', 'like', "%{$this->search}%")
                     ->orWhere('students.last_name', 'like', "%{$this->search}%")
                     ->orWhere('students.matric_number', 'like', "%{$this->search}%"));
@@ -92,6 +91,9 @@ new #[Layout('layouts.app')] #[Title('Course Details')] class extends Component
                 </span>
                 <flux:badge color="{{ $course->status === 'active' ? 'green' : 'zinc' }}" inset="top bottom" size="sm" class="font-bold">
                     {{ ucfirst($course->status ?? 'Active') }}
+                </flux:badge>
+                <flux:badge color="{{ $course->course_type === 'core' ? 'orange' : 'blue' }}" inset="top bottom" size="sm">
+                    {{ ucfirst($course->course_type ?? 'Core') }}
                 </flux:badge>
                 <flux:badge color="indigo" inset="top bottom" size="sm">
                     {{ $course->level }}L &bull; {{ $course->semester == 1 ? '1st Semester' : '2nd Semester' }}

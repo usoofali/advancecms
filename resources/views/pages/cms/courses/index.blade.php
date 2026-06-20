@@ -293,10 +293,15 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
                         </a>
                     </flux:table.cell>
                     <flux:table.cell class="text-sm">
-                        <a href="{{ route('cms.courses.show', $course) }}" wire:navigate
-                            class="text-zinc-900 dark:text-zinc-100 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors">
-                            {{ $course->title }}
-                        </a>
+                        <div class="flex flex-col gap-1 items-start">
+                            <a href="{{ route('cms.courses.show', $course) }}" wire:navigate
+                                class="text-zinc-900 dark:text-zinc-100 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors">
+                                {{ $course->title }}
+                            </a>
+                            @if($course->course_type)
+                                <flux:badge size="sm" variant="pill" color="zinc">{{ ucfirst($course->course_type) }}</flux:badge>
+                            @endif
+                        </div>
                     </flux:table.cell>
                     <flux:table.cell class="text-center font-mono">
                         {{ $course->credit_unit }}

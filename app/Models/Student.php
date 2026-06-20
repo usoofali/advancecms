@@ -239,6 +239,16 @@ class Student extends Model
         return (int) round(($presentCount / $totalCount) * 100);
     }
 
+    public function studentInvoices(): HasMany
+    {
+        return $this->hasMany(StudentInvoice::class);
+    }
+
+    public function caBlocks(): HasMany
+    {
+        return $this->hasMany(CaBlock::class);
+    }
+
     public function cbtProfiles(): HasMany
     {
         return $this->hasMany(StudentCbtProfile::class);

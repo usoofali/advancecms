@@ -345,7 +345,7 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
                     });
                 })
                 ->latest()
-                ->paginate(9),
+                ->paginate(15),
             'programs' => Program::where('institution_id', $instId)->get(),
             'sessions' => AcademicSession::all(),
             'availableCourses' => Course::where('institution_id', $instId)

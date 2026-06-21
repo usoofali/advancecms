@@ -150,7 +150,7 @@ new #[Layout('layouts.app')] #[Title('My Invoices')] class extends Component {
 
         $this->validate([
             'paymentAmount' => ['required', 'numeric', 'min:1', 'max:' . $maxAmount],
-            'paymentReference' => 'required|string|max:255',
+            'paymentReference' => 'nullable|string|max:255',
             'paymentMethod' => 'required|string',
         ]);
 
@@ -362,155 +362,160 @@ new #[Layout('layouts.app')] #[Title('My Invoices')] class extends Component {
 
                 <div class="grid grid-cols-1 gap-6">
                     @forelse ($this->materializedInvoices() as $studentInvoice)
-                            <flux:card
-                                class="!p-0 overflow-hidden border-zinc-200 dark:border-zinc-800 shadow-sm transition-all hover:shadow-md">
-                                <!-- Invoice Header Summary -->
-                                <!-- Invoice Header Summary -->
-                                <div class="p-5 md:p-6 space-y-6">
-                                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                                        <div class="space-y-1">
-                                            <flux:text weight="semibold" class="text-lg md:text-xl text-zinc-900 dark:text-white leading-tight">
-                                                {{ $studentInvoice->invoice->title }}
+                        <flux:card
+                            class="!p-0 overflow-hidden border-zinc-200 dark:border-zinc-800 shadow-sm transition-all hover:shadow-md">
+                            <!-- Invoice Header Summary -->
+                            <!-- Invoice Header Summary -->
+                            <div class="p-5 md:p-6 space-y-6">
+                                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                    <div class="space-y-1">
+                                        <flux:text weight="semibold"
+                                            class="text-lg md:text-xl text-zinc-900 dark:text-white leading-tight">
+                                            {{ $studentInvoice->invoice->title }}
+                                        </flux:text>
+                                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-zinc-500">
+                                            <flux:text size="xs" class="flex items-center gap-1.5 whitespace-nowrap">
+                                                <flux:icon.identification class="size-3.5" />
+                                                #INV-{{ $studentInvoice->id }}
                                             </flux:text>
-                                            <div class="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-zinc-500">
-                                                <flux:text size="xs" class="flex items-center gap-1.5 whitespace-nowrap">
-                                                    <flux:icon.identification class="size-3.5" />
-                                                    #INV-{{ $studentInvoice->id }}
-                                                </flux:text>
-                                                <flux:text size="xs" class="flex items-center gap-1.5 whitespace-nowrap">
-                                                    <flux:icon.calendar class="size-3.5" />
-                                                    Due: {{ $studentInvoice->invoice?->due_date?->format('M d, Y') ?? 'N/A' }}
-                                                </flux:text>
-                                            </div>
-                                        </div>
-
-                                        <div class="flex items-center gap-3">
-                                            <flux:badge
-                                                :variant="$studentInvoice->status === 'paid' ? 'success' : ($studentInvoice->status === 'cancelled' ? 'danger' : ($studentInvoice->status === 'unpaid' ? 'warning' : 'neutral'))"
-                                                size="sm" class="px-3 py-1">
-                                                {{ ucfirst($studentInvoice->status) }}
-                                            </flux:badge>
+                                            <flux:text size="xs" class="flex items-center gap-1.5 whitespace-nowrap">
+                                                <flux:icon.calendar class="size-3.5" />
+                                                Due: {{ $studentInvoice->invoice?->due_date?->format('M d, Y') ?? 'N/A' }}
+                                            </flux:text>
                                         </div>
                                     </div>
 
-                                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pt-4 border-t border-zinc-100 dark:border-zinc-800/50">
-                                        <div class="space-y-1">
-                                            <flux:text weight="bold" class="text-2xl md:text-3xl text-zinc-900 dark:text-white">
-                                                ₦{{ number_format($studentInvoice->total_amount, 2) }}
-                                            </flux:text>
-                                            @if($studentInvoice->balance > 0)
-                                                <flux:text size="xs" class="text-zinc-500 flex items-center gap-1.5">
-                                                    <span class="inline-block size-2 rounded-full bg-red-400 animate-pulse"></span>
-                                                    Balance: <span class="font-bold text-zinc-700 dark:text-zinc-300">₦{{ number_format($studentInvoice->balance, 2) }}</span>
-                                                </flux:text>
-                                            @else
-                                                <flux:text size="xs" class="text-success-600 flex items-center gap-1 font-medium">
-                                                    <flux:icon.check-circle variant="micro" class="size-4" />
-                                                    Fully Paid
-                                                </flux:text>
-                                            @endif
-                                        </div>
-
-                                        <div class="flex flex-wrap items-center gap-2 sm:justify-end">
-                                            @if($studentInvoice->status !== 'paid' && $studentInvoice->status !== 'cancelled')
-                                                <flux:button variant="subtle" size="sm" icon="printer"
-                                                    href="{{ route('cms.invoices.print', $studentInvoice->id) }}" target="_blank">
-                                                    {{ __('Print') }}
-                                                </flux:button>
-                                                <flux:button variant="primary" size="sm"
-                                                    wire:click="selectInvoicePaymentAmount({{ $studentInvoice->id }})"
-                                                    icon="credit-card">
-                                                    {{ __('Pay Online') }}
-                                                </flux:button>
-                                                <flux:button variant="ghost" size="sm"
-                                                    wire:click="selectInvoice({{ $studentInvoice->id }})"
-                                                    icon="document-plus">
-                                                    {{ __('Manual') }}
-                                                </flux:button>
-                                            @elseif($studentInvoice->status === 'paid')
-                                                <flux:button variant="subtle" size="sm" icon="printer"
-                                                    href="{{ route('cms.invoices.print', $studentInvoice->id) }}" target="_blank">
-                                                    {{ __('Print Invoice') }}
-                                                </flux:button>
-                                                @php
-                                                    $latestPayment = $studentInvoice->payments->where('status', 'success')->sortByDesc('created_at')->first();
-                                                @endphp
-                                                @if($latestPayment && $latestPayment->receipt)
-                                                    <flux:button variant="primary" size="sm" icon="printer"
-                                                        href="{{ route('cms.invoices.receipt.print', $latestPayment->receipt->receipt_number) }}"
-                                                        target="_blank">
-                                                        {{ __('Latest Receipt') }}
-                                                    </flux:button>
-                                                @endif
-                                            @else
-                                                <flux:button variant="subtle" size="sm" icon="printer"
-                                                    href="{{ route('cms.invoices.print', $studentInvoice->id) }}" target="_blank">
-                                                    {{ __('Print Invoice') }}
-                                                </flux:button>
-                                            @endif
-                                        </div>
+                                    <div class="flex items-center gap-3">
+                                        <flux:badge
+                                            :variant="$studentInvoice->status === 'paid' ? 'success' : ($studentInvoice->status === 'cancelled' ? 'danger' : ($studentInvoice->status === 'unpaid' ? 'warning' : 'neutral'))"
+                                            size="sm" class="px-3 py-1">
+                                            {{ ucfirst($studentInvoice->status) }}
+                                        </flux:badge>
                                     </div>
                                 </div>
 
-                                <!-- Payment History Segment -->
-                                @if($studentInvoice->payments->isNotEmpty())
-                                    <div
-                                        class="border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 p-2 md:p-4">
-                                        <div class="px-2 pb-2">
-                                            <flux:text size="xs" weight="semibold" class="uppercase tracking-wider text-zinc-400">
-                                                Payment History</flux:text>
-                                        </div>
-                                        <div class="space-y-2">
-                                            @foreach($studentInvoice->payments as $payment)
-                                                            <div class="group py-4 px-4 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60 shadow-sm transition-all hover:border-zinc-300 dark:hover:border-zinc-600">
-                                                                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                                                                    <div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
-                                                                        <div class="flex items-center gap-3">
-                                                                            <flux:badge size="sm"
-                                                                                :color="$payment->status === 'success' ? 'green' : ($payment->status === 'failed' ? 'red' : 'neutral')"
-                                                                                class="w-20 justify-center">
-                                                                                {{ ucfirst($payment->status) }}
-                                                                            </flux:badge>
-                                                                            <flux:text weight="semibold" class="text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
-                                                                                ₦{{ number_format($payment->amount_paid, 2) }}
-                                                                            </flux:text>
-                                                                        </div>
-
-                                                                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
-                                                                            <span class="flex items-center gap-1.5">
-                                                                                <flux:icon.credit-card class="size-3.5 opacity-70" />
-                                                                                {{ str_replace('_', ' ', ucfirst($payment->payment_method)) }}
-                                                                            </span>
-                                                                            <span class="flex items-center gap-1.5">
-                                                                                <flux:icon.hashtag class="size-3.5 opacity-70" />
-                                                                                {{ $payment->reference }}
-                                                                            </span>
-                                                                            <span class="flex items-center gap-1.5">
-                                                                                <flux:icon.clock class="size-3.5 opacity-70" />
-                                                                                {{ $payment->created_at->format('M d, H:i') }}
-                                                                            </span>
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div class="flex items-center gap-2 pt-3 lg:pt-0 border-t lg:border-t-0 border-zinc-100 dark:border-zinc-800 lg:opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                        @if($payment->status === 'pending')
-                                                                            <flux:button variant="ghost" size="xs" icon="pencil"
-                                                                                wire:click="editPayment({{ $payment->id }})">Edit</flux:button>
-                                                                            <flux:button variant="ghost" size="xs" icon="trash" color="red"
-                                                                                wire:click="confirmDeletePayment({{ $payment->id }})">Delete</flux:button>
-                                                                        @elseif($payment->status === 'success' && $payment->receipt)
-                                                                            <flux:button variant="subtle" size="xs" icon="printer"
-                                                                                href="{{ route('cms.invoices.receipt.print', $payment->receipt->receipt_number) }}"
-                                                                                target="_blank">Receipt</flux:button>
-                                                                        @endif
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                            @endforeach
-                                        </div>
+                                <div
+                                    class="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pt-4 border-t border-zinc-100 dark:border-zinc-800/50">
+                                    <div class="space-y-1">
+                                        <flux:text weight="bold" class="text-2xl md:text-3xl text-zinc-900 dark:text-white">
+                                            ₦{{ number_format($studentInvoice->total_amount, 2) }}
+                                        </flux:text>
+                                        @if($studentInvoice->balance > 0)
+                                            <flux:text size="xs" class="text-zinc-500 flex items-center gap-1.5">
+                                                <span class="inline-block size-2 rounded-full bg-red-400 animate-pulse"></span>
+                                                Balance: <span
+                                                    class="font-bold text-zinc-700 dark:text-zinc-300">₦{{ number_format($studentInvoice->balance, 2) }}</span>
+                                            </flux:text>
+                                        @else
+                                            <flux:text size="xs" class="text-success-600 flex items-center gap-1 font-medium">
+                                                <flux:icon.check-circle variant="micro" class="size-4" />
+                                                Fully Paid
+                                            </flux:text>
+                                        @endif
                                     </div>
-                                @endif
-                            </flux:card>
+
+                                    <div class="flex flex-wrap items-center gap-2 sm:justify-end">
+                                        @if($studentInvoice->status !== 'paid' && $studentInvoice->status !== 'cancelled')
+                                            <flux:button variant="subtle" size="sm" icon="printer"
+                                                href="{{ route('cms.invoices.print', $studentInvoice->id) }}" target="_blank">
+                                                {{ __('Print') }}
+                                            </flux:button>
+                                            <flux:button variant="primary" size="sm"
+                                                wire:click="selectInvoicePaymentAmount({{ $studentInvoice->id }})"
+                                                icon="credit-card">
+                                                {{ __('Pay Online') }}
+                                            </flux:button>
+                                            <flux:button size="sm" wire:click="selectInvoice({{ $studentInvoice->id }})"
+                                                icon="document-plus">
+                                                {{ __('Manual') }}
+                                            </flux:button>
+                                        @elseif($studentInvoice->status === 'paid')
+                                            <flux:button variant="subtle" size="sm" icon="printer"
+                                                href="{{ route('cms.invoices.print', $studentInvoice->id) }}" target="_blank">
+                                                {{ __('Print Invoice') }}
+                                            </flux:button>
+                                            @php
+                                                $latestPayment = $studentInvoice->payments->where('status', 'success')->sortByDesc('created_at')->first();
+                                            @endphp
+                                            @if($latestPayment && $latestPayment->receipt)
+                                                <flux:button variant="primary" size="sm" icon="printer"
+                                                    href="{{ route('cms.invoices.receipt.print', $latestPayment->receipt->receipt_number) }}"
+                                                    target="_blank">
+                                                    {{ __('Latest Receipt') }}
+                                                </flux:button>
+                                            @endif
+                                        @else
+                                            <flux:button variant="subtle" size="sm" icon="printer"
+                                                href="{{ route('cms.invoices.print', $studentInvoice->id) }}" target="_blank">
+                                                {{ __('Print Invoice') }}
+                                            </flux:button>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Payment History Segment -->
+                            @if($studentInvoice->payments->isNotEmpty())
+                                <div
+                                    class="border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/40 p-2 md:p-4">
+                                    <div class="px-2 pb-2">
+                                        <flux:text size="xs" weight="semibold" class="uppercase tracking-wider text-zinc-400">
+                                            Payment History</flux:text>
+                                    </div>
+                                    <div class="space-y-2">
+                                        @foreach($studentInvoice->payments as $payment)
+                                            <div
+                                                class="group py-4 px-4 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60 shadow-sm transition-all hover:border-zinc-300 dark:hover:border-zinc-600">
+                                                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                                    <div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
+                                                        <div class="flex items-center gap-3">
+                                                            <flux:badge size="sm"
+                                                                :color="$payment->status === 'success' ? 'green' : ($payment->status === 'failed' ? 'red' : 'neutral')"
+                                                                class="w-20 justify-center">
+                                                                {{ ucfirst($payment->status) }}
+                                                            </flux:badge>
+                                                            <flux:text weight="semibold"
+                                                                class="text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
+                                                                ₦{{ number_format($payment->amount_paid, 2) }}
+                                                            </flux:text>
+                                                        </div>
+
+                                                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-500">
+                                                            <span class="flex items-center gap-1.5">
+                                                                <flux:icon.credit-card class="size-3.5 opacity-70" />
+                                                                {{ str_replace('_', ' ', ucfirst($payment->payment_method)) }}
+                                                            </span>
+                                                            <span class="flex items-center gap-1.5">
+                                                                <flux:icon.hashtag class="size-3.5 opacity-70" />
+                                                                {{ $payment->reference }}
+                                                            </span>
+                                                            <span class="flex items-center gap-1.5">
+                                                                <flux:icon.clock class="size-3.5 opacity-70" />
+                                                                {{ $payment->created_at->format('M d, H:i') }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div
+                                                        class="flex items-center gap-2 pt-3 lg:pt-0 border-t lg:border-t-0 border-zinc-100 dark:border-zinc-800 lg:opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        @if($payment->status === 'pending')
+                                                            <flux:button variant="ghost" size="xs" icon="pencil"
+                                                                wire:click="editPayment({{ $payment->id }})">Edit</flux:button>
+                                                            <flux:button variant="ghost" size="xs" icon="trash" color="red"
+                                                                wire:click="confirmDeletePayment({{ $payment->id }})">Delete</flux:button>
+                                                        @elseif($payment->status === 'success' && $payment->receipt)
+                                                            <flux:button variant="subtle" size="xs" icon="printer"
+                                                                href="{{ route('cms.invoices.receipt.print', $payment->receipt->receipt_number) }}"
+                                                                target="_blank">Receipt</flux:button>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+                        </flux:card>
                     @empty
                         <flux:card class="py-8 text-center">
                             <flux:text class="text-zinc-500">You have no active invoices at the moment.</flux:text>
@@ -556,14 +561,14 @@ new #[Layout('layouts.app')] #[Title('My Invoices')] class extends Component {
                     <flux:heading size="lg">{{ $editingPaymentId ? 'Edit Payment Record' : 'Record Manual Payment' }}
                     </flux:heading>
                     <flux:subheading>{{ $editingPaymentId ? 'Update the details of your submitted payment.' : 'Record
-                        details of your bank transfer or deposit.' }}</flux:subheading>
+                                details of your bank transfer or deposit.' }}</flux:subheading>
                 </div>
 
                 @if($selectedInvoice)
                     <div class="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg space-y-1">
                         <flux:text size="sm" class="text-zinc-500">Invoice: {{ $selectedInvoice->invoice->title }}</flux:text>
                         <flux:text size="sm" class="text-zinc-500">Total: ₦{{ number_format($selectedInvoice->total_amount, 2)
-                            }}</flux:text>
+                                            }}</flux:text>
                         <flux:text size="sm" weight="medium">Balance Due: ₦{{ number_format($selectedInvoice->balance, 2) }}
                         </flux:text>
                     </div>
@@ -589,7 +594,7 @@ new #[Layout('layouts.app')] #[Title('My Invoices')] class extends Component {
                     </flux:field>
 
                     <flux:field>
-                        <flux:label>Payment Reference / Evidence</flux:label>
+                        <flux:label>Payment Reference (Optional)</flux:label>
                         <flux:input wire:model="paymentReference" placeholder="e.g. Bank Teller No, Transfer Ref" />
                         <flux:error name="paymentReference" />
                     </flux:field>

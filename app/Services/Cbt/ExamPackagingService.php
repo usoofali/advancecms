@@ -112,10 +112,11 @@ class ExamPackagingService
                 $profile = $student->cbtProfiles->first();
 
                 if (! $profile) {
-                    $profile = StudentCbtProfile::create([
+                    $profile = StudentCbtProfile::firstOrCreate([
                         'student_id' => $student->id,
                         'academic_session_id' => $exam->academic_session_id,
                         'semester_id' => $exam->semester_id,
+                    ], [
                         'cbt_pin' => (string) random_int(111111, 999999),
                         'last_generated_at' => now(),
                     ]);

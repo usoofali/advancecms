@@ -29,7 +29,7 @@ class PinGeneratorService
 
         DB::transaction(function () use ($students, $session, $semester, &$count) {
             foreach ($students as $student) {
-                StudentCbtProfile::updateOrCreate(
+                StudentCbtProfile::firstOrCreate(
                     [
                         'student_id' => $student->id,
                         'academic_session_id' => $session->id,

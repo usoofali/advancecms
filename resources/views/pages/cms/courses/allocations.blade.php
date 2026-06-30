@@ -286,7 +286,7 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
             'institutions' => auth()->user()->institution_id
                 ? []
                 : Institution::query()->where('status', 'active')->orderBy('name')->get(),
-            'sessions' => AcademicSession::where('status', 'active')->get(),
+            'sessions' => AcademicSession::orderBy('name')->get(),
             'semesters' => ($this->session_id && $this->session_id !== 'null') ? Semester::where('academic_session_id', $this->session_id)->get() : [],
             'departments' => $departmentsQuery->orderBy('name')->get(),
             'programs' => $programsQuery->orderBy('name')->get(),

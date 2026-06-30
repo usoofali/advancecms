@@ -98,6 +98,11 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
         $this->course_id = 'null';
     }
 
+    public function updatedSemesterId(): void
+    {
+        $this->course_id = 'null';
+    }
+
     public function updatedDepartmentId(): void
     {
         $this->program_id = 'null';
@@ -218,10 +223,10 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
         if ($this->semester_id && $this->semester_id !== 'null') {
             $selectedSemesterObj = Semester::find($this->semester_id);
             if ($selectedSemesterObj) {
-                $semesterName = strtolower($selectedSemesterObj->name);
-                if (str_contains($semesterName, 'first') || str_contains($semesterName, '1st')) {
+                $semesterName = strtolower(trim($selectedSemesterObj->name));
+                if ($semesterName === 'first' || str_contains($semesterName, 'first') || str_contains($semesterName, '1st') || $semesterName === '1') {
                     $coursesQuery->where('semester', 1);
-                } elseif (str_contains($semesterName, 'second') || str_contains($semesterName, '2nd')) {
+                } elseif ($semesterName === 'second' || str_contains($semesterName, 'second') || str_contains($semesterName, '2nd') || $semesterName === '2') {
                     $coursesQuery->where('semester', 2);
                 }
             }

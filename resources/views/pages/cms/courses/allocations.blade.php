@@ -548,3 +548,5 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
         </form>
     </flux:modal>
 </div>
+
+{{-- Hello World --}}

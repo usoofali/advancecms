@@ -24,6 +24,7 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
     public $importFile;
     public array $importFailures = [];
     public int $importedCount = 0;
+    public int $scoreVersion = 0;
 
     public array $scores = []; // student_id => [ca, exam]
 
@@ -56,10 +57,12 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
 
     public function loadScores(): void
     {
-        if (!$this->course_id || !$this->semester_id) {
+        if (!$this->course_id || !$this->semester_id || $this->course_id === 'null' || $this->semester_id === 'null') {
             $this->scores = [];
             return;
         }
+
+        $this->scoreVersion++;
 
         $studentIds = CourseRegistration::where('course_id', $this->course_id)
             ->where('semester_id', $this->semester_id)
@@ -225,10 +228,10 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
 
     public function with(): array
     {
-        $selectedSession = $this->session_id ? \App\Models\AcademicSession::find($this->session_id) : null;
+        $selectedSession = ($this->session_id && $this->session_id !== 'null') ? \App\Models\AcademicSession::find($this->session_id) : null;
         $students = collect();
 
-        if ($this->course_id && $this->semester_id) {
+        if ($this->course_id && $this->semester_id && $this->course_id !== 'null' && $this->semester_id !== 'null') {
             $students = CourseRegistration::with('student.program')
                 ->where('course_id', $this->course_id)
                 ->where('semester_id', $this->semester_id)
@@ -243,7 +246,7 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
 
         return [
             'sessions' => AcademicSession::query()->orderByDesc('name')->get(),
-            'semesters' => $this->session_id ? Semester::where('academic_session_id', $this->session_id)->get() : [],
+            'semesters' => ($this->session_id && $this->session_id !== 'null') ? Semester::where('academic_session_id', $this->session_id)->get() : [],
             'institutions' => auth()->user()->institution_id
                 ? []
                 : \App\Models\Institution::query()->where('status', 'active')->orderBy('name')->get(),
@@ -254,7 +257,7 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
                 ->orderBy('name')
                 ->get(),
             'courses' => Course::query()
-                ->when($this->institution_id, fn($q) => $q->where('institution_id', $this->institution_id))
+                ->when($this->institution_id && $this->institution_id !== 'null', fn($q) => $q->where('institution_id', $this->institution_id))
                 ->when($this->filter_program, function ($q) {
                     $q->where(function ($sq) {
                         $sq->where('program_id', $this->filter_program)
@@ -271,11 +274,11 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
                     $user = auth()->user();
                     $q->whereHas('allocations', function ($query) use ($user) {
                         $query->where('user_id', $user->id)
-                            ->where('academic_session_id', $this->session_id)
-                            ->where('semester_id', $this->semester_id);
+                            ->when($this->session_id && $this->session_id !== 'null', fn($sq) => $sq->where('academic_session_id', $this->session_id))
+                            ->when($this->semester_id && $this->semester_id !== 'null', fn($sq) => $sq->where('semester_id', $this->semester_id));
                     });
                 })
-                ->when($this->semester_id, function ($q) {
+                ->when($this->semester_id && $this->semester_id !== 'null', function ($q) {
                     $semester = Semester::find($this->semester_id);
                     if ($semester) {
                         $q->where('semester', $semester->name === 'first' ? 1 : 2);
@@ -300,7 +303,7 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
                 <flux:badge color="green">{{ __('Results saved & graded successfully!') }}</flux:badge>
             </x-action-message>
 
-            @if ($course_id && count($students) > 0)
+            @if ($course_id && $course_id !== 'null' && count($students) > 0)
                 @can('results.export')
                     <flux:button size="sm" variant="ghost" icon="document-arrow-down" wire:click="exportCsv">
                         {{ __('Export CSV') }}
@@ -366,7 +369,7 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
         </div>
     </flux:card>
 
-    @if ($course_id && count($students) > 0)
+    @if ($course_id && $course_id !== 'null' && count($students) > 0)
         <div class="space-y-6">
             <flux:card>
                 <div
@@ -390,7 +393,7 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
                         <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
                             @foreach ($students as $stu)
                                 <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors"
-                                    wire:key="{{ $stu->id }}"
+                                    wire:key="{{ $session_id }}-{{ $semester_id }}-{{ $course_id }}-{{ $stu->id }}-{{ $scoreVersion }}"
                                     x-data="{
                                         ca: {{ (float) (($scores[$stu->id]['ca'] ?? 0) ?: 0) }},
                                         exam: {{ (float) (($scores[$stu->id]['exam'] ?? 0) ?: 0) }},
@@ -438,7 +441,7 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
                 </div>
             </div>
         </div>
-    @elseif ($course_id)
+    @elseif ($course_id && $course_id !== 'null')
         <div class="p-12 text-center border-2 border-dashed rounded-2xl text-zinc-500">
             {{ __('No students registered for this course in the selected semester.') }}
         </div>

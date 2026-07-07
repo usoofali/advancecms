@@ -11,6 +11,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 new #[Layout('layouts.app')] #[Title('Manage CA Questions')] class extends Component {
     use WithPagination, WithFileUploads;
@@ -312,6 +313,87 @@ new #[Layout('layouts.app')] #[Title('Manage CA Questions')] class extends Compo
         
         $this->redirectRoute('cms.ca-tests.lecturer.questions', ['test_id' => $this->test_id], navigate: true);
     }
+
+    public function exportCsv(): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        Gate::authorize('ca_tests.view');
+
+        $user = auth()->user();
+        $isSuperAdmin = $user->hasRole('Super Admin');
+        $isInstAdmin = $user->hasRole('Institutional Admin');
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', \App\Models\Department::class),
+            $user->getScopedModelIds('Academic Secretary', \App\Models\Department::class),
+            $user->getScopedModelIds('Exam Officer', \App\Models\Department::class)
+        ));
+        $isRestrictedLecturer = !$isSuperAdmin && !$isInstAdmin && empty($scopedDeptIds);
+
+        $this->validate([
+            'test_id' => [
+                'required',
+                'exists:ca_tests,id',
+                function ($attribute, $value, $fail) use ($isRestrictedLecturer, $user, $scopedDeptIds) {
+                    $test = CaTest::find($value);
+                    if ($test) {
+                        if ($isRestrictedLecturer) {
+                            $isAllocated = DB::table('course_allocations')
+                                ->where('user_id', $user->id)
+                                ->where('course_id', $test->course_id)
+                                ->exists();
+                            if (!$isAllocated) {
+                                $fail('You do not have access to this CA test.');
+                            }
+                        } elseif (!empty($scopedDeptIds)) {
+                            $course = \App\Models\Course::find($test->course_id);
+                            if ($course && !in_array($course->department_id, $scopedDeptIds)) {
+                                $fail('This CA test belongs to a course outside your department.');
+                            }
+                        }
+                    }
+                }
+            ],
+        ]);
+
+        $test = CaTest::findOrFail($this->test_id);
+        $questions = CaQuestion::where('ca_test_id', $this->test_id)->with('options')->get();
+
+        $filename = "ca_questions_" . Str::slug($test->title) . "_" . now()->format('YmdHis') . ".csv";
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+
+        $callback = function () use ($questions) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['Question Text', 'Option 1', 'Option 2', 'Option 3', 'Option 4', 'Correct Index', 'Marks', 'Coins']);
+
+            foreach ($questions as $q) {
+                $options = $q->options->values();
+                $correctIdx = 1;
+                foreach ($options as $idx => $opt) {
+                    if ($opt->is_correct) {
+                        $correctIdx = $idx + 1;
+                        break;
+                    }
+                }
+
+                fputcsv($file, [
+                    $q->text,
+                    $options->get(0)?->text ?? '',
+                    $options->get(1)?->text ?? '',
+                    $options->get(2)?->text ?? '',
+                    $options->get(3)?->text ?? '',
+                    $correctIdx,
+                    $q->marks,
+                    $q->coin_reward,
+                ]);
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
 }; ?>
 
 <div class="p-6 max-w-6xl mx-auto">
@@ -329,6 +411,11 @@ new #[Layout('layouts.app')] #[Title('Manage CA Questions')] class extends Compo
         <div class="flex justify-between items-center mb-4">
             <flux:heading size="lg">{{ __('Questions for :title', ['title' => $selectedTest->title]) }}</flux:heading>
             <div class="flex gap-2">
+                @can('ca_tests.view')
+                    <flux:button icon="arrow-down-tray" variant="subtle" wire:click="exportCsv">
+                        {{ __('Export CSV') }}
+                    </flux:button>
+                @endcan
                 @can('ca_tests.edit')
                     <flux:button icon="arrow-up-tray" variant="subtle" wire:click="$set('showImportModal', true)">
                         {{ __('Import CSV') }}

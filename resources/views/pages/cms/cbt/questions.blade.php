@@ -21,6 +21,8 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
     public $selectedExamId = '';
     public bool $showModal = false;
     public bool $showImportModal = false;
+    public bool $showDeleteModal = false;
+    public $questionToDelete = null;
     public $editingId = null;
 
     public string $question_text = '';
@@ -334,9 +336,19 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
         $this->showModal = true;
     }
 
-    public function delete($id): void
+    public function confirmDelete($id): void
     {
         Gate::authorize('cbt_questions.delete');
+        $this->questionToDelete = $id;
+        $this->showDeleteModal = true;
+    }
+
+    public function delete(): void
+    {
+        Gate::authorize('cbt_questions.delete');
+
+        if (!$this->questionToDelete) return;
+        $id = $this->questionToDelete;
 
         $user = auth()->user();
         $isSuperAdmin = $user->hasRole('Super Admin');
@@ -376,6 +388,10 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
         }
 
         CbtQuestion::findOrFail($id)->delete();
+        
+        $this->showDeleteModal = false;
+        $this->questionToDelete = null;
+
         $this->dispatch('notify', [
             'type' => 'success',
             'message' => 'Question deleted successfully.',
@@ -571,7 +587,7 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
                                         <flux:button variant="ghost" size="sm" icon="pencil-square" wire:click="edit({{ $q->id }})" />
                                     @endcan
                                     @can('cbt_questions.delete')
-                                        <flux:button variant="ghost" size="sm" icon="trash" color="red" wire:click="delete({{ $q->id }})" wire:confirm="{{ __('Delete this question?') }}" />
+                                        <flux:button variant="ghost" size="sm" icon="trash" color="red" wire:click="confirmDelete({{ $q->id }})" />
                                     @endcan
                                 </div>
                             </flux:table.cell>
@@ -677,5 +693,24 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
                 </flux:button>
             </div>
         </form>
+    </flux:modal>
+
+    {{-- Delete Modal --}}
+    <flux:modal wire:model="showDeleteModal" class="md:w-96">
+        <div class="space-y-6">
+            <div>
+                <flux:heading size="lg">{{ __('Delete Question') }}</flux:heading>
+                <flux:subheading>
+                    <p class="mt-1">{{ __('Are you sure you want to delete this question? This action cannot be undone.') }}</p>
+                </flux:subheading>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                </flux:modal.close>
+                <flux:button variant="danger" wire:click="delete">{{ __('Delete Question') }}</flux:button>
+            </div>
+        </div>
     </flux:modal>
 </div>

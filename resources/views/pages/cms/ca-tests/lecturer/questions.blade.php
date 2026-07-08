@@ -397,20 +397,20 @@ new #[Layout('layouts.app')] #[Title('Manage CA Questions')] class extends Compo
 }; ?>
 
 <div class="p-6 max-w-6xl mx-auto">
-    <div class="flex items-center justify-between mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
             <flux:heading size="xl">{{ __('Question Bank') }}</flux:heading>
             <flux:subheading>{{ __('Manage questions for your CA tests.') }}</flux:subheading>
         </div>
-        <flux:button variant="ghost" :href="route('cms.ca-tests.lecturer.index')" wire:navigate icon="arrow-left">
+        <flux:button variant="ghost" :href="route('cms.ca-tests.lecturer.index')" wire:navigate icon="arrow-left" class="self-start sm:self-auto">
             {{ __('Back to CA Tests') }}
         </flux:button>
     </div>
 
     @if($selectedTest)
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <flux:heading size="lg">{{ __('Questions for :title', ['title' => $selectedTest->title]) }}</flux:heading>
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2 items-center">
                 @can('ca_tests.view')
                     <flux:button icon="arrow-down-tray" variant="subtle" wire:click="exportCsv">
                         {{ __('Export CSV') }}

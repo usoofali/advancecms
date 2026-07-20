@@ -1,6 +1,61 @@
 <?php
 require 'admin_auth.php';
 
+// Logo upload logic
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_logo'])) {
+    if (isset($_FILES['logo']) && $_FILES['logo']['error'] === UPLOAD_ERR_OK) {
+        $tmpName = $_FILES['logo']['tmp_name'];
+        $type = mime_content_type($tmpName);
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        
+        if (in_array($type, $allowedTypes)) {
+            $destPath = __DIR__ . '/asset/logo.jpg';
+            if (!is_dir(__DIR__ . '/asset')) {
+                mkdir(__DIR__ . '/asset', 0777, true);
+            }
+            
+            // Create image from uploaded file
+            $image = false;
+            switch ($type) {
+                case 'image/jpeg':
+                    $image = @imagecreatefromjpeg($tmpName);
+                    break;
+                case 'image/png':
+                    $image = @imagecreatefrompng($tmpName);
+                    break;
+                case 'image/gif':
+                    $image = @imagecreatefromgif($tmpName);
+                    break;
+                case 'image/webp':
+                    $image = @imagecreatefromwebp($tmpName);
+                    break;
+            }
+            
+            if ($image !== false) {
+                // Ensure the background is white if converting from transparent PNG/GIF/WEBP
+                if ($type !== 'image/jpeg') {
+                    $bg = imagecreatetruecolor(imagesx($image), imagesy($image));
+                    imagefill($bg, 0, 0, imagecolorallocate($bg, 255, 255, 255));
+                    imagecopy($bg, $image, 0, 0, 0, 0, imagesx($image), imagesy($image));
+                    imagedestroy($image);
+                    $image = $bg;
+                }
+                
+                // Save as JPEG
+                imagejpeg($image, $destPath, 90);
+                imagedestroy($image);
+                $success_msg = "Logo updated successfully.";
+            } else {
+                $error_msg = "Failed to process the image.";
+            }
+        } else {
+            $error_msg = "Invalid file type. Please upload an image (JPG, PNG, GIF, WEBP).";
+        }
+    } else {
+        $error_msg = "Error uploading file. Please try again.";
+    }
+}
+
 // Fetch Stats (Logic BEFORE layout)
 $exams_count = $pdo->query('SELECT COUNT(*) FROM exams')->fetchColumn();
 $active_sessions = $pdo->query('SELECT COUNT(*) FROM exam_session WHERE submit_status = 0 AND stop_at > NOW()')->fetchColumn();
@@ -115,6 +170,20 @@ require 'admin_layout.php';
                     <span class="fw-600">Manage Students</span>
                 </a>
             </div>
+
+            <hr class="my-4">
+            
+            <h6 class="fw-bold mb-3">Update Logo</h6>
+            <?php if (isset($success_msg)): ?>
+                <div class="alert alert-success py-2 px-3 mb-3" style="font-size: 0.85rem;"><?php echo htmlspecialchars($success_msg); ?></div>
+            <?php endif; ?>
+            <?php if (isset($error_msg)): ?>
+                <div class="alert alert-danger py-2 px-3 mb-3" style="font-size: 0.85rem;"><?php echo htmlspecialchars($error_msg); ?></div>
+            <?php endif; ?>
+            <form action="" method="post" enctype="multipart/form-data" class="d-flex flex-column gap-2">
+                <input type="file" name="logo" accept="image/*" class="form-control form-control-sm" required>
+                <button type="submit" name="update_logo" class="btn btn-sm btn-primary fw-bold">Upload Logo</button>
+            </form>
         </div>
     </div>
 </div>

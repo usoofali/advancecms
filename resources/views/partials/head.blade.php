@@ -12,11 +12,11 @@
 <link rel="preconnect" href="https://fonts.bunny.net">
 <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
 
-@if (file_exists(public_path('build/manifest.json')))
-    <link rel="stylesheet" href="{{ asset('build/assets/app-CfSdQiQl.css') }}">
-    <script type="module" src="{{ asset('build/assets/app-BKKWCaaX.js') }}"></script>
-@else
+@if(app()->environment('local'))
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+@else
+    <link rel="stylesheet" href="{{ asset('build/assets/app-BftEI6Ws.css') }}">
+    <script type="module" src="{{ asset('build/assets/app-Dmvx24LL.js') }}"></script>
 @endif
 @fluxAppearance
 <style>

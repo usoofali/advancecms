@@ -52,7 +52,7 @@ new #[Layout('layouts.app')] #[Title('Create/Edit CA Test')] class extends Compo
             // Get program and level from course to pre-populate filters
             $this->filter_program_id = $test->course->program_id ?? '';
             $this->filter_level = $test->course->level ?? '';
-            
+
             $this->test_type = $test->test_type;
             $this->duration_minutes = $test->duration_minutes ?? 30;
             $this->max_attempts = $test->max_attempts;
@@ -145,7 +145,7 @@ new #[Layout('layouts.app')] #[Title('Create/Edit CA Test')] class extends Compo
                             ->where('user_id', $user->id)
                             ->where('course_id', $value)
                             ->exists();
-                            
+
                         $course = \App\Models\Course::find($value);
                         $isScoped = $course && !empty($scopedDeptIds) && in_array($course->department_id, $scopedDeptIds);
 
@@ -199,6 +199,7 @@ new #[Layout('layouts.app')] #[Title('Create/Edit CA Test')] class extends Compo
             $test->update($data);
             $message = 'CA Test updated successfully.';
         } else {
+            $data['created_by_id'] = $user->id;
             CaTest::create($data);
             $message = 'CA Test created successfully.';
         }
@@ -216,11 +217,11 @@ new #[Layout('layouts.app')] #[Title('Create/Edit CA Test')] class extends Compo
     <div class="flex items-center justify-between mb-8">
         <div>
             <flux:heading size="xl">{{ $edit ? __('Edit CA Test') : __('Create CA Test') }}</flux:heading>
-            <flux:subheading>{{ $edit ? __('Update the settings for this Continuous Assessment.') : __('Setup a new Continuous Assessment for your students.') }}</flux:subheading>
+            <flux:subheading>
+                {{ $edit ? __('Update the settings for this Continuous Assessment.') : __('Setup a new Continuous Assessment for your students.') }}
+            </flux:subheading>
         </div>
-        <flux:button variant="ghost" :href="route('cms.ca-tests.lecturer.index')" wire:navigate icon="arrow-left">
-            {{ __('Back to Tests') }}
-        </flux:button>
+        <flux:button :href="route('cms.ca-tests.lecturer.index')" wire:navigate icon="arrow-left" />
     </div>
 
     <form wire:submit="save" class="space-y-6">
@@ -315,7 +316,8 @@ new #[Layout('layouts.app')] #[Title('Create/Edit CA Test')] class extends Compo
                     </flux:card>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                <div
+                    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-4 border-t border-zinc-100 dark:border-zinc-800">
                     <flux:checkbox wire:model="coin_reward_enabled" label="{{ __('Enable Coin Rewards') }}"
                         description="{{ __('Award coins for correct answers.') }}" />
                     <flux:checkbox wire:model="is_published" label="{{ __('Publish Immediately') }}"
@@ -329,7 +331,9 @@ new #[Layout('layouts.app')] #[Title('Create/Edit CA Test')] class extends Compo
         <div class="flex justify-end gap-3">
             <flux:button variant="ghost" :href="route('cms.ca-tests.lecturer.index')" wire:navigate>{{ __('Cancel') }}
             </flux:button>
-            <flux:button variant="primary" type="submit" icon="check">{{ $edit ? __('Update CA Test') : __('Save CA Test') }}</flux:button>
+            <flux:button variant="primary" type="submit" icon="check">
+                {{ $edit ? __('Update CA Test') : __('Save CA Test') }}
+            </flux:button>
         </div>
     </form>
 </div>

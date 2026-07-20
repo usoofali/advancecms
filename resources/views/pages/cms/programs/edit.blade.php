@@ -16,6 +16,7 @@ new #[Layout('layouts.app')] #[Title('Edit Program')] class extends Component {
     public int $duration_years = 3;
     public string $award_type = 'diploma';
     public string $status = 'active';
+    public bool $results_locked = false;
 
     public function mount(Program $program): void
     {
@@ -34,6 +35,7 @@ new #[Layout('layouts.app')] #[Title('Edit Program')] class extends Component {
         $this->duration_years = $program->duration_years;
         $this->award_type = $program->award_type;
         $this->status = $program->status;
+        $this->results_locked = (bool) $program->results_locked;
     }
 
     public function save(): void
@@ -57,6 +59,7 @@ new #[Layout('layouts.app')] #[Title('Edit Program')] class extends Component {
             'duration_years' => ['required', 'integer', 'min:1', 'max:10'],
             'award_type'    => ['required', 'in:certificate,diploma,degree'],
             'status'         => ['required', 'in:active,inactive'],
+            'results_locked' => ['boolean'],
         ]);
 
         $this->program->update($validated);
@@ -123,6 +126,10 @@ new #[Layout('layouts.app')] #[Title('Edit Program')] class extends Component {
                     <flux:select.option value="active">{{ __('Active') }}</flux:select.option>
                     <flux:select.option value="inactive">{{ __('Inactive') }}</flux:select.option>
                 </flux:select>
+
+                <div class="pt-2 border-t border-zinc-100 dark:border-zinc-800">
+                    <flux:switch wire:model="results_locked" :label="__('Lock Results for Students')" :description="__('If enabled, students in this program will not be able to view their academic results and will see a message indicating results are being processed.')" />
+                </div>
             </div>
         </flux:fieldset>
 

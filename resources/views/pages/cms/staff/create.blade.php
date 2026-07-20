@@ -15,6 +15,10 @@ new #[Layout('layouts.app')] #[Title('Add Staff')] class extends Component {
     public ?string $last_name = '';
     public ?string $email = '';
     public ?string $phone = '';
+    public ?string $next_of_kin_name = '';
+    public ?string $next_of_kin_relationship = '';
+    public ?string $next_of_kin_phone = '';
+    public ?string $next_of_kin_address = '';
     public ?string $designation = '';
     public ?string $status = 'active';
 
@@ -38,6 +42,10 @@ new #[Layout('layouts.app')] #[Title('Add Staff')] class extends Component {
             'last_name'      => ['required', 'string', 'max:255'],
             'email'          => ['required', 'email', 'max:255', 'unique:staff,email', 'unique:users,email'],
             'phone'          => ['nullable', 'string', 'max:30'],
+            'next_of_kin_name' => ['nullable', 'string', 'max:255'],
+            'next_of_kin_relationship' => ['nullable', 'string', 'max:255'],
+            'next_of_kin_phone' => ['nullable', 'string', 'max:255'],
+            'next_of_kin_address' => ['nullable', 'string', 'max:500'],
             'designation'    => ['required', 'string', 'max:255'],
             'status'         => ['required', 'in:active,inactive,suspended,retired'],
         ]);
@@ -96,6 +104,20 @@ new #[Layout('layouts.app')] #[Title('Add Staff')] class extends Component {
                 <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
                     <flux:input wire:model="email" :label="__('Email')" type="email" required />
                     <flux:input wire:model="phone" :label="__('Phone')" />
+                </div>
+            </div>
+        </flux:fieldset>
+
+        <flux:fieldset>
+            <flux:legend>{{ __('Next of Kin') }}</flux:legend>
+            <div class="grid gap-6">
+                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <flux:input wire:model="next_of_kin_name" :label="__('Name')" />
+                    <flux:input wire:model="next_of_kin_relationship" :label="__('Relationship')" />
+                </div>
+                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <flux:input wire:model="next_of_kin_phone" :label="__('Phone Number')" />
+                    <flux:input wire:model="next_of_kin_address" :label="__('Address')" />
                 </div>
             </div>
         </flux:fieldset>

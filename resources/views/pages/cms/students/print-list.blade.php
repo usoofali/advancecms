@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AcademicSession;
 use App\Models\Department;
 use App\Models\Institution;
 use App\Models\Program;
@@ -8,7 +9,8 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 
-new #[Layout('layouts.guest')] #[Title('Print Student List')] class extends Component {
+new #[Layout('layouts.guest')] #[Title('Print Student List')] class extends Component
+{
     public $institution_id;
 
     public $department_id;
@@ -20,7 +22,7 @@ new #[Layout('layouts.guest')] #[Title('Print Student List')] class extends Comp
     public $status;
 
     public string $search = '';
-    
+
     public ?Institution $institution = null;
 
     public function mount()
@@ -37,25 +39,36 @@ new #[Layout('layouts.guest')] #[Title('Print Student List')] class extends Comp
 
     public function students()
     {
-        $activeSession = \App\Models\AcademicSession::where('status', 'active')->first();
+        $activeSession = AcademicSession::where('status', 'active')->first();
 
         return Student::query()
             ->with(['program.department.institution'])
-            ->when($this->institution_id ?: auth()->user()->institution_id, fn($q, $id) => $q->where('institution_id', $id))
+            ->when($this->institution_id ?: auth()->user()->institution_id, fn ($q, $id) => $q->where('institution_id', $id))
             ->when($this->department_id, function ($q) {
-                $q->whereHas('program', fn($pq) => $pq->where('department_id', $this->department_id));
+                $q->whereHas('program', fn ($pq) => $pq->where('department_id', $this->department_id));
             })
-            ->when($this->program_id, fn($q) => $q->where('program_id', $this->program_id))
+            ->when($this->program_id, fn ($q) => $q->where('program_id', $this->program_id))
             ->when($this->level, function ($q) use ($activeSession) {
+                if ($this->level === 'alumni') {
+                    if ($activeSession) {
+                        return $q->whereRaw("entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS SIGNED) - CAST(admission_year AS SIGNED)) * 100 > 300", [
+                            $activeSession->name,
+                        ]);
+                    }
+
+                    return $q->where('entry_level', '>', 300);
+                }
+
                 if ($activeSession) {
-                    return $q->whereRaw("entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS UNSIGNED) - admission_year) * 100 = ?", [
+                    return $q->whereRaw("entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS SIGNED) - CAST(admission_year AS SIGNED)) * 100 = ?", [
                         $activeSession->name,
-                        $this->level
+                        $this->level,
                     ]);
                 }
+
                 return $q->where('entry_level', $this->level);
             })
-            ->when($this->status, fn($q) => $q->where('status', $this->status))
+            ->when($this->status, fn ($q) => $q->where('status', $this->status))
             ->when($this->search, function ($q) {
                 $q->where(function ($sq) {
                     $sq->where('first_name', 'like', "%{$this->search}%")
@@ -80,13 +93,13 @@ new #[Layout('layouts.guest')] #[Title('Print Student List')] class extends Comp
             $parts[] = Program::find($this->program_id)?->name;
         }
         if ($this->level) {
-            $parts[] = 'Level ' . $this->level;
+            $parts[] = $this->level === 'alumni' ? 'Alumni (>300 Level)' : 'Level '.$this->level;
         }
         if ($this->status) {
             $parts[] = ucfirst($this->status);
         }
 
-        return !empty($parts) ? implode(' - ', $parts) : 'All Students';
+        return ! empty($parts) ? implode(' - ', $parts) : 'All Students';
     }
 };
 ?>
@@ -125,7 +138,10 @@ new #[Layout('layouts.guest')] #[Title('Print Student List')] class extends Comp
                     </td>
                     <td class="border border-gray-300 px-3 py-2 uppercase">{{ $student->full_name }}</td>
                     <td class="border border-gray-300 px-3 py-2 uppercase text-xs">{{ $student->program->acronym }}</td>
-                    <td class="border border-gray-300 px-3 py-2">{{ $student->entry_level }}</td>
+                    <td class="border border-gray-300 px-3 py-2">
+                        @php $activeSession = \App\Models\AcademicSession::where('status', 'active')->first(); @endphp
+                        {{ $activeSession ? $student->currentLevel($activeSession) : $student->entry_level }}L
+                    </td>
                     <td class="border border-gray-300 px-3 py-2 uppercase">{{ $student->status }}</td>
                 </tr>
             @endforeach

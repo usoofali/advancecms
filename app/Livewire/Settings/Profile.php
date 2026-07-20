@@ -4,6 +4,7 @@ namespace App\Livewire\Settings;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -16,11 +17,21 @@ class Profile extends Component
 
     public $photo;
 
+    public string $signature_data = '';
+
     public string $phone = '';
 
     public string $gender = '';
 
     public string $date_of_birth = '';
+
+    public string $next_of_kin_name = '';
+
+    public string $next_of_kin_relationship = '';
+
+    public string $next_of_kin_phone = '';
+
+    public string $next_of_kin_address = '';
 
     // Student Specific Fields
     public string $blood_group = '';
@@ -70,6 +81,10 @@ class Profile extends Component
             $this->phone = $student->phone ?? '';
             $this->gender = $student->gender ?? '';
             $this->date_of_birth = $student->date_of_birth ? $student->date_of_birth->format('Y-m-d') : '';
+            $this->next_of_kin_name = $student->next_of_kin_name ?? '';
+            $this->next_of_kin_relationship = $student->next_of_kin_relationship ?? '';
+            $this->next_of_kin_phone = $student->next_of_kin_phone ?? '';
+            $this->next_of_kin_address = $student->next_of_kin_address ?? '';
             $this->blood_group = $student->blood_group ?? '';
             $this->state = $student->state ?? '';
             $this->lga = $student->lga ?? '';
@@ -88,6 +103,10 @@ class Profile extends Component
             $this->phone = $user->staff->phone ?? '';
             $this->gender = $user->staff->gender ?? '';
             $this->date_of_birth = $user->staff->date_of_birth ? $user->staff->date_of_birth->format('Y-m-d') : '';
+            $this->next_of_kin_name = $user->staff->next_of_kin_name ?? '';
+            $this->next_of_kin_relationship = $user->staff->next_of_kin_relationship ?? '';
+            $this->next_of_kin_phone = $user->staff->next_of_kin_phone ?? '';
+            $this->next_of_kin_address = $user->staff->next_of_kin_address ?? '';
             $this->bank_name = $user->staff->bank_name ?? '';
             $this->account_number = $user->staff->account_number ?? '';
             $this->account_name = $user->staff->account_name ?? '';
@@ -106,6 +125,10 @@ class Profile extends Component
             'phone' => ['required', 'string', 'max:20'],
             'gender' => ['nullable', 'string', 'in:male,female'],
             'date_of_birth' => ['nullable', 'date', 'before:today'],
+            'next_of_kin_name' => ['nullable', 'string', 'max:255'],
+            'next_of_kin_relationship' => ['nullable', 'string', 'max:255'],
+            'next_of_kin_phone' => ['nullable', 'string', 'max:255'],
+            'next_of_kin_address' => ['nullable', 'string', 'max:500'],
         ];
 
         if ($user->hasRole('Student')) {
@@ -173,11 +196,28 @@ class Profile extends Component
             $photoPath = $this->photo->store('profiles', 'public');
         }
 
+        $signaturePath = null;
+        if (! empty($this->signature_data) && str_starts_with($this->signature_data, 'data:image')) {
+            $imageParts = explode(';base64,', $this->signature_data);
+            if (count($imageParts) === 2) {
+                $imageTypeAux = explode('image/', $imageParts[0]);
+                $imageType = $imageTypeAux[1] ?? 'png';
+                $imageBase64 = base64_decode($imageParts[1]);
+                $fileName = 'signatures/'.uniqid().'.'.$imageType;
+                Storage::disk('public')->put($fileName, $imageBase64);
+                $signaturePath = $fileName;
+            }
+        }
+
         if ($user->hasRole('Student')) {
             $data = [
                 'phone' => $this->phone,
                 'gender' => $this->gender ?: null,
                 'date_of_birth' => $this->date_of_birth ?: null,
+                'next_of_kin_name' => $this->next_of_kin_name ?: null,
+                'next_of_kin_relationship' => $this->next_of_kin_relationship ?: null,
+                'next_of_kin_phone' => $this->next_of_kin_phone ?: null,
+                'next_of_kin_address' => $this->next_of_kin_address ?: null,
                 'blood_group' => $this->blood_group ?: null,
                 'state' => $this->state ?: null,
                 'lga' => $this->lga ?: null,
@@ -197,6 +237,9 @@ class Profile extends Component
             if ($photoPath) {
                 $data['photo_path'] = $photoPath;
             }
+            if ($signaturePath) {
+                $data['signature_path'] = $signaturePath;
+            }
 
             $user->student->update($data);
         } elseif ($user->isStaff()) {
@@ -204,6 +247,10 @@ class Profile extends Component
                 'phone' => $this->phone,
                 'gender' => $this->gender ?: null,
                 'date_of_birth' => $this->date_of_birth ?: null,
+                'next_of_kin_name' => $this->next_of_kin_name ?: null,
+                'next_of_kin_relationship' => $this->next_of_kin_relationship ?: null,
+                'next_of_kin_phone' => $this->next_of_kin_phone ?: null,
+                'next_of_kin_address' => $this->next_of_kin_address ?: null,
                 'bank_name' => $this->bank_name ?: null,
                 'account_number' => $this->account_number ?: null,
                 'account_name' => $this->account_name ?: null,
@@ -211,6 +258,9 @@ class Profile extends Component
 
             if ($photoPath) {
                 $data['photo_path'] = $photoPath;
+            }
+            if ($signaturePath) {
+                $data['signature_path'] = $signaturePath;
             }
 
             $user->staff->update($data);

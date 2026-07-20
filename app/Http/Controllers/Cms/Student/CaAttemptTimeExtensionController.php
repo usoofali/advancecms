@@ -38,7 +38,7 @@ class CaAttemptTimeExtensionController extends Controller
 
         return response()->json([
             'message' => 'Time extended successfully',
-            'remainingSeconds' => $remainingSeconds < 0 ? 0 : $remainingSeconds
+            'remainingSeconds' => $remainingSeconds < 0 ? 0 : $remainingSeconds,
         ]);
     }
 }

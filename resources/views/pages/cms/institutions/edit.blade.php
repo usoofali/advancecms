@@ -73,6 +73,8 @@ new #[Layout('layouts.app')] #[Title('Edit Institution')] class extends Componen
             $validated['logo_path'] = $this->logo->store('institutions/logos', 'public');
         }
 
+        $validated = array_map(fn ($value) => $value === '' ? null : $value, $validated);
+
         $this->institution->update($validated);
 
         session()->flash('success', 'Institution updated successfully.');

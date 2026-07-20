@@ -139,6 +139,18 @@ $profile = $this->profile;
                             <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-zinc-400">{{ __('Security & Contact') }}</flux:heading>
                             <flux:input wire:model="phone" :label="__('Phone Number')" type="tel" icon="phone" placeholder="e.g. +234..." />
 
+                            <div class="pt-4 space-y-4 border-t border-zinc-100 dark:border-zinc-800">
+                                <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-zinc-400">{{ __('Emergency Contact (Next of Kin)') }}</flux:heading>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <flux:input wire:model="next_of_kin_name" :label="__('Name')" icon="user" />
+                                    <flux:input wire:model="next_of_kin_relationship" :label="__('Relationship')" icon="users" />
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <flux:input wire:model="next_of_kin_phone" :label="__('Phone Number')" icon="phone" />
+                                    <flux:input wire:model="next_of_kin_address" :label="__('Address')" icon="map-pin" />
+                                </div>
+                            </div>
+
                             @if($user->isStaff())
                             <div class="pt-4 space-y-4 border-t border-zinc-100 dark:border-zinc-800">
                                 <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-zinc-400">{{ __('Personal Details') }}</flux:heading>
@@ -255,6 +267,126 @@ $profile = $this->profile;
                         @endif
                     </div>
                 </div>
+
+                    <!-- Signature Pad -->
+                    <div class="space-y-4 pt-8 border-t border-zinc-100 dark:border-zinc-800">
+                        <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-zinc-400">{{ __('Digital Signature') }}</flux:heading>
+                        
+                        <div wire:ignore x-data="signaturePad()" class="space-y-4 max-w-lg">
+                            <div class="relative rounded-xl overflow-hidden border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900">
+                                <!-- Existing signature display -->
+                                <template x-if="!isDrawing && existingSignature">
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center p-4">
+                                        <img :src="existingSignature" class="max-h-full object-contain opacity-80" />
+                                        <button @click.prevent="startNewSignature" class="absolute bottom-2 right-2 text-xs bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded shadow-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">Change Signature</button>
+                                    </div>
+                                </template>
+                                
+                                <canvas x-ref="canvas" 
+                                    class="w-full h-40 cursor-crosshair touch-none" 
+                                    :class="(isDrawing || !existingSignature) ? 'opacity-100' : 'opacity-0 pointer-events-none'"></canvas>
+                                
+                                <!-- Canvas overlay to instruct the user -->
+                                <template x-if="(isDrawing || !existingSignature) && isEmpty">
+                                    <div class="absolute inset-0 pointer-events-none flex items-center justify-center text-zinc-300 dark:text-zinc-700 select-none">
+                                        {{ __('Draw your signature here') }}
+                                    </div>
+                                </template>
+                            </div>
+                            
+                            <div class="flex items-center gap-2" x-show="isDrawing || !existingSignature">
+                                <flux:button size="sm" variant="subtle" @click.prevent="clearCanvas">{{ __('Clear') }}</flux:button>
+                                <flux:text size="xs" class="text-zinc-500">{{ __('Your signature will be saved when you update your profile.') }}</flux:text>
+                            </div>
+                        </div>
+                        
+                        <script>
+                            const setupSignaturePadData = () => {
+                                // Check if Alpine is ready and data is not already registered
+                                if (window.Alpine) {
+                                    Alpine.data('signaturePad', () => ({
+                                        signaturePad: null,
+                                        isDrawing: false,
+                                        isEmpty: true,
+                                        existingSignature: '{{ $profile?->signature_path ? asset('storage/' . $profile->signature_path) : '' }}',
+                                        
+                                        init() {
+                                            if (typeof SignaturePad !== 'undefined') {
+                                                this.setupPad();
+                                            } else {
+                                                let script = document.createElement('script');
+                                                script.src = "https://cdn.jsdelivr.net/npm/signature_pad@4.1.7/dist/signature_pad.umd.min.js";
+                                                script.onload = () => this.setupPad();
+                                                document.head.appendChild(script);
+                                            }
+                                        },
+                                        
+                                        setupPad() {
+                                            const canvas = this.$refs.canvas;
+                                            this.signaturePad = new SignaturePad(canvas, {
+                                                backgroundColor: 'rgba(255, 255, 255, 0)',
+                                                penColor: document.documentElement.classList.contains('dark') ? '#ffffff' : '#000000'
+                                            });
+                                            
+                                            this.resizeCanvas();
+                                            
+                                            this.signaturePad.addEventListener("endStroke", () => {
+                                                this.isEmpty = this.signaturePad.isEmpty();
+                                                this.saveData();
+                                            });
+                                            
+                                            this.signaturePad.addEventListener("beginStroke", () => {
+                                                this.isEmpty = false;
+                                            });
+                                            
+                                            window.addEventListener('resize', () => this.resizeCanvas());
+                                        },
+                                        
+                                        resizeCanvas() {
+                                            const canvas = this.$refs.canvas;
+                                            const ratio =  Math.max(window.devicePixelRatio || 1, 1);
+                                            
+                                            if (canvas.width !== canvas.offsetWidth * ratio) {
+                                                canvas.width = canvas.offsetWidth * ratio;
+                                                canvas.height = canvas.offsetHeight * ratio;
+                                                canvas.getContext("2d").scale(ratio, ratio);
+                                                this.signaturePad.clear();
+                                                this.isEmpty = true;
+                                                this.saveData();
+                                            }
+                                        },
+                                        
+                                        clearCanvas() {
+                                            this.signaturePad.clear();
+                                            this.isEmpty = true;
+                                            this.saveData();
+                                        },
+                                        
+                                        startNewSignature() {
+                                            this.isDrawing = true;
+                                            this.$nextTick(() => {
+                                                this.resizeCanvas();
+                                            });
+                                        },
+                                        
+                                        saveData() {
+                                            if (this.signaturePad.isEmpty()) {
+                                                @this.set('signature_data', '');
+                                            } else {
+                                                @this.set('signature_data', this.signaturePad.toDataURL('image/png'));
+                                            }
+                                        }
+                                    }));
+                                }
+                            };
+
+                            if (window.Alpine) {
+                                setupSignaturePadData();
+                            } else {
+                                document.addEventListener('alpine:init', setupSignaturePadData);
+                            }
+                        </script>
+                    </div>
 
                 <div class="flex justify-end border-t border-zinc-100 dark:border-zinc-800 pt-6">
                     <flux:button variant="primary" type="submit" class="w-full md:w-auto" icon="check">

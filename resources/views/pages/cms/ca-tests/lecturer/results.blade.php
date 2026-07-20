@@ -23,6 +23,44 @@ new #[Layout('layouts.app')] #[Title('CA Test Results')] class extends Component
     #[Url]
     public string $search = '';
 
+    #[Url]
+    public $session_id = '';
+
+    #[Url]
+    public $semester_id = '';
+
+    #[Url]
+    public $program_id = '';
+
+    #[Url]
+    public $level = '';
+
+    public function updatedSessionId()
+    {
+        $this->semester_id = '';
+        $this->course_id = null;
+        $this->test_id = null;
+    }
+
+    public function updatedSemesterId()
+    {
+        $this->course_id = null;
+        $this->test_id = null;
+    }
+
+    public function updatedProgramId()
+    {
+        $this->level = '';
+        $this->course_id = null;
+        $this->test_id = null;
+    }
+
+    public function updatedLevel()
+    {
+        $this->course_id = null;
+        $this->test_id = null;
+    }
+
     public function updatedCourseId()
     {
         $this->test_id = null;
@@ -40,15 +78,17 @@ new #[Layout('layouts.app')] #[Title('CA Test Results')] class extends Component
     {
         Gate::authorize('ca_tests.edit'); // Requires edit permission to push results
 
-        if (!$this->course_id) return;
+        if (!$this->course_id)
+            return;
         $course = \App\Models\Course::find($this->course_id);
-        if (!$course) return;
+        if (!$course)
+            return;
 
         // Get all unique students who have a graded CaResult for ANY test in this course
         $studentsToSync = CaResult::whereHas('caTest', function ($query) {
-                $query->where('course_id', $this->course_id)
-                      ->where('test_type', 'graded');
-            })
+            $query->where('course_id', $this->course_id)
+                ->where('test_type', 'graded');
+        })
             ->select('student_id')
             ->distinct()
             ->get()
@@ -66,10 +106,11 @@ new #[Layout('layouts.app')] #[Title('CA Test Results')] class extends Component
                 $allStudentResults = CaResult::where('student_id', $studentId)
                     ->whereHas('caTest', function ($query) {
                         $query->where('course_id', $this->course_id)
-                              ->where('test_type', 'graded');
+                            ->where('test_type', 'graded');
                     })->get();
-                    
-                if ($allStudentResults->isEmpty()) continue;
+
+                if ($allStudentResults->isEmpty())
+                    continue;
 
                 $firstTest = $allStudentResults->first()->caTest;
                 $finalCaScore = 0.0;
@@ -129,6 +170,11 @@ new #[Layout('layouts.app')] #[Title('CA Test Results')] class extends Component
         ));
         $isRestrictedLecturer = !$isSuperAdmin && !$isInstAdmin && empty($scopedDeptIds);
 
+        $sessions = \App\Models\AcademicSession::all();
+        $semesters = $this->session_id ? \App\Models\Semester::where('academic_session_id', $this->session_id)->get() : collect();
+        $programs = \App\Models\Program::where('institution_id', $user->institution_id)->get();
+        $levels = [100, 200, 300];
+
         $courses = \App\Models\Course::where('institution_id', $user->institution_id)
             ->when(!$isSuperAdmin && !$isInstAdmin, function ($q) use ($user, $scopedDeptIds) {
                 $q->where(function ($subQ) use ($user, $scopedDeptIds) {
@@ -142,6 +188,15 @@ new #[Layout('layouts.app')] #[Title('CA Test Results')] class extends Component
                         $subQ->orWhereIn('department_id', $scopedDeptIds);
                     }
                 });
+            })
+            ->when($this->program_id, fn($q) => $q->where('program_id', $this->program_id))
+            ->when($this->level, fn($q) => $q->where('level', $this->level))
+            ->when($this->semester_id, function ($q) use ($semesters) {
+                $sem = $semesters->firstWhere('id', $this->semester_id);
+                if ($sem) {
+                    $val = strtolower($sem->name) === 'first' ? 1 : 2;
+                    $q->where('semester', $val);
+                }
             })
             ->orderBy('course_code')
             ->get();
@@ -176,6 +231,10 @@ new #[Layout('layouts.app')] #[Title('CA Test Results')] class extends Component
         }
 
         return [
+            'sessions' => $sessions,
+            'semesters' => $semesters,
+            'programs' => $programs,
+            'levels' => $levels,
             'courses' => $courses,
             'tests' => $tests,
             'selectedTest' => $selectedTest,
@@ -191,42 +250,68 @@ new #[Layout('layouts.app')] #[Title('CA Test Results')] class extends Component
             <flux:heading size="xl">{{ __('Test Results') }}</flux:heading>
             <flux:subheading>{{ __('View student performance and normalized scores.') }}</flux:subheading>
         </div>
-        <flux:button variant="ghost" :href="route('cms.ca-tests.lecturer.index')" wire:navigate icon="arrow-left">
-            {{ __('Back to CA Tests') }}
-        </flux:button>
+        <flux:button :href="route('cms.ca-tests.lecturer.index')" wire:navigate icon="arrow-left" />
     </div>
 
-    <div class="mb-8 flex flex-col sm:flex-row items-end gap-4">
-        <div class="w-full sm:w-1/2">
-            <flux:select wire:model.live="course_id" label="{{ __('Select Course') }}">
-                <option value="">{{ __('-- Choose a Course --') }}</option>
-                @foreach($courses as $course)
-                    <option value="{{ $course->id }}">{{ $course->course_code }} - {{ $course->title }}</option>
-                @endforeach
-            </flux:select>
-        </div>
+    <div class="mb-8 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+        <flux:select wire:model.live="session_id" label="{{ __('Session') }}">
+            <option value="">{{ __('All Sessions') }}</option>
+            @foreach($sessions as $session)
+                <option value="{{ $session->id }}">{{ $session->name }}</option>
+            @endforeach
+        </flux:select>
+
+        <flux:select wire:model.live="semester_id" label="{{ __('Semester') }}" :disabled="!$session_id">
+            <option value="">{{ __('All Semesters') }}</option>
+            @foreach($semesters as $semester)
+                <option value="{{ $semester->id }}">{{ ucfirst($semester->name) }}</option>
+            @endforeach
+        </flux:select>
+
+        <flux:select wire:model.live="program_id" label="{{ __('Program') }}">
+            <option value="">{{ __('All Programs') }}</option>
+            @foreach($programs as $program)
+                <option value="{{ $program->id }}">{{ $program->acronym ?? $program->name }}</option>
+            @endforeach
+        </flux:select>
+
+        <flux:select wire:model.live="level" label="{{ __('Level') }}">
+            <option value="">{{ __('All Levels') }}</option>
+            @foreach($levels as $lvl)
+                <option value="{{ $lvl }}">{{ $lvl }}</option>
+            @endforeach
+        </flux:select>
+
+        <flux:select wire:model.live="course_id" label="{{ __('Course') }}">
+            <option value="">{{ __('-- Choose Course --') }}</option>
+            @foreach($courses as $course)
+                <option value="{{ $course->id }}">{{ $course->course_code }} - {{ $course->title }}</option>
+            @endforeach
+        </flux:select>
 
         @if($course_id)
-            <div class="w-full sm:w-1/2">
-                <flux:select wire:model.live="test_id" label="{{ __('Select CA Test') }}">
-                    <option value="">{{ __('-- Choose a Test to View Results --') }}</option>
-                    @foreach($tests as $test)
-                        <option value="{{ $test->id }}">{{ $test->title }} ({{ ucfirst($test->test_type) }})</option>
-                    @endforeach
-                </flux:select>
-            </div>
+            <flux:select wire:model.live="test_id" label="{{ __('CA Test') }}">
+                <option value="">{{ __('-- Select Test --') }}</option>
+                @foreach($tests as $test)
+                    <option value="{{ $test->id }}">{{ $test->title }}</option>
+                @endforeach
+            </flux:select>
         @endif
     </div>
 
     @if($course_id && $selectedCourse)
-        <div class="mb-6 flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+        <div
+            class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
             <div>
-                <flux:heading size="md">{{ __('Course Sync Operations') }}</flux:heading>
-                <flux:subheading size="sm">{{ __('Aggregate and sync all graded CA tests for this course into the master result sheet.') }}</flux:subheading>
+                <flux:heading size="md">{{ __('Course Push Operations') }}</flux:heading>
+                <flux:subheading size="sm">
+                    {{ __('Aggregate and push all graded CA tests for this course into the master result sheet.') }}
+                </flux:subheading>
             </div>
             @can('ca_tests.edit')
-                <flux:button variant="primary" icon="arrow-path" wire:click="$set('showSyncModal', true)">
-                    {{ __('Sync Course Scores') }}
+                <flux:button variant="primary" icon="arrow-up-tray" wire:click="$set('showSyncModal', true)"
+                    class="w-full sm:w-auto shrink-0">
+                    {{ __('Push CA Test Scores') }}
                 </flux:button>
             @endcan
         </div>
@@ -234,7 +319,7 @@ new #[Layout('layouts.app')] #[Title('CA Test Results')] class extends Component
 
     @if($selectedTest)
         <div class="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <flux:heading size="lg">{{ __('Results for :title', ['title' => $selectedTest->title]) }}</flux:heading>
+            <flux:heading size="lg">{{ __('Results for :title', ['title' => $selectedTest->title]) }}</flux:heading>
             <flux:input icon="magnifying-glass" wire:model.live.debounce.300ms="search"
                 placeholder="{{ __('Search students...') }}" class="w-full sm:w-64" />
         </div>
@@ -270,7 +355,8 @@ new #[Layout('layouts.app')] #[Title('CA Test Results')] class extends Component
                             @if($result->synced_at)
                                 <div class="flex flex-col">
                                     <flux:badge color="green" size="sm">{{ __('Synced') }}</flux:badge>
-                                    <span class="text-[10px] text-zinc-400 mt-1">{{ $result->synced_at->format('M d, y H:i') }}</span>
+                                    <span
+                                        class="text-[10px] text-zinc-400 mt-1">{{ $result->synced_at->format('M d, y H:i') }}</span>
                                 </div>
                             @else
                                 <flux:badge color="orange" size="sm">{{ __('Pending') }}</flux:badge>
@@ -287,10 +373,10 @@ new #[Layout('layouts.app')] #[Title('CA Test Results')] class extends Component
             </flux:table.rows>
         </flux:table>
 
-        <flux:modal wire:model="showSyncModal" class="md:w-96">
+        <flux:modal wire:model="showSyncModal" class="md:w-[32rem]">
             <div class="space-y-6">
                 <div>
-                    <flux:heading size="lg">{{ __('Sync CA Scores') }}</flux:heading>
+                    <flux:heading size="lg">{{ __('Push CA Test Scores') }}</flux:heading>
                     <flux:subheading>{{ __('Push these results to the master academic records.') }}</flux:subheading>
                 </div>
 
@@ -300,9 +386,12 @@ new #[Layout('layouts.app')] #[Title('CA Test Results')] class extends Component
                         {{ __('If a student has taken multiple CA tests for this course, how should their final CA score (out of 30) be calculated?') }}
                     </flux:text>
                     <flux:radio.group wire:model="syncOption">
-                        <flux:radio value="sum" label="{{ __('Sum / Cumulative') }}" description="{{ __('Add normalized scores together (max 30).') }}" />
-                        <flux:radio value="average" label="{{ __('Average') }}" description="{{ __('Average the normalized scores.') }}" />
-                        <flux:radio value="highest" label="{{ __('Highest Score') }}" description="{{ __('Take the highest normalized score.') }}" />
+                        <flux:radio value="sum" label="{{ __('Sum / Cumulative') }}"
+                            description="{{ __('Add normalized scores together (max 30).') }}" />
+                        <flux:radio value="average" label="{{ __('Average') }}"
+                            description="{{ __('Average the normalized scores.') }}" />
+                        <flux:radio value="highest" label="{{ __('Highest Score') }}"
+                            description="{{ __('Take the highest normalized score.') }}" />
                     </flux:radio.group>
                 </div>
 
@@ -314,7 +403,8 @@ new #[Layout('layouts.app')] #[Title('CA Test Results')] class extends Component
                     <flux:modal.close>
                         <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                     </flux:modal.close>
-                    <flux:button variant="primary" wire:click="syncResults">{{ __('Sync Results') }}</flux:button>
+                    <flux:button variant="primary" wire:click="syncResults" icon="arrow-up-tray">{{ __('Push Scores') }}
+                    </flux:button>
                 </div>
             </div>
         </flux:modal>

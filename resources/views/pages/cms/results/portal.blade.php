@@ -10,6 +10,7 @@ use Livewire\Component;
 
 new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Component {
     public ?Student $student = null;
+    public bool $isStudentView = true;
     public int|string $filterSession = '';
     public int|string $filterSemester = '';
 
@@ -20,12 +21,14 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
         // For admin/staff viewing a student portal — they can pass a ?student= param
         if (request()->has('student') && $user->can('results.view_dept')) {
             $this->student = Student::find(request('student'));
+            $this->isStudentView = false;
         }
 
         // For student self-service: auto-load by matching email
         if (! $this->student) {
             Gate::authorize('results.view_personal');
             $this->student = Student::where('email', $user->email)->first();
+            $this->isStudentView = true;
             
             // Final ownership safeguard
             if ($this->student && $this->student->email !== $user->email) {
@@ -41,6 +44,9 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
 
     public function with(App\Services\PaymentAccessService $accessService, App\Services\StudentInvoiceService $invoiceService): array
     {
+        $isStudentView = $this->isStudentView;
+        $isProgramResultsLocked = (bool) $this->student?->program?->results_locked;
+
         if (! $this->student) {
             return [
                 'sessions' => [],
@@ -50,6 +56,22 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
                 'sessionGpa' => [],
                 'totalUnits' => 0,
                 'accessMap' => [],
+                'isProgramResultsLocked' => false,
+                'isStudentView' => $isStudentView,
+            ];
+        }
+
+        if ($isStudentView && $isProgramResultsLocked) {
+            return [
+                'sessions' => [],
+                'semesters' => [],
+                'results' => collect(),
+                'cgpa' => 0.0,
+                'sessionGpa' => [],
+                'totalUnits' => 0,
+                'accessMap' => [],
+                'isProgramResultsLocked' => true,
+                'isStudentView' => true,
             ];
         }
 
@@ -124,6 +146,8 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
                 ->map(fn($g) => $g->sortByDesc('grade_point')->first()->course->credit_unit)
                 ->sum(),
             'accessMap' => $accessMap,
+            'isProgramResultsLocked' => $isProgramResultsLocked,
+            'isStudentView' => $isStudentView,
         ];
     }
 }; ?>
@@ -152,7 +176,31 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
                 office.') }}</p>
         </div>
     </flux:card>
+    @elseif (($isProgramResultsLocked ?? false) && ($isStudentView ?? true))
+    <flux:card>
+        <div class="py-12 text-center bg-zinc-50 dark:bg-zinc-900/20 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800">
+            <div class="size-16 bg-amber-50 dark:bg-amber-900/30 rounded-full shadow-sm flex items-center justify-center mx-auto mb-4 border border-amber-200 dark:border-amber-700/50">
+                <flux:icon.clock class="size-8 text-amber-600 dark:text-amber-400" />
+            </div>
+            <h3 class="text-lg font-bold text-zinc-900 dark:text-white mb-2">{{ __('Results Being Processed') }}</h3>
+            <p class="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2 max-w-md mx-auto">
+                {{ __('Academic results for :program (:acronym) are currently being processed and verified by the academic department.', ['program' => $this->student->program->name ?? __('your program'), 'acronym' => $this->student->program->acronym ?? '']) }}
+            </p>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400 max-w-md mx-auto">
+                {{ __('Once compilation and approval are complete, the results will be published and made accessible on your portal.') }}
+            </p>
+        </div>
+    </flux:card>
     @else
+    @if (($isProgramResultsLocked ?? false) && !($isStudentView ?? true))
+    <div class="p-4 mb-6 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center gap-3 text-amber-800 dark:text-amber-300 print:hidden">
+        <flux:icon.lock-closed class="size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+        <div class="text-sm">
+            <span class="font-semibold">{{ __('Student Access Locked:') }}</span>
+            {{ __('Results for this program (:program) are currently locked and hidden from students (`Results Being Processed`). You can view them because you have staff permissions.', ['program' => $this->student->program->name ?? '']) }}
+        </div>
+    </div>
+    @endif
     {{-- Filters --}}
     <div class="flex flex-wrap gap-4 print:hidden">
         <div class="flex-1 min-w-[180px]">
@@ -208,33 +256,44 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
 
             <table class="w-full border-collapse">
                 <tr>
-                    <td class="py-1 w-1/3">
+                    <td class="py-1 w-2/5">
                         <div class="text-[8px] font-bold text-zinc-400 uppercase">{{ __('Student Full Name') }}</div>
                         <div class="text-lg font-black text-zinc-900 uppercase">{{ $this->student->full_name }}</div>
                     </td>
-                    <td class="py-1 w-1/3">
+                    <td class="py-1 w-2/5">
                         <div class="text-[8px] font-bold text-zinc-400 uppercase">{{ __('Matriculation Number') }}</div>
                         <div class="text-lg font-bold text-zinc-900">{{ $this->student->matric_number }}</div>
                     </td>
-                    <td class="py-1 w-1/3 text-right">
-                        <div class="text-[8px] font-bold text-zinc-400 uppercase">{{ __('Cumulative GPA') }}</div>
-                        <div class="text-2xl font-black text-zinc-900">{{ number_format($cgpa, 2) }}</div>
+                    <td class="py-1 w-1/5 text-right" rowspan="3" style="vertical-align: middle;">
+                        <div class="inline-block border-2 border-zinc-900 p-0.5 bg-white shrink-0">
+                            @if ($this->student->photo_url)
+                                <img src="{{ $this->student->photo_url }}" alt="Student Photo" class="size-24 object-cover" />
+                            @else
+                                <div class="size-24 bg-zinc-100 flex items-center justify-center text-zinc-400 font-bold text-xs uppercase text-center">
+                                    {{ __('No Photo') }}
+                                </div>
+                            @endif
+                        </div>
                     </td>
                 </tr>
                 <tr>
-                    <td class="py-1" colspan="2">
+                    <td class="py-1">
                         <div class="text-[8px] font-bold text-zinc-400 uppercase">{{ __('Academic Program') }}</div>
                         <div class="text-sm font-bold text-zinc-900">{{ $this->student->program->name ?? '—' }}</div>
                     </td>
-                    <td class="py-1 text-right">
+                    <td class="py-1">
                         <div class="text-[8px] font-bold text-zinc-400 uppercase">{{ __('Total Units') }}</div>
                         <div class="text-sm font-black text-zinc-900">{{ $totalUnits }}</div>
                     </td>
                 </tr>
                 <tr>
-                    <td class="py-1" colspan="3">
+                    <td class="py-1">
                         <div class="text-[8px] font-bold text-zinc-400 uppercase">{{ __('Department') }}</div>
                         <div class="text-sm font-bold text-zinc-900">{{ $this->student->program?->department?->name ?? '—' }}</div>
+                    </td>
+                    <td class="py-1">
+                        <div class="text-[8px] font-bold text-zinc-400 uppercase">{{ __('Cumulative GPA') }}</div>
+                        <div class="text-lg font-black text-zinc-900">{{ number_format($cgpa, 2) }}</div>
                     </td>
                 </tr>
             </table>

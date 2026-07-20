@@ -34,7 +34,7 @@
                 $phone = $profile?->phone ?? 'N/A';
                 $email = ($type === 'staff') ? ($profile?->email ?? $user?->email) : ($user?->email ?? 'N/A');
                 $dept = ($type === 'student') ? ($profile?->program?->department?->name ?? 'N/A') : ($profile?->designation ?? 'N/A');
-                $qrData = route('home', ['verify_id' => $idNumber]);
+                $qrData = route('id-cards.verify', ['idNumber' => $idNumber]);
             @endphp
 
             <div class="flex flex-col md:flex-row items-center justify-center gap-4 print:gap-2 print:mb-8 break-inside-avoid">

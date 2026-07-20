@@ -28,6 +28,7 @@ class CaTest extends Model
         'randomize_questions',
         'randomize_options',
         'show_results',
+        'created_by_id',
     ];
 
     protected function casts(): array
@@ -81,5 +82,10 @@ class CaTest extends Model
     public function blocks(): HasMany
     {
         return $this->hasMany(CaBlock::class);
+    }
+
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by_id');
     }
 }

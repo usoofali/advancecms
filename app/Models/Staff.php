@@ -92,7 +92,12 @@ class Staff extends Model
         'designation',
         'attendance_allowance',
         'photo_path',
+        'signature_path',
         'status',
+        'next_of_kin_name',
+        'next_of_kin_relationship',
+        'next_of_kin_phone',
+        'next_of_kin_address',
     ];
 
     public function getPhotoUrlAttribute(): ?string

@@ -19,9 +19,58 @@ new #[Layout('layouts.app')] #[Title('Manage CA Tests')] class extends Component
     #[Url]
     public string $filter_session = '';
 
+    public bool $showDeleteModal = false;
+    public ?int $testToDelete = null;
+
     public function mount(): void
     {
         Gate::authorize('ca_tests.view');
+    }
+
+    public function confirmDelete(int $id): void
+    {
+        Gate::authorize('ca_tests.edit');
+        $this->testToDelete = $id;
+        $this->showDeleteModal = true;
+    }
+
+    public function deleteTest(): void
+    {
+        Gate::authorize('ca_tests.edit');
+        
+        if (!$this->testToDelete) return;
+        
+        $test = CaTest::findOrFail($this->testToDelete);
+        $user = auth()->user();
+        
+        $isSuperAdmin = $user->hasRole('Super Admin');
+        $isInstAdmin = $user->hasRole('Institutional Admin');
+        
+        if (!$isSuperAdmin && !$isInstAdmin && $test->created_by_id !== $user->id) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'You are not authorized to delete this CA test. Only the creator or administrators can delete it.',
+            ]);
+            return;
+        }
+
+        if ($test->attempts()->count() > 0) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'Cannot delete a CA test that has student attempts.',
+            ]);
+            return;
+        }
+
+        $test->delete();
+
+        $this->showDeleteModal = false;
+        $this->testToDelete = null;
+
+        $this->dispatch('notify', [
+            'type' => 'success',
+            'message' => 'CA Test deleted successfully.',
+        ]);
     }
 
     public function with(): array
@@ -37,7 +86,7 @@ new #[Layout('layouts.app')] #[Title('Manage CA Tests')] class extends Component
         $isRestrictedLecturer = !$isSuperAdmin && !$isInstAdmin && empty($scopedDeptIds);
 
         $tests = CaTest::where('institution_id', $user->institution_id)
-            ->with(['course', 'academicSession', 'semester'])
+            ->with(['course', 'academicSession', 'semester', 'createdBy'])
             ->withCount('questions')
             ->when($this->filter_session, fn($q) => $q->where('academic_session_id', $this->filter_session))
             ->when($this->search, function($q) {
@@ -112,6 +161,7 @@ new #[Layout('layouts.app')] #[Title('Manage CA Tests')] class extends Component
         <flux:table.columns>
             <flux:table.column>{{ __('Test Title / Course') }}</flux:table.column>
             <flux:table.column>{{ __('Term') }}</flux:table.column>
+            <flux:table.column>{{ __('Owner') }}</flux:table.column>
             <flux:table.column>{{ __('Type / Attempts') }}</flux:table.column>
             <flux:table.column>{{ __('Questions / Duration') }}</flux:table.column>
             <flux:table.column>{{ __('Status') }}</flux:table.column>
@@ -181,6 +231,15 @@ new #[Layout('layouts.app')] #[Title('Manage CA Tests')] class extends Component
                                 <flux:menu.item icon="lock-closed" :href="route('cms.ca-tests.lecturer.access') . '?test_id=' . $test->id" wire:navigate>
                                     {{ __('Manage Access') }}
                                 </flux:menu.item>
+                                @can('ca_tests.edit')
+                                    @if(auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Institutional Admin') || $test->created_by_id === auth()->id())
+                                        <flux:menu.separator />
+                                        <flux:menu.item icon="trash" variant="danger"
+                                            wire:click="confirmDelete({{ $test->id }})">
+                                            {{ __('Delete Test') }}
+                                        </flux:menu.item>
+                                    @endif
+                                @endcan
                             </flux:menu>
                         </flux:dropdown>
                     </flux:table.cell>
@@ -196,4 +255,22 @@ new #[Layout('layouts.app')] #[Title('Manage CA Tests')] class extends Component
             @endforelse
         </flux:table.rows>
     </flux:table>
+
+    <flux:modal wire:model="showDeleteModal" class="md:w-96">
+        <div class="space-y-6">
+            <div>
+                <flux:heading size="lg">{{ __('Delete CA Test') }}</flux:heading>
+                <flux:subheading>
+                    <p class="mt-1">{{ __('Are you sure you want to delete this CA test? All associated questions will be permanently removed. This action cannot be undone.') }}</p>
+                </flux:subheading>
+            </div>
+
+            <div class="flex justify-end gap-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                </flux:modal.close>
+                <flux:button variant="danger" wire:click="deleteTest">{{ __('Delete Test') }}</flux:button>
+            </div>
+        </div>
+    </flux:modal>
 </div>

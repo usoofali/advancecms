@@ -17,7 +17,8 @@ class StudentDashboard extends Component
 
         $activeSession = AcademicSession::where('status', 'active')->first();
 
-        $results = $student ? $student->results()->get() : collect();
+        $isResultsLocked = (bool) $student?->program?->results_locked;
+        $results = ($student && ! $isResultsLocked) ? $student->results()->get() : collect();
         $totalResults = $results->count();
         $passedCount = $results->where('remark', 'pass')->count();
         $failedCount = $results->where('remark', 'fail')->count();
@@ -27,7 +28,8 @@ class StudentDashboard extends Component
 
         $stats = [
             'student' => $student,
-            'cgpa' => $student ? $gradingService->computeCgpa($student) : 0,
+            'is_results_locked' => $isResultsLocked,
+            'cgpa' => ($student && ! $isResultsLocked) ? $gradingService->computeCgpa($student) : 0,
             'total_units' => $student ? $student->results()->with('course')->get()->sum(fn ($r) => $r->course->credit_unit ?? 0) : 0,
             'pending_balance' => $invoices->whereIn('status', ['unpaid', 'partial'])->sum('balance'),
             'registration_status' => $student ? ($student->courseRegistrations()->whereHas('academicSession', fn ($q) => $q->where('status', 'active'))->exists() ? 'Registered' : 'Not Registered') : 'N/A',

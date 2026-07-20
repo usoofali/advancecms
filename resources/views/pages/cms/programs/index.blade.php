@@ -66,6 +66,21 @@ new #[Layout('layouts.app')] #[Title('Programs')] class extends Component {
         $this->dispatch('modal-close', name: 'delete-program');
     }
 
+    public function toggleResultLock(int $id): void
+    {
+        Gate::authorize('programs.edit');
+
+        $program = Program::find($id);
+        if ($program) {
+            $program->update(['results_locked' => !$program->results_locked]);
+            $statusText = $program->results_locked ? 'locked' : 'unlocked';
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'message' => "Program results {$statusText} successfully.",
+            ]);
+        }
+    }
+
     public function with(): array
     {
         return [
@@ -106,6 +121,7 @@ new #[Layout('layouts.app')] #[Title('Programs')] class extends Component {
                         <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Duration') }}</th>
                         <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Award') }}</th>
                         <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Status') }}</th>
+                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Result Status') }}</th>
                         <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-right">{{ __('Actions') }}</th>
                     </tr>
                 </thead>
@@ -133,9 +149,21 @@ new #[Layout('layouts.app')] #[Title('Programs')] class extends Component {
                                     {{ ucfirst($program->status) }}
                                 </flux:badge>
                             </td>
+                            <td class="px-4 py-4 text-sm">
+                                @if ($program->results_locked)
+                                    <flux:badge color="red" size="sm" icon="lock-closed">
+                                        {{ __('Locked') }}
+                                    </flux:badge>
+                                @else
+                                    <flux:badge color="green" size="sm" icon="lock-open">
+                                        {{ __('Available') }}
+                                    </flux:badge>
+                                @endif
+                            </td>
                             <td class="px-4 py-4 text-right">
                                 <div class="flex items-center justify-end gap-2">
                                     @can('programs.edit')
+                                    <flux:button size="sm" variant="ghost" :icon="$program->results_locked ? 'lock-closed' : 'lock-open'" wire:click="toggleResultLock({{ $program->id }})" :title="$program->results_locked ? __('Unlock Results') : __('Lock Results')" class="{{ $program->results_locked ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400' }}" />
                                     <flux:button size="sm" variant="ghost" icon="pencil" :href="route('cms.programs.edit', $program)" wire:navigate />
                                     @endcan
                                     @can('programs.delete')

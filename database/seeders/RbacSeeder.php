@@ -157,7 +157,7 @@ class RbacSeeder extends Seeder
                         'registrations.print_form', 'registrations.print_exam_card',
                         'courses.allocate', 'courses.revoke_allocation', 'courses.export', 'courses.import',
                         'results.export', 'results.import', 'invoices.manage_students',
-                        'dashboard.view', 'id_cards.request',
+                        'dashboard.view', 'id_cards.request', 'id_cards.manage',
                         'institutions.assign_roles', 'departments.assign_roles', 'courses.assign_roles', 'cbt_exams.assign_roles',
                     ]
                 ),

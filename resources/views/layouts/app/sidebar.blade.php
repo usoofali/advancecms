@@ -25,7 +25,7 @@
                 </flux:sidebar.group>
             @endcanany
 
-            @canany(['institutions.view', 'departments.view', 'programs.view', 'staff.view', 'id_cards.manage', 'grading_systems.view', 'academic_sessions.view'])
+            @canany(['institutions.view', 'departments.view', 'programs.view', 'staff.view', 'id_cards.manage', 'grading_systems.view', 'academic_sessions.view', 'system.manage'])
                 <flux:sidebar.group :heading="__('Administration')" class="grid" expandable expanded="false">
                     @can('institutions.view')
                         <flux:sidebar.item icon="building-office-2" :href="route('cms.institutions.index')"
@@ -60,6 +60,10 @@
                             :current="request()->routeIs('cms.id-cards.manage')" wire:navigate>
                             {{ __('ID Card Management') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item icon="swatch" :href="route('cms.id-cards.templates')"
+                            :current="request()->routeIs('cms.id-cards.templates')" wire:navigate>
+                            {{ __('ID Card Templates') }}
+                        </flux:sidebar.item>
                     @endcan
 
                     @can('academic_sessions.view')
@@ -73,6 +77,13 @@
                         <flux:sidebar.item icon="chart-bar" :href="route('cms.grading-systems.index')"
                             :current="request()->routeIs('cms.grading-systems.*')" wire:navigate>
                             {{ __('Grading Systems') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('system.manage')
+                        <flux:sidebar.item icon="globe-alt" :href="route('settings.website')"
+                            :current="request()->routeIs('settings.website')" wire:navigate>
+                            {{ __('Website Settings') }}
                         </flux:sidebar.item>
                     @endcan
 
@@ -96,11 +107,10 @@
                         </flux:sidebar.item>
                     @endcan
 
-
                     @can('applications.notify')
                         <flux:sidebar.item icon="document-text" :href="route('cms.admissions.issue-notification')"
                             :current="request()->routeIs('cms.admissions.issue-notification')" wire:navigate>
-                            {{ __('Issue notification') }}
+                            {{ __('Admission Notification') }}
                         </flux:sidebar.item>
                     @endcan
 
@@ -165,6 +175,13 @@
                         </flux:sidebar.item>
                     @endcan
 
+                    @can('registrations.view_personal')
+                        <flux:sidebar.item icon="briefcase" :href="route('cms.placements.student.index')"
+                            :current="request()->routeIs('cms.placements.student.index')" wire:navigate>
+                            {{ __('My Placements') }}
+                        </flux:sidebar.item>
+                    @endcan
+
                     @canany(['courses.view', 'courses.view_dept'])
                         <flux:sidebar.item icon="book-open" :href="route('cms.courses.index')"
                             :current="request()->routeIs('cms.courses.index') || request()->routeIs('cms.courses.create') || request()->routeIs('cms.courses.edit')"
@@ -193,6 +210,31 @@
                             {{ __('Request ID Card') }}
                         </flux:sidebar.item>
                     @endcan
+                </flux:sidebar.group>
+            @endcanany
+
+            @canany(['placements.manage', 'students.view_dept'])
+                <flux:sidebar.group :heading="__('Placements & Postings')" class="grid" expandable expanded="false">
+                    <flux:sidebar.item icon="chart-bar" :href="route('cms.placements.index')"
+                        :current="request()->routeIs('cms.placements.index')" wire:navigate>
+                        {{ __('Placements Dashboard') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="building-office" :href="route('cms.placements.organizations')"
+                        :current="request()->routeIs('cms.placements.organizations')" wire:navigate>
+                        {{ __('Organizations') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="tag" :href="route('cms.placements.types')"
+                        :current="request()->routeIs('cms.placements.types')" wire:navigate>
+                        {{ __('Placement Types') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="briefcase" :href="route('cms.placements.manage')"
+                        :current="request()->routeIs('cms.placements.manage')" wire:navigate>
+                        {{ __('Manage Placements') }}
+                    </flux:sidebar.item>
+                    <flux:sidebar.item icon="document-duplicate" :href="route('cms.placements.templates')"
+                        :current="request()->routeIs('cms.placements.templates')" wire:navigate>
+                        {{ __('Letter Templates') }}
+                    </flux:sidebar.item>
                 </flux:sidebar.group>
             @endcanany
 
@@ -234,10 +276,11 @@
                 <flux:sidebar.group :heading="__('Continuous Assessment')" class="grid" expandable expanded="false">
                     @canany(['courses.view', 'courses.view_dept', 'courses.view_assigned'])
                         <flux:sidebar.item icon="document-text" :href="route('cms.ca-tests.lecturer.index')"
-                            :current="request()->routeIs('cms.ca-tests.lecturer.*') && !request()->routeIs('cms.ca-tests.lecturer.results')" wire:navigate>
+                            :current="request()->routeIs('cms.ca-tests.lecturer.*') && !request()->routeIs('cms.ca-tests.lecturer.results')"
+                            wire:navigate>
                             {{ __('Manage C.A Tests') }}
                         </flux:sidebar.item>
-                        
+
                         <flux:sidebar.item icon="chart-bar" :href="route('cms.ca-tests.lecturer.results')"
                             :current="request()->routeIs('cms.ca-tests.lecturer.results')" wire:navigate>
                             {{ __('C.A Test Results') }}

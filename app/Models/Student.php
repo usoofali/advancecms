@@ -69,6 +69,12 @@ class Student extends Model
                 }
             }
         });
+
+        static::deleting(function ($student) {
+            if ($student->email) {
+                User::where('email', $student->email)->delete();
+            }
+        });
     }
 
     protected $fillable = [
@@ -99,6 +105,11 @@ class Student extends Model
         'entry_level',
         'status',
         'photo_path',
+        'signature_path',
+        'next_of_kin_name',
+        'next_of_kin_relationship',
+        'next_of_kin_phone',
+        'next_of_kin_address',
     ];
 
     /**
@@ -257,5 +268,10 @@ class Student extends Model
     public function cbtResults(): HasMany
     {
         return $this->hasMany(CbtResultStaging::class);
+    }
+
+    public function studentPlacements(): HasMany
+    {
+        return $this->hasMany(StudentPlacement::class);
     }
 }

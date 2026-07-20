@@ -1,13 +1,23 @@
 <?php
 
+use App\Http\Controllers\Cms\IdCardPrintController;
 use App\Http\Controllers\Cms\Student\CaAttemptSubmissionController;
+use App\Http\Controllers\Cms\Student\CaAttemptTimeExtensionController;
 use App\Http\Controllers\ExportFilteredResultsController;
 use App\Http\Controllers\PaystackController;
 use App\Livewire\Pages\Admissions\ApplicantPortal;
 use App\Livewire\Pages\Admissions\Apply;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/login')->name('home');
+if (config('app.enable_landing_page', false)) {
+    $vueApp = function () { return view('frontend.app'); };
+    Route::get('/', $vueApp)->name('home');
+    Route::get('/about', $vueApp)->name('about');
+    Route::get('/programs', $vueApp)->name('programs');
+    Route::get('/contact', $vueApp)->name('contact');
+} else {
+    Route::redirect('/', '/login')->name('home');
+}
 
 // Paystack Webhook, Return & Cancel
 Route::post('paystack/webhook', [PaystackController::class, 'handleWebhook'])->name('paystack.webhook');
@@ -23,6 +33,8 @@ Route::livewire('/applicant/admission-letter/{applicant:application_number}', 'p
 Route::livewire('/applicant/notification-letter/{applicant:application_number}', 'pages::cms.admissions.print-admission-notification')->name('applicant.notification-letter');
 Route::livewire('/applicant/invoice/{studentInvoice}/print', 'pages::cms.invoices.print-invoice')->name('applicant.invoice.print');
 Route::livewire('/applicant/receipt/{receipt:receipt_number}/print', 'pages::cms.admissions.print-application-receipt')->name('applicant.receipt.print');
+Route::livewire('/placements/verify/{number}', 'pages::placements.verify')->name('placements.verify')->where('number', '.*');
+Route::livewire('/verify-id/{idNumber}', 'pages::id-cards.verify')->name('id-cards.verify')->where('idNumber', '.*');
 Route::livewire('/setup', 'pages::⚡setup')->name('setup');
 
 Route::middleware(['auth', 'verified'])->group(function () {
@@ -154,7 +166,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::group(['prefix' => 'id-cards', 'as' => 'cms.id-cards.'], function () {
         Route::livewire('request', 'cms.id-cards.request-card')->name('request')->middleware('can:id_cards.request');
         Route::livewire('manage', 'cms.id-cards.manage-id-cards')->name('manage')->middleware('can:staff.view');
-        Route::livewire('print/{data}', 'cms.id-cards.print-id-cards')->name('print')->middleware('can:staff.view');
+        Route::livewire('templates', 'cms.id-cards.manage-templates')->name('templates')->middleware('can:id_cards.manage');
+        Route::get('print/{data}', [IdCardPrintController::class, 'show'])->name('print')->middleware('can:staff.view');
+    });
+
+    // Student Placements Module
+    Route::prefix('placements')->name('cms.placements.')->group(function () {
+        // Shared Print Route
+        Route::livewire('/documents/print/{doc}', 'pages::cms.placements.print')->name('print')->where('doc', '.*');
+
+        // Admin
+        Route::livewire('/', 'admin.placements.index')->name('index');
+        Route::livewire('/manage', 'admin.placements.manage')->name('manage');
+        Route::livewire('/organizations', 'admin.placements.organizations')->name('organizations');
+        Route::livewire('/types', 'admin.placements.types')->name('types');
+        Route::livewire('/templates', 'admin.placements.templates')->name('templates');
+
+        // Student
+        Route::prefix('student')->name('student.')->group(function () {
+            Route::livewire('/', 'student.placements.index')->name('index');
+        });
     });
 
     // CBT Examinations Add-on
@@ -183,8 +214,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::prefix('student')->name('student.')->group(function () {
                 Route::livewire('/', 'pages::cms.ca-tests.student.index')->name('index');
                 Route::livewire('/attempt', 'pages::cms.ca-tests.student.attempt')->name('attempt');
-                Route::post('/attempt/{attempt}/submit', \App\Http\Controllers\Cms\Student\CaAttemptSubmissionController::class)->name('attempt.submit');
-                Route::post('/attempt/{attempt}/extend-time', \App\Http\Controllers\Cms\Student\CaAttemptTimeExtensionController::class)->name('attempt.extend-time');
+                Route::post('/attempt/{attempt}/submit', CaAttemptSubmissionController::class)->name('attempt.submit');
+                Route::post('/attempt/{attempt}/extend-time', CaAttemptTimeExtensionController::class)->name('attempt.extend-time');
                 Route::livewire('/leaderboard', 'pages::cms.ca-tests.student.leaderboard')->name('leaderboard');
             });
         });

@@ -2,6 +2,9 @@
 
 use App\Exports\StudentsExport;
 use App\Imports\StudentsImport;
+use App\Models\AcademicSession;
+use App\Models\Department;
+use App\Models\Staff;
 use App\Models\Student;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -10,7 +13,8 @@ use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
+new #[Layout('layouts.app')] #[Title('Students')] class extends Component
+{
     use WithFileUploads, WithPagination;
 
     public string $search = '';
@@ -52,21 +56,22 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
 
         // 1. Check if user has a scoped role for a specific department
         $scopedDeptIds = array_merge(
-            $user->getScopedModelIds('Academic Secretary', \App\Models\Department::class),
-            $user->getScopedModelIds('Head of Department (HOD)', \App\Models\Department::class),
-            $user->getScopedModelIds('Exam Officer', \App\Models\Department::class)
+            $user->getScopedModelIds('Academic Secretary', Department::class),
+            $user->getScopedModelIds('Head of Department (HOD)', Department::class),
+            $user->getScopedModelIds('Exam Officer', Department::class)
         );
 
-        if (!empty($scopedDeptIds)) {
+        if (! empty($scopedDeptIds)) {
             $this->isHod = true; // Reusing this flag to lock the department dropdown
             $this->filterDepartment = $scopedDeptIds[0];
+
             return;
         }
 
         // 2. Fallback: Legacy check for HOD via hod_id column
-        $staff = \App\Models\Staff::where('email', $user->email)->first();
+        $staff = Staff::where('email', $user->email)->first();
         if ($staff) {
-            $hodDept = \App\Models\Department::where('hod_id', $staff->id)->first();
+            $hodDept = Department::where('hod_id', $staff->id)->first();
             if ($hodDept) {
                 $this->isHod = true;
                 $this->filterDepartment = $hodDept->id;
@@ -120,11 +125,12 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
 
         $institutionId = $this->filterInstitution ?: auth()->user()->institution_id;
 
-        if (!$institutionId) {
+        if (! $institutionId) {
             $this->dispatch('notify', [
                 'type' => 'error',
                 'message' => 'Please select an institution before importing.',
             ]);
+
             return;
         }
 
@@ -152,7 +158,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
     {
         Gate::authorize('students.delete');
 
-        if (!$this->deletingId) {
+        if (! $this->deletingId) {
             return;
         }
 
@@ -171,25 +177,36 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
 
     private function getFilteredQuery()
     {
-        $activeSession = \App\Models\AcademicSession::where('status', 'active')->first();
+        $activeSession = AcademicSession::where('status', 'active')->first();
 
         return Student::query()
             ->with(['program.department.institution'])
-            ->when($this->filterInstitution ?: auth()->user()->institution_id, fn($q, $id) => $q->where('institution_id', $id))
+            ->when($this->filterInstitution ?: auth()->user()->institution_id, fn ($q, $id) => $q->where('institution_id', $id))
             ->when($this->filterDepartment, function ($q) {
-                $q->whereHas('program', fn($pq) => $pq->where('department_id', $this->filterDepartment));
+                $q->whereHas('program', fn ($pq) => $pq->where('department_id', $this->filterDepartment));
             })
-            ->when($this->filterProgram, fn($q) => $q->where('program_id', $this->filterProgram))
+            ->when($this->filterProgram, fn ($q) => $q->where('program_id', $this->filterProgram))
             ->when($this->filterLevel, function ($q) use ($activeSession) {
+                if ($this->filterLevel === 'alumni') {
+                    if ($activeSession) {
+                        return $q->whereRaw("entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS SIGNED) - CAST(admission_year AS SIGNED)) * 100 > 300", [
+                            $activeSession->name,
+                        ]);
+                    }
+
+                    return $q->where('entry_level', '>', 300);
+                }
+
                 if ($activeSession) {
-                    return $q->whereRaw("entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS UNSIGNED) - admission_year) * 100 = ?", [
+                    return $q->whereRaw("entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS SIGNED) - CAST(admission_year AS SIGNED)) * 100 = ?", [
                         $activeSession->name,
-                        $this->filterLevel
+                        $this->filterLevel,
                     ]);
                 }
+
                 return $q->where('entry_level', $this->filterLevel);
             })
-            ->when($this->filterStatus, fn($q) => $q->where('status', $this->filterStatus))
+            ->when($this->filterStatus, fn ($q) => $q->where('status', $this->filterStatus))
             ->when($this->search, function ($q) {
                 $q->where(function ($sq) {
                     $sq->where('first_name', 'like', "%{$this->search}%")
@@ -201,7 +218,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
 
     public function with(): array
     {
-        $activeSession = \App\Models\AcademicSession::where('status', 'active')->first();
+        $activeSession = AcademicSession::where('status', 'active')->first();
 
         return [
             'activeSession' => $activeSession,
@@ -224,7 +241,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
                     if ($filterProgram)
                         $activeFilters[] = \App\Models\Program::find($filterProgram)?->name;
                     if ($filterLevel)
-                        $activeFilters[] = "Level " . $filterLevel;
+                        $activeFilters[] = $filterLevel === 'alumni' ? __('Alumni (>300 Level)') : "Level " . $filterLevel;
                     if ($filterStatus)
                         $activeFilters[] = ucfirst($filterStatus);
                     $filterText = !empty($activeFilters) ? implode(' / ', $activeFilters) : __('All student records');
@@ -303,6 +320,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
             @foreach([100, 200, 300] as $lvl)
                 <flux:select.option :value="$lvl">{{ $lvl }}</flux:select.option>
             @endforeach
+            <flux:select.option value="alumni">{{ __('Alumni') }}</flux:select.option>
         </flux:select>
 
         <flux:select wire:model.live="filterStatus" :placeholder="__('All Statuses')">

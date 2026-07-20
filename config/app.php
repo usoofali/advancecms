@@ -123,4 +123,15 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Landing Page Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Determines if the public website landing pages (built with Vue)
+    | should be shown instead of redirecting directly to the login page.
+    |
+    */
+    'enable_landing_page' => env('ENABLE_LANDING_PAGE', false),
+
 ];

@@ -1,13 +1,35 @@
 {
+  "_runtime-dom.esm-bundler-B5yNFb8N.js": {
+    "file": "assets/runtime-dom.esm-bundler-B5yNFb8N.js",
+    "name": "runtime-dom.esm-bundler"
+  },
   "resources/css/app.css": {
-    "file": "assets/app-CfSdQiQl.css",
+    "file": "assets/app-Bf5mBFbG.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
   "resources/js/app.js": {
-    "file": "assets/app-BKKWCaaX.js",
+    "file": "assets/app-vXGVjb_z.js",
     "name": "app",
     "src": "resources/js/app.js",
-    "isEntry": true
+    "isEntry": true,
+    "imports": [
+      "_runtime-dom.esm-bundler-B5yNFb8N.js"
+    ],
+    "css": [
+      "assets/app-B1WT0_nB.css"
+    ]
+  },
+  "resources/js/public.js": {
+    "file": "assets/public-B_9VJWy6.js",
+    "name": "public",
+    "src": "resources/js/public.js",
+    "isEntry": true,
+    "imports": [
+      "_runtime-dom.esm-bundler-B5yNFb8N.js"
+    ],
+    "css": [
+      "assets/public-oFT-ulRD.css"
+    ]
   }
 }

@@ -36,4 +36,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('settings/addons', 'pages::settings.⚡addons')
         ->name('settings.addons')
         ->middleware('can:institutions.view');
+
+    Route::livewire('settings/website', 'pages::settings.⚡website')
+        ->name('settings.website')
+        ->middleware('can:system.manage');
 });

@@ -22,7 +22,15 @@ class Program extends Model
         'duration_years',
         'award_type',
         'status',
+        'results_locked',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'results_locked' => 'boolean',
+        ];
+    }
 
     public function institution(): BelongsTo
     {

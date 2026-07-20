@@ -8,6 +8,7 @@ use App\Models\Institution;
 use App\Models\Program;
 use App\Models\Staff;
 use App\Models\Student;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;

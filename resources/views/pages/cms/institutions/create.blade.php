@@ -50,6 +50,8 @@ new #[Layout('layouts.app')] #[Title('Add Institution')] class extends Component
             $validated['logo_path'] = $this->logo->store('institutions/logos', 'public');
         }
 
+        $validated = array_map(fn ($value) => $value === '' ? null : $value, $validated);
+
         Institution::create($validated);
 
         session()->flash('success', 'Institution created successfully.');

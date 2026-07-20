@@ -8,9 +8,19 @@
             <div class="space-y-1 relative z-10">
                 <div class="text-[10px] font-black text-blue-200 uppercase tracking-widest">{{ __('Cumulative GPA') }}</div>
                 <div class="text-4xl font-black text-white">
-                    {{ number_format($cgpa, 2) }}
+                    @if ($is_results_locked ?? false)
+                        <span class="text-2xl font-bold italic">{{ __('Processing...') }}</span>
+                    @else
+                        {{ number_format($cgpa, 2) }}
+                    @endif
                 </div>
-                <div class="text-[10px] text-blue-100 font-bold opacity-80">{{ $total_units }} {{ __('Units Earned') }}</div>
+                <div class="text-[10px] text-blue-100 font-bold opacity-80">
+                    @if ($is_results_locked ?? false)
+                        {{ __('Results Under Review') }}
+                    @else
+                        {{ $total_units }} {{ __('Units Earned') }}
+                    @endif
+                </div>
             </div>
         </flux:card>
 
@@ -118,6 +128,17 @@
                 <flux:heading size="lg" class="font-black italic text-zinc-800 dark:text-zinc-200">{{ __('Academic Performance') }}</flux:heading>
             </div>
 
+            @if ($is_results_locked ?? false)
+            <div class="p-6 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-center">
+                <div class="flex items-center justify-center gap-2 text-amber-700 dark:text-amber-400 font-bold mb-1">
+                    <flux:icon.clock class="size-5" />
+                    <span>{{ __('Results Being Processed') }}</span>
+                </div>
+                <p class="text-xs text-amber-600 dark:text-amber-300">
+                    {{ __('Academic results for your program are currently being processed and verified by the academic department.') }}
+                </p>
+            </div>
+            @else
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800">
                     <div class="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1">{{ __('Pass Rate') }}
@@ -138,6 +159,7 @@
                     <p class="text-[10px] text-zinc-400 mt-2">{{ __('Requires immediate attention / carryover') }}</p>
                 </div>
             </div>
+            @endif
 
             <div class="space-y-3">
                 <div

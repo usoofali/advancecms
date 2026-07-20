@@ -15,8 +15,8 @@
 @if(app()->environment('local'))
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 @else
-    <link rel="stylesheet" href="{{ asset('build/assets/app-BftEI6Ws.css') }}">
-    <script type="module" src="{{ asset('build/assets/app-Dmvx24LL.js') }}"></script>
+    <link rel="stylesheet" href="{{ asset('build/assets/app-CU-BL27r.css') }}">
+    <script type="module" src="{{ asset('build/assets/app-vXGVjb_z.js') }}"></script>
 @endif
 @fluxAppearance
 <style>

@@ -9285,56 +9285,13 @@ namespace App\Models {
     /**
      * App\Models\IdCardTemplate
      *
-     * @property string|null $layout_data
-     * @property string|null $disclaimer_align
-     * @property string|null $disclaimer_size
-     * @property string|null $disclaimer_font_weight
-     * @property string|null $disclaimer_font_family
-     * @property string|null $back_logo_offset_y
-     * @property string|null $back_logo_offset_x
-     * @property string|null $back_logo_width
-     * @property string|null $photo_offset_y
-     * @property string|null $photo_offset_x
-     * @property string|null $logo_offset_y
-     * @property string|null $logo_offset_x
-     * @property string|null $logo_width
-     * @property string|null $phone_font_weight
-     * @property string|null $phone_font_family
-     * @property string|null $department_font_weight
-     * @property string|null $department_font_family
-     * @property string|null $program_font_weight
-     * @property string|null $program_font_family
-     * @property string|null $name_font_weight
-     * @property string|null $name_font_family
-     * @property string|null $back_logo_position
-     * @property string|null $front_logo_position
      * @property \Illuminate\Support\Carbon|null $updated_at
      * @property \Illuminate\Support\Carbon|null $created_at
      * @property boolean $is_active
-     * @property string|null $phone_align
-     * @property string|null $phone_size
-     * @property string|null $photo_border_width
-     * @property string $photo_shape
-     * @property bool $show_phone
-     * @property string|null $department_align
-     * @property string|null $department_size
-     * @property bool $show_department
-     * @property string|null $program_align
-     * @property string|null $program_size
-     * @property bool $show_program
-     * @property string|null $name_align
-     * @property string|null $name_size
-     * @property bool $show_name
      * @property boolean $show_signature_line
-     * @property bool $show_emergency_contact
-     * @property bool $show_expiry_date
-     * @property bool $show_issue_date
-     * @property bool $show_dob
      * @property boolean $show_blood_group
-     * @property string $qr_data_type
      * @property boolean $show_barcode
      * @property boolean $show_qr
-     * @property string $background_opacity
      * @property string|null $background_image_path
      * @property string|null $disclaimer_text
      * @property string|null $footer_text
@@ -9349,8 +9306,6 @@ namespace App\Models {
      * @property string $text_color
      * @property string $secondary_color
      * @property string $primary_color
-     * @property string $card_height
-     * @property string $card_width
      * @property string $orientation
      * @property string $layout
      * @property string $type
@@ -9365,8 +9320,6 @@ namespace App\Models {
      * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereType($value)
      * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereLayout($value)
      * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereOrientation($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereCardWidth($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereCardHeight($value)
      * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate wherePrimaryColor($value)
      * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereSecondaryColor($value)
      * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereTextColor($value)
@@ -9381,56 +9334,13 @@ namespace App\Models {
      * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereFooterText($value)
      * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereDisclaimerText($value)
      * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereBackgroundImagePath($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereBackgroundOpacity($value)
      * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereShowQr($value)
      * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereShowBarcode($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereQrDataType($value)
      * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereShowBloodGroup($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereShowDob($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereShowIssueDate($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereShowExpiryDate($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereShowEmergencyContact($value)
      * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereShowSignatureLine($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereShowName($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereNameSize($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereNameAlign($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereShowProgram($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereProgramSize($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereProgramAlign($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereShowDepartment($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereDepartmentSize($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereDepartmentAlign($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereShowPhone($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate wherePhotoShape($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate wherePhotoBorderWidth($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate wherePhoneSize($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate wherePhoneAlign($value)
      * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereIsActive($value)
      * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereCreatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereUpdatedAt($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereFrontLogoPosition($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereBackLogoPosition($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereNameFontFamily($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereNameFontWeight($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereProgramFontFamily($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereProgramFontWeight($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereDepartmentFontFamily($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereDepartmentFontWeight($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate wherePhoneFontFamily($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate wherePhoneFontWeight($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereLogoWidth($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereLogoOffsetX($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereLogoOffsetY($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate wherePhotoOffsetX($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate wherePhotoOffsetY($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereBackLogoWidth($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereBackLogoOffsetX($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereBackLogoOffsetY($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereDisclaimerFontFamily($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereDisclaimerFontWeight($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereDisclaimerSize($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereDisclaimerAlign($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate whereLayoutData($value)
      * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate newModelQuery()
      * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate newQuery()
      * @method static \Illuminate\Database\Eloquent\Builder<IdCardTemplate>|IdCardTemplate query()
@@ -14557,9 +14467,9 @@ namespace App\Models {
      * @property string|null $next_of_kin_phone
      * @property string|null $next_of_kin_relationship
      * @property string|null $next_of_kin_name
+     * @property string|null $signature_path
      * @property \Illuminate\Support\Carbon|null $updated_at
      * @property \Illuminate\Support\Carbon|null $created_at
-     * @property string|null $signature_path
      * @property string|null $photo_path
      * @property mixed $status
      * @property float $attendance_allowance
@@ -14602,9 +14512,9 @@ namespace App\Models {
      * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff whereAttendanceAllowance($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff whereStatus($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff wherePhotoPath($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff whereSignaturePath($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff whereCreatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff whereUpdatedAt($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff whereSignaturePath($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff whereNextOfKinName($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff whereNextOfKinRelationship($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff whereNextOfKinPhone($value)
@@ -14931,12 +14841,12 @@ namespace App\Models {
      * @property string|null $next_of_kin_phone
      * @property string|null $next_of_kin_relationship
      * @property string|null $next_of_kin_name
+     * @property string|null $signature_path
      * @property \Illuminate\Support\Carbon|null $updated_at
      * @property \Illuminate\Support\Carbon|null $created_at
      * @property mixed $status
      * @property mixed $entry_level
      * @property mixed $admission_year
-     * @property string|null $signature_path
      * @property string|null $photo_path
      * @property string|null $subject_physics
      * @property string|null $subject_chemistry
@@ -15009,12 +14919,12 @@ namespace App\Models {
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereSubjectChemistry($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereSubjectPhysics($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student wherePhotoPath($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereSignaturePath($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereAdmissionYear($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereEntryLevel($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereStatus($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereCreatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereUpdatedAt($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereSignaturePath($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereNextOfKinName($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereNextOfKinRelationship($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereNextOfKinPhone($value)

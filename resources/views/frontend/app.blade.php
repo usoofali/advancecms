@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name', 'Advance CMS') }}</title>
 
+    <!-- Favicon -->
+    <link rel="icon" href="{{ config('theme.favicon_ico') }}" sizes="any">
+    <link rel="icon" href="{{ config('theme.favicon_svg') }}" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="{{ config('theme.apple_touch_icon') }}">
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />

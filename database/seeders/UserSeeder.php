@@ -26,7 +26,7 @@ class UserSeeder extends Seeder
         $role = Role::where('role_name', 'Super Admin')->first();
 
         if ($role && ! $superAdmin->hasRole('Super Admin')) {
-            $superAdmin->roles()->attach($role->id);
+            $superAdmin->roles()->attach($role->role_id);
         }
     }
 }

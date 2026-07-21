@@ -18,7 +18,6 @@ class DatabaseSeeder extends Seeder
             WebsiteSettingsSeeder::class,
             DocumentTemplateSeeder::class,
             GradingSystemSeeder::class,
-            InvoiceSeeder::class,
             PlacementTypeSeeder::class,
         ]);
     }

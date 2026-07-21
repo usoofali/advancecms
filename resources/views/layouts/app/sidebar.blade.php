@@ -131,6 +131,11 @@
                             wire:navigate>
                             {{ __('Students') }}
                         </flux:sidebar.item>
+                        <flux:sidebar.item icon="academic-cap" :href="route('cms.alumni.index')"
+                            :current="request()->routeIs('cms.alumni.index')"
+                            wire:navigate>
+                            {{ __('Alumni') }}
+                        </flux:sidebar.item>
                     @endcan
 
                     @can('registrations.view')

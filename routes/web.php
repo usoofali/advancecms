@@ -10,7 +10,9 @@ use App\Livewire\Pages\Admissions\Apply;
 use Illuminate\Support\Facades\Route;
 
 if (config('app.enable_landing_page', false)) {
-    $vueApp = function () { return view('frontend.app'); };
+    $vueApp = function () {
+        return view('frontend.app');
+    };
     Route::get('/', $vueApp)->name('home');
     Route::get('/about', $vueApp)->name('about');
     Route::get('/programs', $vueApp)->name('programs');
@@ -89,6 +91,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::middleware('can:students.view_dept')->group(function () {
         Route::livewire('students', 'pages::cms.students.index')->name('cms.students.index');
+        Route::livewire('alumni', 'pages::cms.alumni.index')->name('cms.alumni.index');
         Route::livewire('students/print', 'pages::cms.students.print-list')->name('cms.students.print');
         Route::livewire('students/{student}', 'pages::cms.students.show')->name('cms.students.show');
         Route::livewire('students/{student}/admission-letter', 'pages::cms.students.print-admission-letter')->name('cms.students.admission-letter');

@@ -13,7 +13,7 @@ use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-new #[Layout('layouts.app')] #[Title('Students')] class extends Component
+new #[Layout('layouts.app')] #[Title('Alumni')] class extends Component
 {
     use WithFileUploads, WithPagination;
 
@@ -25,18 +25,11 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
 
     public $filterProgram = '';
 
-    public $filterLevel = '';
+    public $filterAdmissionYear = '';
 
     public $filterStatus = '';
 
     public int|string|null $deletingId = null;
-
-    public $importFile = null;
-
-    /** @var array<int, string> */
-    public array $importFailures = [];
-
-    public int $importedCount = 0;
 
     public bool $isHod = false;
 
@@ -102,7 +95,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
         $this->resetPage();
     }
 
-    public function updatedFilterLevel(): void
+    public function updatedFilterAdmissionYear(): void
     {
         $this->resetPage();
     }
@@ -119,37 +112,16 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
         return (new StudentsExport($this->getFilteredQuery()))->download();
     }
 
-    public function import(): void
+    public function markAsGraduated(int $id): void
     {
-        Gate::authorize('students.import');
+        Gate::authorize('students.edit');
 
-        $institutionId = $this->filterInstitution ?: auth()->user()->institution_id;
-
-        if (! $institutionId) {
-            $this->dispatch('notify', [
-                'type' => 'error',
-                'message' => 'Please select an institution before importing.',
-            ]);
-
-            return;
-        }
-
-        $this->validate(['importFile' => ['required', 'file', 'mimes:csv,txt', 'max:2048']]);
-
-        $this->importFailures = [];
-        $this->importedCount = 0;
-
-        $importer = new StudentsImport($institutionId);
-        $importer->import($this->importFile->getRealPath());
-
-        $this->importedCount = $importer->imported;
-        $this->importFailures = $importer->failures;
-        $this->importFile = null;
-
-        if ($this->importedCount > 0) {
+        $student = Student::find($id);
+        if ($student) {
+            $student->update(['status' => 'graduated']);
             $this->dispatch('notify', [
                 'type' => 'success',
-                'message' => "{$this->importedCount} student(s) imported successfully.",
+                'message' => 'Student status updated to graduated.',
             ]);
         }
     }
@@ -188,24 +160,14 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
             ->when($this->filterProgram, fn ($q) => $q->where('program_id', $this->filterProgram))
             ->whereHas('program', function ($pq) use ($activeSession) {
                 if ($activeSession) {
-                    $pq->whereRaw("students.entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS SIGNED) - CAST(students.admission_year AS SIGNED)) * 100 <= programs.duration_years * 100", [
+                    $pq->whereRaw("students.entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS SIGNED) - CAST(students.admission_year AS SIGNED)) * 100 > programs.duration_years * 100", [
                         $activeSession->name,
                     ]);
                 } else {
-                    $pq->whereRaw("students.entry_level <= programs.duration_years * 100");
+                    $pq->whereRaw("students.entry_level > programs.duration_years * 100");
                 }
             })
-            ->when($this->filterLevel, function ($q) use ($activeSession) {
-                if ($activeSession) {
-                    return $q->whereRaw("entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS SIGNED) - CAST(admission_year AS SIGNED)) * 100 = ?", [
-                        $activeSession->name,
-                        $this->filterLevel,
-                    ]);
-                }
-
-                return $q->where('entry_level', $this->filterLevel);
-            })
-            ->when($this->filterStatus, fn ($q) => $q->where('status', $this->filterStatus))
+            ->when($this->filterAdmissionYear, fn ($q) => $q->where('admission_year', $this->filterAdmissionYear))
             ->when($this->search, function ($q) {
                 $q->where(function ($sq) {
                     $sq->where('first_name', 'like', "%{$this->search}%")
@@ -229,7 +191,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
 <div class="flex h-full w-full flex-1 flex-col gap-4">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-            <flux:heading size="xl">{{ __('Students') }}</flux:heading>
+            <flux:heading size="xl">{{ __('Alumni') }}</flux:heading>
             <flux:subheading>
                 @php
                     $activeFilters = [];
@@ -239,11 +201,11 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
                         $activeFilters[] = \App\Models\Department::find($filterDepartment)?->name;
                     if ($filterProgram)
                         $activeFilters[] = \App\Models\Program::find($filterProgram)?->name;
-                    if ($filterLevel)
-                        $activeFilters[] = "Level " . $filterLevel;
+                    if ($filterAdmissionYear)
+                        $activeFilters[] = "Admission Year " . $filterAdmissionYear;
                     if ($filterStatus)
                         $activeFilters[] = ucfirst($filterStatus);
-                    $filterText = !empty($activeFilters) ? implode(' / ', $activeFilters) : __('All student records');
+                    $filterText = !empty($activeFilters) ? implode(' / ', $activeFilters) : __('All alumni records');
                 @endphp
                 {{ $filterText }}
             </flux:subheading>
@@ -253,7 +215,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
                 'institution_id' => $filterInstitution,
                 'department_id' => $filterDepartment,
                 'program_id' => $filterProgram,
-                'level' => $filterLevel,
+                'admission_year' => $filterAdmissionYear,
                 'status' => $filterStatus,
                 'search' => $search
             ])">
@@ -261,16 +223,6 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
             </flux:button>
             @can('students.export')
                 <flux:button icon="arrow-down-tray" wire:click="export">{{ __('Export CSV') }}</flux:button>
-            @endcan
-            @can('students.import')
-                <flux:button icon="arrow-up-tray" x-on:click="$flux.modal('import-students').show()">
-                    {{ __('Import CSV') }}
-                </flux:button>
-            @endcan
-            @can('students.create')
-                <flux:button icon="plus" variant="primary" :href="route('cms.students.create')" wire:navigate>
-                    {{ __('Add Student') }}
-                </flux:button>
             @endcan
         </div>
     </div>
@@ -314,10 +266,10 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
             @endforeach
         </flux:select>
 
-        <flux:select wire:model.live="filterLevel" :placeholder="__('All Levels')">
-            <flux:select.option value="">{{ __('All Levels') }}</flux:select.option>
-            @foreach([100, 200, 300, 400, 500, 600] as $lvl)
-                <flux:select.option :value="$lvl">{{ $lvl }}</flux:select.option>
+        <flux:select wire:model.live="filterAdmissionYear" :placeholder="__('All Admission Years')">
+            <flux:select.option value="">{{ __('All Admission Years') }}</flux:select.option>
+            @foreach(range(date('Y'), 2000) as $year)
+                <flux:select.option :value="$year">{{ $year }}</flux:select.option>
             @endforeach
         </flux:select>
 
@@ -335,7 +287,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
             <flux:table.column>{{ __('Matric Number') }}</flux:table.column>
             <flux:table.column>{{ __('Name') }}</flux:table.column>
             <flux:table.column>{{ __('Program') }}</flux:table.column>
-            <flux:table.column>{{ __('Level') }}</flux:table.column>
+            <flux:table.column>{{ __('Admission Year') }}</flux:table.column>
             <flux:table.column>{{ __('Status') }}</flux:table.column>
             <flux:table.column class="text-right">{{ __('Actions') }}</flux:table.column>
         </flux:table.columns>
@@ -346,7 +298,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
                     <flux:table.cell class="font-medium font-mono uppercase">
                         <div class="flex items-center gap-3">
                             <div
-                                class="h-10 w-10 flex-shrink-0 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 overflow-hidden flex items-center justify-center">
+                                class="h-10 w-10 flex-shrink-0 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 overflow-hidden flex items-center justify-center">
                                 @if ($student->photo_path)
                                     <img src="{{ $student->photo_url }}" class="h-full w-full object-cover">
                                 @else
@@ -378,7 +330,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
                         </div>
                     </flux:table.cell>
                     <flux:table.cell class="text-zinc-600 dark:text-zinc-400 font-mono">
-                        {{ $activeSession ? $student->currentLevel($activeSession) : $student->entry_level }}L
+                        {{ $student->admission_year }}
                     </flux:table.cell>
                     <flux:table.cell>
                         <flux:badge :color="match($student->status) {
@@ -393,6 +345,12 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
                     </flux:table.cell>
                     <flux:table.cell class="text-right">
                         <div class="flex items-center justify-end gap-2">
+                            @if($student->status !== 'graduated')
+                                <flux:button size="sm" variant="ghost" icon="academic-cap"
+                                    wire:click="markAsGraduated({{ $student->id }})" title="Mark as Graduated" />
+                            @endif
+                            <flux:button size="sm" variant="ghost" icon="document-text"
+                                :href="route('cms.results.transcripts', ['search' => $student->matric_number])" wire:navigate title="Transcript" />
                             <flux:button size="sm" variant="ghost" icon="pencil"
                                 :href="route('cms.students.edit', $student)" wire:navigate />
                             <flux:button size="sm" variant="ghost" icon="trash"
@@ -410,44 +368,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
         </flux:table.rows>
     </flux:table>
 
-    {{-- Import Modal --}}
-    <flux:modal name="import-students" variant="filled" class="min-w-[28rem]">
-        <form wire:submit="import" class="space-y-6">
-            <div>
-                <flux:heading size="lg">{{ __('Import Students from CSV') }}</flux:heading>
-                <flux:subheading>
-                    {{ __('Upload a CSV file to bulk import student records.') }}
-                    <a href="/templates/students-import-template.csv" class="text-accent underline" download>
-                        {{ __('Download template') }}
-                    </a>
-                </flux:subheading>
-            </div>
 
-            <flux:input type="file" wire:model="importFile" accept=".csv,text/csv" :label="__('CSV File')" />
-            <flux:error name="importFile" />
-
-            @if (!empty($importFailures))
-                <div
-                    class="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 p-4 space-y-1 max-h-48 overflow-y-auto">
-                    <p class="text-sm font-medium text-red-700 dark:text-red-400">{{ count($importFailures) }} {{ __('row(s)
-                                    failed:') }}</p>
-                    @foreach ($importFailures as $failure)
-                        <p class="text-xs text-red-600 dark:text-red-500">{{ $failure }}</p>
-                    @endforeach
-                </div>
-            @endif
-
-            <div class="flex gap-2">
-                <flux:spacer />
-                <flux:modal.close>
-                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
-                </flux:modal.close>
-                <flux:button type="submit" variant="primary" wire:loading.attr="disabled">
-                    {{ __('Import') }}
-                </flux:button>
-            </div>
-        </form>
-    </flux:modal>
 
     {{-- Delete Modal --}}
     <flux:modal name="delete-student" variant="filled" class="min-w-[22rem]">

@@ -71,8 +71,8 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component {
     {
         Gate::authorize('students.create');
 
-        $this->first_name = str_replace("'", "", $this->first_name);
-        $this->last_name = str_replace("'", "", $this->last_name);
+        $this->first_name = strtoupper(str_replace("'", "", $this->first_name));
+        $this->last_name = strtoupper(str_replace("'", "", $this->last_name));
 
         $validated = $this->validate([
             'institution_id' => ['required', 'exists:institutions,id'],

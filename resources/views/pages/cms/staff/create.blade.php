@@ -35,6 +35,9 @@ new #[Layout('layouts.app')] #[Title('Add Staff')] class extends Component {
     {
         Gate::authorize('staff.create');
 
+        $this->first_name = strtoupper(str_replace("'", "", $this->first_name));
+        $this->last_name = strtoupper(str_replace("'", "", $this->last_name));
+
         $validated = $this->validate([
             'institution_id' => ['required', 'exists:institutions,id'],
             'role_id'        => ['required', 'exists:roles,role_id'],

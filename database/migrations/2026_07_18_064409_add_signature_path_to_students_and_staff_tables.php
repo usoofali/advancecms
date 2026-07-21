@@ -11,8 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('students_and_staff_tables', function (Blueprint $table) {
-            //
+        Schema::table('students', function (Blueprint $table) {
+            if (!Schema::hasColumn('students', 'signature_path')) {
+                $table->string('signature_path')->nullable();
+            }
+        });
+
+        Schema::table('staff', function (Blueprint $table) {
+            if (!Schema::hasColumn('staff', 'signature_path')) {
+                $table->string('signature_path')->nullable();
+            }
         });
     }
 
@@ -21,8 +29,16 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('students_and_staff_tables', function (Blueprint $table) {
-            //
+        Schema::table('students', function (Blueprint $table) {
+            if (Schema::hasColumn('students', 'signature_path')) {
+                $table->dropColumn('signature_path');
+            }
+        });
+
+        Schema::table('staff', function (Blueprint $table) {
+            if (Schema::hasColumn('staff', 'signature_path')) {
+                $table->dropColumn('signature_path');
+            }
         });
     }
 };

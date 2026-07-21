@@ -14,6 +14,19 @@
     <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />
 
     @vite(['resources/css/app.css', 'resources/js/public.js'])
+    <style>
+        :root {
+            --color-accent: {{ config('theme.accent') }};
+            --color-accent-content: {{ config('theme.accent_content') }};
+            --color-accent-foreground: {{ config('theme.accent_foreground') }};
+        }
+
+        .dark {
+            --color-accent: {{ config('theme.dark_accent') }};
+            --color-accent-content: {{ config('theme.dark_accent_content') }};
+            --color-accent-foreground: {{ config('theme.dark_accent_foreground') }};
+        }
+    </style>
 </head>
 <body class="antialiased bg-zinc-50 text-zinc-900 font-sans">
     <div id="public-website-app"></div>

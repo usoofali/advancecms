@@ -32,7 +32,7 @@
                         </div>
                         <div class="bg-zinc-50 px-6 py-3 flex justify-between items-center border-t border-zinc-100">
                             <span class="text-xs text-zinc-500">{{ program.institution || 'Main Campus' }}</span>
-                            <a href="/apply" class="text-sm font-medium text-zinc-900 hover:text-zinc-600">Apply &rarr;</a>
+                            <a href="/apply" class="text-sm font-semibold text-accent-content hover:underline">Apply &rarr;</a>
                         </div>
                     </div>
                 </div>

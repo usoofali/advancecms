@@ -174,7 +174,7 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
             'session_id' => 'required',
             'semester_id' => 'required',
             'course_id' => 'required',
-            'importFile' => 'required|file|mimes:csv,txt|max:2048',
+            'importFile' => 'required|file|mimes:csv,txt,xlsx,xls|max:5120',
         ]);
 
         $this->importFailures = [];
@@ -312,7 +312,7 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
                 @can('results.import')
                     <flux:button size="sm" variant="ghost" icon="document-arrow-up"
                         x-on:click="$flux.modal('import-results').show()">
-                        {{ __('Import CSV') }}
+                        {{ __('Import Excel / CSV') }}
                     </flux:button>
                 @endcan
             @endif
@@ -450,9 +450,9 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
     <flux:modal name="import-results" class="min-w-[28rem]">
         <form wire:submit="importCsv" class="space-y-6">
             <div>
-                <flux:heading size="lg">{{ __('Import Results (CSV)') }}</flux:heading>
+                <flux:heading size="lg">{{ __('Import Results (Excel / CSV)') }}</flux:heading>
                 <flux:subheading>
-                    {{ __('Upload a CSV file containing result scores. The grades will be applied to the specifically
+                    {{ __('Upload an Excel (.xlsx, .xls) or CSV file containing result scores. The grades will be applied to the specifically
                     selected Session, Semester, and Course.') }}
                     <a href="{{ asset('templates/lecturer-results-template.csv') }}"
                         class="text-blue-500 hover:underline mt-1 block" download>
@@ -461,7 +461,7 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
                 </flux:subheading>
             </div>
 
-            <flux:input type="file" wire:model="importFile" accept=".csv" required />
+            <flux:input type="file" wire:model="importFile" accept=".csv,.xlsx,.xls" required />
             <flux:error name="importFile" />
 
             @if (!empty($importFailures))

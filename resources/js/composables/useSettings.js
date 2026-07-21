@@ -10,7 +10,15 @@ export function useSettings() {
         loading.value = true;
         try {
             const response = await fetch('/api/public/website-settings');
-            settings.value = await response.json();
+            const data = await response.json();
+            settings.value = data;
+
+            if (data?.theme && typeof document !== 'undefined') {
+                const root = document.documentElement;
+                if (data.theme.accent) root.style.setProperty('--color-accent', data.theme.accent);
+                if (data.theme.accent_content) root.style.setProperty('--color-accent-content', data.theme.accent_content);
+                if (data.theme.accent_foreground) root.style.setProperty('--color-accent-foreground', data.theme.accent_foreground);
+            }
         } catch (e) {
             error.value = e;
             console.error('Failed to load settings', e);

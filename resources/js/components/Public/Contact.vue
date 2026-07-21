@@ -10,7 +10,11 @@
                             <dl class="mt-2 text-base text-zinc-500">
                                 <div>
                                     <dt class="sr-only">Email</dt>
-                                    <dd>{{ settings?.contact_email || 'contact@example.com' }}</dd>
+                                    <dd>
+                                        <a :href="`mailto:${settings?.contact_email || 'info@cshtgusau.edu.ng'}`" class="hover:text-accent-content transition-colors">
+                                            {{ settings?.contact_email || 'info@cshtgusau.edu.ng' }}
+                                        </a>
+                                    </dd>
                                 </div>
                             </dl>
                         </div>
@@ -19,7 +23,11 @@
                             <dl class="mt-2 text-base text-zinc-500">
                                 <div>
                                     <dt class="sr-only">Phone number</dt>
-                                    <dd>{{ settings?.contact_phone || '+1 (555) 123-4567' }}</dd>
+                                    <dd>
+                                        <a :href="`tel:${settings?.contact_phone || '+234 800 000 0000'}`" class="hover:text-accent-content transition-colors">
+                                            {{ settings?.contact_phone || '+234 800 000 0000' }}
+                                        </a>
+                                    </dd>
                                 </div>
                             </dl>
                         </div>
@@ -28,7 +36,7 @@
                             <dl class="mt-2 text-base text-zinc-500">
                                 <div>
                                     <dt class="sr-only">Physical Address</dt>
-                                    <dd class="whitespace-pre-wrap">{{ settings?.address || '123 University Ave\nEducation City, ST 12345' }}</dd>
+                                    <dd class="whitespace-pre-wrap">{{ settings?.address || 'Community School of Health Technology, Gusau, Zamfara State, Nigeria' }}</dd>
                                 </div>
                             </dl>
                         </div>
@@ -40,19 +48,19 @@
                     <div class="mt-8 grid grid-cols-1 gap-12 sm:grid-cols-2 sm:gap-x-8 sm:gap-y-12 lg:mt-0 lg:col-span-2">
                         <div v-if="settings?.social_facebook">
                             <h3 class="text-lg leading-6 font-medium text-zinc-900">Facebook</h3>
-                            <a :href="settings.social_facebook" target="_blank" class="mt-2 text-base text-zinc-500 hover:text-zinc-900">
+                            <a :href="settings.social_facebook" target="_blank" class="mt-2 text-base text-zinc-500 hover:text-accent-content transition-colors">
                                 Follow us on Facebook
                             </a>
                         </div>
                         <div v-if="settings?.social_twitter">
                             <h3 class="text-lg leading-6 font-medium text-zinc-900">Twitter (X)</h3>
-                            <a :href="settings.social_twitter" target="_blank" class="mt-2 text-base text-zinc-500 hover:text-zinc-900">
+                            <a :href="settings.social_twitter" target="_blank" class="mt-2 text-base text-zinc-500 hover:text-accent-content transition-colors">
                                 Follow us on Twitter
                             </a>
                         </div>
                         <div v-if="settings?.social_linkedin">
                             <h3 class="text-lg leading-6 font-medium text-zinc-900">LinkedIn</h3>
-                            <a :href="settings.social_linkedin" target="_blank" class="mt-2 text-base text-zinc-500 hover:text-zinc-900">
+                            <a :href="settings.social_linkedin" target="_blank" class="mt-2 text-base text-zinc-500 hover:text-accent-content transition-colors">
                                 Connect on LinkedIn
                             </a>
                         </div>

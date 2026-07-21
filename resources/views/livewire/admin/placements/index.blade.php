@@ -41,7 +41,7 @@ new #[Layout('layouts.app')] class extends Component {
     </div>
 
     <!-- Statistics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <flux:card>
             <div class="flex items-center justify-between">
                 <div>

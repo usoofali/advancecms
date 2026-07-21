@@ -2,9 +2,9 @@
     <div class="bg-white py-16 sm:py-24">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="lg:text-center">
-                <h2 class="text-base text-zinc-600 font-semibold tracking-wide uppercase">About Us</h2>
+                <h2 class="text-base text-accent-content font-semibold tracking-wide uppercase">About Us</h2>
                 <p class="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-zinc-900 sm:text-4xl">
-                    Our Institution
+                    {{ settings?.website_name || 'Our Institution' }}
                 </p>
             </div>
 
@@ -12,7 +12,7 @@
                 <div class="prose prose-zinc prose-lg mx-auto text-zinc-500">
                     <p v-if="settings?.about_text" class="whitespace-pre-wrap">{{ settings.about_text }}</p>
                     <p v-else>
-                        Advance CMS provides a unified platform to manage student data, admissions, placements, and academic records. We are dedicated to providing the best learning environment and administrative experience for both our students and staff.
+                        {{ settings?.website_name || 'Our institution' }} provides a unified platform to manage student data, admissions, placements, and academic records. We are dedicated to providing the best learning environment and administrative experience for both our students and staff.
                     </p>
                     
                     <div v-if="settings?.vision" class="mt-12">

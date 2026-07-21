@@ -110,15 +110,15 @@ new #[Layout('layouts.app')] class extends Component {
 ?>
 
 <div>
-    <div class="flex items-center justify-between mb-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Document Templates</h2>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Create HTML templates for PDF generation with dynamic placeholders.</p>
         </div>
         
-        <div class="flex items-center space-x-3">
-            <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" placeholder="Search templates..." class="w-64" />
-            <flux:button wire:click="create" variant="primary" icon="plus">Add Template</flux:button>
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+            <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" placeholder="Search templates..." class="w-full sm:w-64" />
+            <flux:button wire:click="create" variant="primary" icon="plus" class="w-full sm:w-auto shrink-0">Add Template</flux:button>
         </div>
     </div>
 

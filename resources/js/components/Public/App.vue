@@ -9,7 +9,7 @@
                         <div class="shrink-0 flex items-center">
                             <router-link :to="{ name: 'home' }" class="flex items-center gap-2">
                                 <img v-if="settings?.system_logo" :src="settings.system_logo" alt="System Logo" class="h-10 w-auto">
-                                <span class="font-bold text-xl tracking-tight">{{ settings?.website_name || 'Advance CMS' }}</span>
+                                <span class="font-bold text-xl tracking-tight">{{ settings?.website_name || 'Community School of Health Technology Gusau' }}</span>
                             </router-link>
                         </div>
                         <!-- Desktop Menu -->
@@ -77,7 +77,7 @@
                             <div v-else class="w-10 h-10 bg-accent text-accent-foreground flex items-center justify-center rounded-lg font-bold text-2xl">
                                 A
                             </div>
-                            <span class="font-bold text-2xl tracking-tight text-zinc-900">{{ settings?.website_name || 'Advance CMS' }}</span>
+                            <span class="font-bold text-2xl tracking-tight text-zinc-900">{{ settings?.website_name || 'Community School of Health Technology Gusau' }}</span>
                         </router-link>
                         <p class="text-base text-zinc-500 leading-relaxed max-w-xs">
                             {{ settings?.hero_subtitle || 'A modern, comprehensive system for managing your educational institution.' }}
@@ -151,7 +151,7 @@
                 </div>
                 <div class="mt-12 border-t border-zinc-200 pt-8 flex flex-col md:flex-row md:items-center md:justify-between">
                     <p class="text-base text-zinc-400 xl:text-center">
-                        &copy; {{ new Date().getFullYear() }} {{ settings?.website_name || 'Advance CMS' }}. All rights reserved.
+                        &copy; {{ new Date().getFullYear() }} {{ settings?.website_name || 'Community School of Health Technology Gusau' }}. All rights reserved.
                     </p>
                     <div class="mt-4 md:mt-0 text-sm text-zinc-400">
                         Powered by <a href="#" class="text-zinc-500 hover:text-accent-content font-medium transition-colors">YUM IT SOLUTIONS</a>

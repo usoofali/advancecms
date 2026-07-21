@@ -11,8 +11,8 @@
                     <div class="relative pt-10 px-4 sm:pt-16 sm:px-6 lg:px-8 lg:pt-20">
                         <div class="sm:text-center lg:text-left">
                             <h1 class="text-4xl tracking-tight font-extrabold text-zinc-900 sm:text-5xl md:text-6xl">
-                                <span class="block xl:inline">{{ settings?.hero_title || 'Welcome to' }}</span>
-                                <span class="block text-zinc-600"></span>
+                                <span class="block">{{ settings?.hero_title || 'Welcome to' }}</span>
+                                <span v-if="!settings?.hero_title?.includes(settings?.website_name)" class="block text-accent-content mt-1 text-3xl sm:text-4xl md:text-5xl">{{ settings?.website_name || 'Community School of Health Technology Gusau' }}</span>
                             </h1>
                             <p class="mt-3 text-base text-zinc-500 sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0">
                                 {{ settings?.hero_subtitle || 'A modern, comprehensive system for managing your educational institution.' }}

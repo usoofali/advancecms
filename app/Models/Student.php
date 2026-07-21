@@ -15,6 +15,8 @@ class Student extends Model
     /** @use HasFactory<StudentFactory> */
     use HasFactory;
 
+    public static bool $suppressEnrollmentNotification = false;
+
     protected static function booted(): void
     {
         static::creating(function ($student) {
@@ -47,15 +49,19 @@ class Student extends Model
 
                 if (! $user) {
                     $password = '12345678';
+                    static $defaultPasswordHash = null;
+                    $defaultPasswordHash ??= Hash::make($password);
 
                     $user = User::create([
                         'name' => "{$student->first_name} {$student->last_name}",
                         'email' => $student->email,
                         'institution_id' => $student->institution_id,
-                        'password' => Hash::make($password),
+                        'password' => $defaultPasswordHash,
                     ]);
 
-                    $user->notify(new EnrollmentNotification($student, $password));
+                    if (! static::$suppressEnrollmentNotification) {
+                        $user->notify(new EnrollmentNotification($student, $password));
+                    }
                 } else {
                     $user->update([
                         'name' => "{$student->first_name} {$student->last_name}",

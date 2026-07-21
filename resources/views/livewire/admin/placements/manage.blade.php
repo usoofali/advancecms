@@ -750,15 +750,15 @@ new #[Layout('layouts.app')] class extends Component {
         <div class="relative overflow-x-auto">
             @if(count($selectedPlacements) > 0)
                 <div
-                    class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex items-center justify-between border border-blue-200 dark:border-blue-800">
+                    class="mb-4 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border border-blue-200 dark:border-blue-800">
                     <span class="text-sm text-blue-800 dark:text-blue-300">
                         <strong>{{ count($selectedPlacements) }}</strong> placement(s) selected
                     </span>
-                    <div class="flex gap-2">
-                        <flux:button wire:click="bulkApproveRequests" size="sm" variant="primary" icon="check">
+                    <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                        <flux:button wire:click="bulkApproveRequests" size="sm" variant="primary" icon="check" class="flex-1 sm:flex-initial">
                             Approve Requests
                         </flux:button>
-                        <flux:button wire:click="$set('selectedPlacements', [])" size="sm" variant="ghost">
+                        <flux:button wire:click="$set('selectedPlacements', [])" size="sm" variant="ghost" class="flex-1 sm:flex-initial">
                             Clear Selection
                         </flux:button>
                     </div>

@@ -4,7 +4,7 @@
     "name": "runtime-dom.esm-bundler"
   },
   "resources/css/app.css": {
-    "file": "assets/app-C825AE93.css",
+    "file": "assets/app-CctXpSIp.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
@@ -21,7 +21,7 @@
     ]
   },
   "resources/js/public.js": {
-    "file": "assets/public-G3u7i5eR.js",
+    "file": "assets/public-BVw8jY9l.js",
     "name": "public",
     "src": "resources/js/public.js",
     "isEntry": true,

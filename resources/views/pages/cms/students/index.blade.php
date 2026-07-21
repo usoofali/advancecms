@@ -133,7 +133,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
             return;
         }
 
-        $this->validate(['importFile' => ['required', 'file', 'mimes:csv,txt', 'max:2048']]);
+        $this->validate(['importFile' => ['required', 'file', 'mimes:csv,txt,xlsx,xls', 'max:5120']]);
 
         $this->importFailures = [];
         $this->importedCount = 0;
@@ -263,7 +263,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
             @endcan
             @can('students.import')
                 <flux:button icon="arrow-up-tray" x-on:click="$flux.modal('import-students').show()">
-                    {{ __('Import CSV') }}
+                    {{ __('Import Excel / CSV') }}
                 </flux:button>
             @endcan
         </div>
@@ -408,16 +408,16 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
     <flux:modal name="import-students" variant="filled" class="min-w-[28rem]">
         <form wire:submit="import" class="space-y-6">
             <div>
-                <flux:heading size="lg">{{ __('Import Students from CSV') }}</flux:heading>
+                <flux:heading size="lg">{{ __('Import Students from Excel / CSV') }}</flux:heading>
                 <flux:subheading>
-                    {{ __('Upload a CSV file to bulk import student records.') }}
+                    {{ __('Upload an Excel (.xlsx, .xls) or CSV file to bulk import student records.') }}
                     <a href="/templates/students-import-template.csv" class="text-accent underline" download>
                         {{ __('Download template') }}
                     </a>
                 </flux:subheading>
             </div>
 
-            <flux:input type="file" wire:model="importFile" accept=".csv,text/csv" :label="__('CSV File')" />
+            <flux:input type="file" wire:model="importFile" accept=".csv,.xlsx,.xls" :label="__('File (Excel or CSV)')" />
             <flux:error name="importFile" />
 
             @if (!empty($importFailures))

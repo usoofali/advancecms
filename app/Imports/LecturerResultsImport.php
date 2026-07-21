@@ -7,6 +7,7 @@ use App\Models\Result;
 use App\Models\Student;
 use App\Services\GradingService;
 use Illuminate\Support\Facades\Log;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class LecturerResultsImport
 {
@@ -32,19 +33,30 @@ class LecturerResultsImport
     }
 
     /**
-     * Import results from an uploaded CSV file path.
+     * Import results from an uploaded file path (CSV or Excel).
      */
     public function import(string $filePath): void
     {
-        $handle = fopen($filePath, 'r');
-
-        if ($handle === false) {
-            $this->failures[] = 'Could not open file.';
+        @set_time_limit(300);
+        try {
+            $spreadsheet = IOFactory::load($filePath);
+            $sheet = $spreadsheet->getActiveSheet();
+            $rows = $sheet->toArray(null, true, true, false);
+        } catch (\Throwable $e) {
+            Log::error("Result File Import Load Error: {$e->getMessage()}", ['exception' => $e]);
+            $this->failures[] = 'Could not open or parse file. Please upload a valid CSV or Excel file.';
 
             return;
         }
 
-        $headings = array_map('strtolower', array_map('trim', fgetcsv($handle)));
+        if (empty($rows) || count($rows) < 1) {
+            $this->failures[] = 'The uploaded file is empty.';
+
+            return;
+        }
+
+        $headerRow = array_shift($rows);
+        $headings = array_map(fn ($h) => strtolower(trim((string) $h)), $headerRow);
 
         // Expects specifically matric_number, student_name, ca_score, exam_score in headers
         $expected = ['matric_number', 'student_name', 'ca_score', 'exam_score'];
@@ -52,33 +64,42 @@ class LecturerResultsImport
 
         if (! empty($missingHeadings)) {
             $this->failures[] = 'Missing required column headers: '.implode(', ', $missingHeadings);
-            fclose($handle);
 
             return;
         }
 
         $rowNumber = 1;
 
-        while (($raw = fgetcsv($handle)) !== false) {
+        foreach ($rows as $rawValues) {
             $rowNumber++;
 
-            if (count($raw) !== count($headings)) {
-                $this->failures[] = "Row {$rowNumber}: Column count mismatch.";
-
+            // Ignore empty rows
+            if (empty(array_filter($rawValues, fn ($v) => $v !== null && trim((string) $v) !== ''))) {
                 continue;
             }
 
-            $row = array_combine($headings, $raw);
+            if (count($rawValues) < count($headings)) {
+                $rawValues = array_pad($rawValues, count($headings), null);
+            }
+
+            $row = [];
+            foreach ($headings as $index => $heading) {
+                $row[$heading] = $rawValues[$index] ?? null;
+            }
 
             // Require matric number
-            if (empty($row['matric_number'])) {
+            $matricNumber = trim((string) ($row['matric_number'] ?? ''));
+            if ($matricNumber === '') {
                 $this->failures[] = "Row {$rowNumber}: Missing matric_number.";
 
                 continue;
             }
 
-            $caScore = isset($row['ca_score']) && $row['ca_score'] !== '' ? (float) $row['ca_score'] : null;
-            $examScore = isset($row['exam_score']) && $row['exam_score'] !== '' ? (float) $row['exam_score'] : null;
+            $caVal = $row['ca_score'] ?? null;
+            $examVal = $row['exam_score'] ?? null;
+
+            $caScore = ($caVal !== null && trim((string) $caVal) !== '') ? (float) $caVal : null;
+            $examScore = ($examVal !== null && trim((string) $examVal) !== '') ? (float) $examVal : null;
 
             // Optional: Skip row entirely if no scores provided
             if ($caScore === null && $examScore === null) {
@@ -87,14 +108,14 @@ class LecturerResultsImport
 
             try {
                 // Find Student (scoped to institution if available)
-                $studentQuery = Student::where('matric_number', trim($row['matric_number']));
+                $studentQuery = Student::where('matric_number', $matricNumber);
                 if ($this->institutionId) {
                     $studentQuery->where('institution_id', $this->institutionId);
                 }
                 $student = $studentQuery->first();
 
                 if (! $student) {
-                    $this->failures[] = "Row {$rowNumber}: Student with matric number '{$row['matric_number']}' not found.";
+                    $this->failures[] = "Row {$rowNumber}: Student with matric number '{$matricNumber}' not found.";
 
                     continue;
                 }
@@ -144,11 +165,9 @@ class LecturerResultsImport
 
                 $this->imported++;
             } catch (\Throwable $e) {
-                Log::error("Result CSV Import Error Row {$rowNumber}: ".$e->getMessage(), ['exception' => $e]);
-                $this->failures[] = "Row {$rowNumber}: An unexpected error occurred while processing '{$row['matric_number']}'.";
+                Log::error("Result File Import Error Row {$rowNumber}: {$e->getMessage()}", ['exception' => $e]);
+                $this->failures[] = "Row {$rowNumber}: An unexpected error occurred while processing '{$matricNumber}'.";
             }
         }
-
-        fclose($handle);
     }
 }

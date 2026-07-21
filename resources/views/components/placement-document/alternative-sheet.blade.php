@@ -8,6 +8,17 @@ $student = $document->placement->student;
 $institution = $student->institution;
 $printFilename = Str::slug($student->full_name . ' ' . $document->document_number) . '.pdf';
 $verificationUrl = route('placements.verify', ['number' => urlencode($document->document_number)]);
+
+$adminSignatureUrl = null;
+if ($institution) {
+    $adminStaff = \App\Models\Staff::where('institution_id', $institution->id)
+        ->where('role_id', 2)
+        ->whereNotNull('signature_path')
+        ->first();
+    if ($adminStaff) {
+        $adminSignatureUrl = asset('storage/' . $adminStaff->signature_path);
+    }
+}
 @endphp
 
 <div class="p-4 bg-zinc-50 min-h-screen print:bg-white print:p-0">
@@ -37,10 +48,6 @@ $verificationUrl = route('placements.verify', ['number' => urlencode($document->
                 @if($institution->phone) | TEL: {{ $institution->phone }} @endif
             </p>
             
-            <h2 class="text-sm font-bold uppercase tracking-widest mt-6 py-1 px-4 border border-zinc-800 bg-zinc-100 rounded-sm">
-                {{ $document->template->title ?? 'Official Document' }}
-            </h2>
-            
             <div class="mt-6 flex justify-between w-full text-sm font-bold border-t border-zinc-200 pt-3">
                 <span class="text-zinc-600 uppercase">Ref No: <span class="text-black font-mono">{{ $document->document_number }}</span></span>
                 <span class="text-zinc-600 uppercase">Date Issued: <span class="text-black">{{ $document->generated_at->format('d/m/Y') }}</span></span>
@@ -57,7 +64,9 @@ $verificationUrl = route('placements.verify', ['number' => urlencode($document->
             <div class="flex justify-between items-end">
                 <div class="text-center w-40">
                     <div class="w-full border-b border-black mb-1 italic text-xs h-12 flex items-end justify-center pb-1">
-                        {{-- Placeholder for physical or digital signature/stamp --}}
+                        @if($adminSignatureUrl)
+                            <img src="{{ $adminSignatureUrl }}" alt="Authorized Signature" class="max-h-10 max-w-full object-contain">
+                        @endif
                     </div>
                     <span class="text-[10px] text-zinc-600 uppercase tracking-tighter font-bold">Authorized Signatory</span>
                     <p class="text-[9px] text-zinc-500 uppercase mt-0.5">{{ $institution->name ?? '' }}</p>

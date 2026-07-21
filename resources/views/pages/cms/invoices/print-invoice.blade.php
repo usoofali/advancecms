@@ -7,10 +7,22 @@ use Livewire\Component;
 
 new #[Layout('layouts.guest')] #[Title('Print Official Invoice')] class extends Component {
     public StudentInvoice $studentInvoice;
+    public ?string $adminSignatureUrl = null;
 
     public function mount(StudentInvoice $studentInvoice)
     {
         $this->studentInvoice = $studentInvoice->load(['student', 'applicant', 'invoice.items', 'institution']);
+        
+        $institution = $this->studentInvoice->institution;
+        if ($institution) {
+            $adminStaff = \App\Models\Staff::where('institution_id', $institution->id)
+                ->where('role_id', 2)
+                ->whereNotNull('signature_path')
+                ->first();
+            if ($adminStaff) {
+                $this->adminSignatureUrl = asset('storage/' . $adminStaff->signature_path);
+            }
+        }
     }
 };
 ?>
@@ -147,8 +159,14 @@ new #[Layout('layouts.guest')] #[Title('Print Official Invoice')] class extends 
                 Verification required for registration.</p>
 
             <div class="flex justify-between items-end px-4">
-                <div class="text-center">
-                    <div class="w-32 border-b border-black mb-1 italic text-xs">Official Stamp</div>
+                <div class="text-center w-32 flex flex-col items-center">
+                    <div class="h-12 flex items-end justify-center mb-1 w-full border-b border-black">
+                        @if($adminSignatureUrl)
+                            <img src="{{ $adminSignatureUrl }}" alt="Official Stamp" class="max-h-12 max-w-full object-contain mb-1">
+                        @else
+                            <span class="italic text-xs pb-1">Official Stamp</span>
+                        @endif
+                    </div>
                     <span class="text-[10px] text-zinc-400 uppercase tracking-tighter">Academic Registry</span>
                 </div>
 

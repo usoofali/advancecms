@@ -13,6 +13,7 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
     public bool $isStudentView = true;
     public int|string $filterSession = '';
     public int|string $filterSemester = '';
+    public ?string $adminSignatureUrl = null;
 
     public function mount(): void
     {
@@ -33,6 +34,19 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
             // Final ownership safeguard
             if ($this->student && $this->student->email !== $user->email) {
                 abort(403);
+            }
+        }
+
+        if ($this->student) {
+            $institution = $this->student->program?->department?->institution;
+            if ($institution) {
+                $adminStaff = \App\Models\Staff::where('institution_id', $institution->id)
+                    ->where('role_id', 2)
+                    ->whereNotNull('signature_path')
+                    ->first();
+                if ($adminStaff) {
+                    $this->adminSignatureUrl = asset('storage/' . $adminStaff->signature_path);
+                }
             }
         }
     }
@@ -375,32 +389,32 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
                         @php $isSuperseded = !in_array($res->id, $bestResultIds); @endphp
                         <tr
                             class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors {{ $isSuperseded ? 'opacity-50 grayscale select-none' : '' }}">
-                            <td class="py-3 pr-4">
-                                <div class="flex items-center gap-2">
-                                    <div class="font-mono font-semibold uppercase text-zinc-900 dark:text-zinc-100">{{
-                                        $res->course->course_code }}</div>
+                            <td class="py-1.5 pr-2">
+                                <div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+                                    <span class="font-mono font-bold uppercase text-zinc-900 dark:text-zinc-100">{{
+                                        $res->course->course_code }}</span>
+                                    <span class="text-xs text-zinc-500 truncate max-w-[200px] sm:max-w-xs md:max-w-sm">&mdash; {{ $res->course->title }}</span>
                                     @if ($isSuperseded)
                                     <flux:badge size="sm" inset="top bottom" color="zinc"
                                         class="text-[10px] uppercase tracking-tighter">{{ __('Superseded') }}
                                     </flux:badge>
                                     @endif
                                 </div>
-                                <div class="text-xs text-zinc-500">{{ $res->course->title }}</div>
                             </td>
-                            <td class="py-3 text-center text-zinc-600 dark:text-zinc-400">{{ $res->course->credit_unit
+                            <td class="py-1.5 text-center text-zinc-600 dark:text-zinc-400">{{ $res->course->credit_unit
                                 }}</td>
-                            <td class="py-3 text-center font-medium text-zinc-800 dark:text-zinc-200">{{ (float)
+                            <td class="py-1.5 text-center font-medium text-zinc-800 dark:text-zinc-200">{{ (float)
                                 $res->total_score }}</td>
-                            <td class="py-3 text-center">
+                            <td class="py-1.5 text-center">
                                 <span
-                                    class="inline-block px-2 py-0.5 rounded font-bold text-sm {{ $res->remark === 'pass' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' }}">
+                                    class="inline-block px-1.5 py-0.5 rounded font-bold text-xs {{ $res->remark === 'pass' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' }}">
                                     {{ $res->grade }}
                                 </span>
                             </td>
-                            <td class="py-3 text-center text-zinc-600 dark:text-zinc-400">{{ number_format((float)
+                            <td class="py-1.5 text-center text-zinc-600 dark:text-zinc-400">{{ number_format((float)
                                 $res->grade_point, 1) }}</td>
-                            <td class="py-3 text-right">
-                                <flux:badge :color="$res->remark === 'pass' ? 'green' : 'red'" size="sm">
+                            <td class="py-1.5 text-right">
+                                <flux:badge :color="$res->remark === 'pass' ? 'green' : 'red'" size="sm" class="text-[10px]">
                                     {{ ucfirst($res->remark) }}
                                 </flux:badge>
                             </td>
@@ -473,7 +487,11 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
         <div class="hidden print:flex mt-8 justify-between items-end border-t-2 border-zinc-900 pt-4 break-inside-avoid">
             <div class="space-y-4">
                 <div class="text-[8px] font-bold uppercase tracking-widest text-zinc-400">{{ __('Authorized Signature') }}</div>
-                <div class="w-48 border-b-2 border-zinc-900 h-8"></div>
+                <div class="w-48 border-b-2 border-zinc-900 h-10 flex items-end justify-center">
+                    @if($adminSignatureUrl)
+                        <img src="{{ $adminSignatureUrl }}" alt="Authorized Signature" class="max-h-10 max-w-full object-contain pb-1">
+                    @endif
+                </div>
                 <div class="text-[8px] font-bold text-zinc-500">{{ __('Academic Secretary / Registrar') }}</div>
             </div>
 

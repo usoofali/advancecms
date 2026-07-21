@@ -15,6 +15,11 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RbacSeeder::class,
             UserSeeder::class,
+            WebsiteSettingsSeeder::class,
+            DocumentTemplateSeeder::class,
+            GradingSystemSeeder::class,
+            InvoiceSeeder::class,
+            PlacementTypeSeeder::class,
         ]);
     }
 }

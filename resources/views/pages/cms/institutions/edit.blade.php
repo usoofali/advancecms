@@ -134,34 +134,34 @@ new #[Layout('layouts.app')] #[Title('Edit Institution')] class extends Componen
 }; ?>
 
 <div class="mx-auto max-w-2xl">
-            <div class="mb-6">
-                <flux:heading size="xl">{{ __('Edit Institution') }}</flux:heading>
-                <flux:subheading>{{ $name }}</flux:subheading>
-            </div>
+    <div class="mb-6">
+        <flux:heading size="xl">{{ __('Edit Institution') }}</flux:heading>
+        <flux:subheading class="break-words">{{ $name }}</flux:subheading>
+    </div>
 
-            <form wire:submit="save" class="space-y-6">
-                <flux:fieldset>
-                    <flux:legend>{{ __('Institution Details') }}</flux:legend>
- 
-                    <div class="grid gap-6">
-                        <div class="flex items-center gap-6">
-                            <div class="relative group">
-                                <div class="w-32 h-32 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border-2 border-dashed border-zinc-200 dark:border-zinc-700 flex items-center justify-center overflow-hidden">
-                                    @if ($logo)
-                                        <img src="{{ $logo->temporaryUrl() }}" class="w-full h-full object-cover">
-                                    @elseif ($institution->logo_path)
-                                        <img src="{{ $institution->logo_url }}" class="w-full h-full object-cover">
-                                    @else
-                                        <flux:icon icon="building-library" class="w-8 h-8 text-zinc-400" />
-                                    @endif
-                                </div>
-                            </div>
-                            <div class="flex-1 space-y-2">
-                                <flux:input type="file" wire:model="logo" accept="image/*" :label="__('Change Logo')" />
-                                <flux:description>{{ __('Max 1MB. JPEG, PNG, or WEBP.') }}</flux:description>
-                                <flux:error name="logo" />
-                            </div>
+    <form wire:submit="save" class="space-y-6">
+        <flux:fieldset>
+            <flux:legend>{{ __('Institution Details') }}</flux:legend>
+
+            <div class="grid gap-6">
+                <div class="flex flex-col sm:flex-row items-center gap-6">
+                    <div class="relative group shrink-0">
+                        <div class="w-32 h-32 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border-2 border-dashed border-zinc-200 dark:border-zinc-700 flex items-center justify-center overflow-hidden">
+                            @if ($logo)
+                                <img src="{{ $logo->temporaryUrl() }}" class="w-full h-full object-cover">
+                            @elseif ($institution->logo_path)
+                                <img src="{{ $institution->logo_url }}" class="w-full h-full object-cover">
+                            @else
+                                <flux:icon icon="building-library" class="w-8 h-8 text-zinc-400" />
+                            @endif
                         </div>
+                    </div>
+                    <div class="flex-1 w-full space-y-2">
+                        <flux:input type="file" wire:model="logo" accept="image/*" :label="__('Change Logo')" />
+                        <flux:description>{{ __('Max 1MB. JPEG, PNG, or WEBP.') }}</flux:description>
+                        <flux:error name="logo" />
+                    </div>
+                </div>
                         <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
                             <flux:input wire:model="name" :label="__('Institution Name')" required />
                             <flux:input wire:model="default_allowance" :label="__('Default Attendance Allowance')" type="number" step="0.01" prefix="₦" required />
@@ -188,46 +188,47 @@ new #[Layout('layouts.app')] #[Title('Edit Institution')] class extends Componen
                     </div>
                 </flux:fieldset>
 
-                <div class="flex items-center justify-end gap-3">
-                    <flux:button :href="route('cms.institutions.index')" wire:navigate>
-                        {{ __('Cancel') }}
-                    </flux:button>
-                    <flux:button type="submit" variant="primary">
-                        {{ __('Update Institution') }}
-                    </flux:button>
+        <div class="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3">
+            <flux:button :href="route('cms.institutions.index')" wire:navigate class="w-full sm:w-auto">
+                {{ __('Cancel') }}
+            </flux:button>
+            <flux:button type="submit" variant="primary" class="w-full sm:w-auto">
+                {{ __('Update Institution') }}
+            </flux:button>
+        </div>
+    </form>
+
+    @can('institutions.assign_roles')
+    <div class="mt-8 border-t border-zinc-200 dark:border-zinc-800 pt-8">
+        <flux:heading size="lg" class="mb-4">{{ __('Assigned Scoped Roles') }}</flux:heading>
+        <flux:subheading class="mb-6">{{ __('Dynamically assign users to specific roles strictly within this institution.') }}</flux:subheading>
+
+        <div class="bg-zinc-50 dark:bg-zinc-900 rounded-xl p-4 sm:p-6 border border-zinc-200 dark:border-zinc-800 mb-6">
+            <form wire:submit="assignRole" class="flex flex-col sm:flex-row items-stretch sm:items-end gap-4">
+                <div class="flex-1 w-full min-w-0">
+                    <flux:select wire:model="assign_user_id" :label="__('User')" searchable required>
+                        <flux:select.option value="">{{ __('Search or select user...') }}</flux:select.option>
+                        @foreach ($allUsers as $u)
+                            <flux:select.option :value="$u->id">
+                                {{ $u->name }} @if($u->roles->isNotEmpty()) ({{ $u->roles->pluck('role_name')->implode(', ') }}) @endif
+                            </flux:select.option>
+                        @endforeach
+                    </flux:select>
                 </div>
+                <div class="flex-1 w-full min-w-0">
+                    <flux:select wire:model="assign_role_id" :label="__('Role')" searchable required>
+                        <flux:select.option value="">{{ __('Search or select role...') }}</flux:select.option>
+                        @foreach ($allRoles as $r)
+                            <flux:select.option :value="$r->role_id">{{ $r->role_name }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+                </div>
+                <flux:button type="submit" variant="primary" class="w-full sm:w-auto shrink-0">{{ __('Assign') }}</flux:button>
             </form>
+        </div>
 
-            @can('institutions.assign_roles')
-            <div class="mt-8 border-t border-zinc-200 dark:border-zinc-800 pt-8">
-                <flux:heading size="lg" class="mb-4">{{ __('Assigned Scoped Roles') }}</flux:heading>
-                <flux:subheading class="mb-6">{{ __('Dynamically assign users to specific roles strictly within this institution.') }}</flux:subheading>
-
-                <div class="bg-zinc-50 dark:bg-zinc-900 rounded-xl p-6 border border-zinc-200 dark:border-zinc-800 mb-6">
-                    <form wire:submit="assignRole" class="flex flex-col sm:flex-row items-end gap-4">
-                        <div class="flex-1 w-full">
-                            <flux:select wire:model="assign_user_id" :label="__('User')" searchable required>
-                                <flux:select.option value="">{{ __('Search or select user...') }}</flux:select.option>
-                                @foreach ($allUsers as $u)
-                                    <flux:select.option :value="$u->id">
-                                        {{ $u->name }} @if($u->roles->isNotEmpty()) ({{ $u->roles->pluck('role_name')->implode(', ') }}) @endif
-                                    </flux:select.option>
-                                @endforeach
-                            </flux:select>
-                        </div>
-                        <div class="flex-1 w-full">
-                            <flux:select wire:model="assign_role_id" :label="__('Role')" searchable required>
-                                <flux:select.option value="">{{ __('Search or select role...') }}</flux:select.option>
-                                @foreach ($allRoles as $r)
-                                    <flux:select.option :value="$r->role_id">{{ $r->role_name }}</flux:select.option>
-                                @endforeach
-                            </flux:select>
-                        </div>
-                        <flux:button type="submit" variant="primary">{{ __('Assign') }}</flux:button>
-                    </form>
-                </div>
-
-                <flux:table>
+        <div class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
+            <flux:table>
                     <flux:table.columns>
                         <flux:table.column>{{ __('User') }}</flux:table.column>
                         <flux:table.column>{{ __('Role') }}</flux:table.column>
@@ -252,8 +253,8 @@ new #[Layout('layouts.app')] #[Title('Edit Institution')] class extends Componen
                             </flux:table.row>
                         @endforelse
                     </flux:table.rows>
-                </flux:table>
-            </div>
-            @endcan
+            </flux:table>
         </div>
+    </div>
+    @endcan
 </div>

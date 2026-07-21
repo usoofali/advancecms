@@ -13,8 +13,7 @@ use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
-new #[Layout('layouts.app')] #[Title('Students')] class extends Component
-{
+new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
     use WithFileUploads, WithPagination;
 
     public string $search = '';
@@ -61,7 +60,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
             $user->getScopedModelIds('Exam Officer', Department::class)
         );
 
-        if (! empty($scopedDeptIds)) {
+        if (!empty($scopedDeptIds)) {
             $this->isHod = true; // Reusing this flag to lock the department dropdown
             $this->filterDepartment = $scopedDeptIds[0];
 
@@ -125,7 +124,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
 
         $institutionId = $this->filterInstitution ?: auth()->user()->institution_id;
 
-        if (! $institutionId) {
+        if (!$institutionId) {
             $this->dispatch('notify', [
                 'type' => 'error',
                 'message' => 'Please select an institution before importing.',
@@ -158,7 +157,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
     {
         Gate::authorize('students.delete');
 
-        if (! $this->deletingId) {
+        if (!$this->deletingId) {
             return;
         }
 
@@ -181,11 +180,11 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
 
         return Student::query()
             ->with(['program.department.institution'])
-            ->when($this->filterInstitution ?: auth()->user()->institution_id, fn ($q, $id) => $q->where('institution_id', $id))
+            ->when($this->filterInstitution ?: auth()->user()->institution_id, fn($q, $id) => $q->where('institution_id', $id))
             ->when($this->filterDepartment, function ($q) {
-                $q->whereHas('program', fn ($pq) => $pq->where('department_id', $this->filterDepartment));
+                $q->whereHas('program', fn($pq) => $pq->where('department_id', $this->filterDepartment));
             })
-            ->when($this->filterProgram, fn ($q) => $q->where('program_id', $this->filterProgram))
+            ->when($this->filterProgram, fn($q) => $q->where('program_id', $this->filterProgram))
             ->whereHas('program', function ($pq) use ($activeSession) {
                 if ($activeSession) {
                     $pq->whereRaw("students.entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS SIGNED) - CAST(students.admission_year AS SIGNED)) * 100 <= programs.duration_years * 100", [
@@ -205,7 +204,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
 
                 return $q->where('entry_level', $this->filterLevel);
             })
-            ->when($this->filterStatus, fn ($q) => $q->where('status', $this->filterStatus))
+            ->when($this->filterStatus, fn($q) => $q->where('status', $this->filterStatus))
             ->when($this->search, function ($q) {
                 $q->where(function ($sq) {
                     $sq->where('first_name', 'like', "%{$this->search}%")
@@ -267,11 +266,6 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
                     {{ __('Import CSV') }}
                 </flux:button>
             @endcan
-            @can('students.create')
-                <flux:button icon="plus" variant="primary" :href="route('cms.students.create')" wire:navigate>
-                    {{ __('Add Student') }}
-                </flux:button>
-            @endcan
         </div>
     </div>
 
@@ -316,7 +310,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
 
         <flux:select wire:model.live="filterLevel" :placeholder="__('All Levels')">
             <flux:select.option value="">{{ __('All Levels') }}</flux:select.option>
-            @foreach([100, 200, 300, 400, 500, 600] as $lvl)
+            @foreach([100, 200, 300] as $lvl)
                 <flux:select.option :value="$lvl">{{ $lvl }}</flux:select.option>
             @endforeach
         </flux:select>
@@ -382,12 +376,12 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
                     </flux:table.cell>
                     <flux:table.cell>
                         <flux:badge :color="match($student->status) {
-                                                'active' => 'green',
-                                                'graduated' => 'indigo',
-                                                'suspended' => 'orange',
-                                                'withdrawn' => 'red',
-                                                default => 'zinc'
-                                            }" size="sm">
+                                                    'active' => 'green',
+                                                    'graduated' => 'indigo',
+                                                    'suspended' => 'orange',
+                                                    'withdrawn' => 'red',
+                                                    default => 'zinc'
+                                                }" size="sm">
                             {{ ucfirst($student->status) }}
                         </flux:badge>
                     </flux:table.cell>
@@ -430,7 +424,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component
                 <div
                     class="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 p-4 space-y-1 max-h-48 overflow-y-auto">
                     <p class="text-sm font-medium text-red-700 dark:text-red-400">{{ count($importFailures) }} {{ __('row(s)
-                                    failed:') }}</p>
+                                        failed:') }}</p>
                     @foreach ($importFailures as $failure)
                         <p class="text-xs text-red-600 dark:text-red-500">{{ $failure }}</p>
                     @endforeach

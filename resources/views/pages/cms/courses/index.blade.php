@@ -113,7 +113,7 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
     public function import(): void
     {
         Gate::authorize('courses.import');
-        $this->validate(['importFile' => ['required', 'file', 'mimes:csv,txt', 'max:2048']]);
+        $this->validate(['importFile' => ['required', 'file', 'mimes:csv,txt,xlsx,xls', 'max:5120']]);
 
         $this->importFailures = [];
         $this->importedCount = 0;
@@ -212,7 +212,7 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
             @can('courses.import')
                 <flux:button icon="arrow-up-tray" x-on:click="$flux.modal('import-courses').show()"
                     class="flex-1 sm:flex-none">
-                    {{ __('Import CSV') }}
+                    {{ __('Import Excel / CSV') }}
                 </flux:button>
             @endcan
             @can('courses.create')
@@ -344,16 +344,16 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
     <flux:modal name="import-courses" variant="filled" class="min-w-[28rem]">
         <form wire:submit="import" class="space-y-6">
             <div>
-                <flux:heading size="lg">{{ __('Import Courses from CSV') }}</flux:heading>
+                <flux:heading size="lg">{{ __('Import Courses from Excel / CSV') }}</flux:heading>
                 <flux:subheading>
-                    {{ __('Upload a CSV file to bulk import course records.') }}
+                    {{ __('Upload an Excel (.xlsx, .xls) or CSV file to bulk import course records.') }}
                     <a href="/templates/courses-import-template.csv" class="text-accent underline" download>
                         {{ __('Download template') }}
                     </a>
                 </flux:subheading>
             </div>
 
-            <flux:input type="file" wire:model="importFile" accept=".csv,text/csv" :label="__('CSV File')" />
+            <flux:input type="file" wire:model="importFile" accept=".csv,.xlsx,.xls" :label="__('File (Excel or CSV)')" />
             <flux:error name="importFile" />
 
             @if (!empty($importFailures))

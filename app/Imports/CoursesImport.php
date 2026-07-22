@@ -4,6 +4,8 @@ namespace App\Imports;
 
 use App\Models\Course;
 use App\Models\Program;
+use Illuminate\Support\Facades\Log;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class CoursesImport
 {
@@ -20,31 +22,49 @@ class CoursesImport
     }
 
     /**
-     * Import courses from an uploaded CSV file path.
+     * Import courses from an uploaded file path (CSV or Excel).
      */
     public function import(string $filePath): void
     {
-        $handle = fopen($filePath, 'r');
+        @set_time_limit(300);
 
-        if ($handle === false) {
-            $this->failures[] = 'Could not open file.';
+        try {
+            $spreadsheet = IOFactory::load($filePath);
+            $sheet = $spreadsheet->getActiveSheet();
+            $rows = $sheet->toArray(null, true, true, false);
+        } catch (\Throwable $e) {
+            Log::error("Course File Import Load Error: {$e->getMessage()}", ['exception' => $e]);
+            $this->failures[] = 'Could not open or parse file. Please upload a valid CSV or Excel file.';
 
             return;
         }
 
-        $headings = array_map('strtolower', array_map('trim', fgetcsv($handle)));
+        if (empty($rows) || count($rows) < 1) {
+            $this->failures[] = 'The uploaded file is empty.';
+
+            return;
+        }
+
+        $headerRow = array_shift($rows);
+        $headings = array_map(fn ($h) => strtolower(trim((string) $h)), $headerRow);
         $rowNumber = 1;
 
-        while (($raw = fgetcsv($handle)) !== false) {
+        foreach ($rows as $rawValues) {
             $rowNumber++;
 
-            if (count($raw) !== count($headings)) {
-                $this->failures[] = "Row {$rowNumber}: Column count mismatch.";
-
+            // Skip empty rows
+            if (empty(array_filter($rawValues, fn ($v) => $v !== null && trim((string) $v) !== ''))) {
                 continue;
             }
 
-            $row = array_combine($headings, $raw);
+            if (count($rawValues) < count($headings)) {
+                $rawValues = array_pad($rawValues, count($headings), null);
+            }
+
+            $row = [];
+            foreach ($headings as $index => $heading) {
+                $row[$heading] = $rawValues[$index] !== null ? trim((string) $rawValues[$index]) : '';
+            }
 
             $missing = [];
             foreach (['course_code', 'title', 'credit_unit', 'level', 'semester', 'program_acronym'] as $field) {
@@ -60,7 +80,7 @@ class CoursesImport
             }
 
             $program = Program::where('institution_id', $this->institutionId)
-                ->where('acronym', trim($row['program_acronym']))
+                ->where('acronym', strtoupper(trim($row['program_acronym'])))
                 ->first();
 
             if (! $program) {
@@ -92,7 +112,5 @@ class CoursesImport
                 $this->failures[] = "Row {$rowNumber}: {$e->getMessage()}";
             }
         }
-
-        fclose($handle);
     }
 }

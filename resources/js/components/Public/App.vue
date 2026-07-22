@@ -9,7 +9,7 @@
                         <div class="shrink-0 flex items-center">
                             <router-link :to="{ name: 'home' }" class="flex items-center gap-2">
                                 <img v-if="settings?.system_logo" :src="settings.system_logo" alt="System Logo" class="h-10 w-auto">
-                                <span class="font-bold text-xl tracking-tight">{{ settings?.website_name || 'Community School of Health Technology Gusau' }}</span>
+                                <span class="font-bold text-xl tracking-tight">{{ settings?.website_name }}</span>
                             </router-link>
                         </div>
                         <!-- Desktop Menu -->
@@ -77,10 +77,10 @@
                             <div v-else class="w-10 h-10 bg-accent text-accent-foreground flex items-center justify-center rounded-lg font-bold text-2xl">
                                 A
                             </div>
-                            <span class="font-bold text-2xl tracking-tight text-zinc-900">{{ settings?.website_name || 'Community School of Health Technology Gusau' }}</span>
+                            <span class="font-bold text-2xl tracking-tight text-zinc-900">{{ settings?.website_name }}</span>
                         </router-link>
                         <p class="text-base text-zinc-500 leading-relaxed max-w-xs">
-                            {{ settings?.hero_subtitle || 'A modern, comprehensive system for managing your educational institution.' }}
+                            {{ settings?.hero_subtitle}}
                         </p>
                         <div class="flex space-x-6">
                             <a v-if="settings?.social_facebook" :href="settings.social_facebook" class="text-zinc-400 hover:text-accent-content transition-colors">
@@ -126,22 +126,22 @@
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                         </svg>
-                                        <span class="ml-3 flex-1 min-w-0 break-words text-base text-zinc-500">{{ settings?.address || '123 Health Avenue, Medical District, City, State, Nigeria' }}</span>
+                                        <span class="ml-3 flex-1 min-w-0 break-words text-base text-zinc-500">{{ settings?.address }}</span>
                                     </li>
                                     <li class="flex items-center">
                                         <svg class="shrink-0 h-6 w-6 text-accent-content" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                                         </svg>
-                                        <a :href="`mailto:${settings?.contact_email || 'info@arisecollege.edu.ng'}`" class="ml-3 flex-1 min-w-0 break-words text-base text-zinc-500 hover:text-accent-content transition-colors">
-                                            {{ settings?.contact_email || 'info@arisecollege.edu.ng' }}
+                                        <a :href="`mailto:${settings?.contact_email}`" class="ml-3 flex-1 min-w-0 break-words text-base text-zinc-500 hover:text-accent-content transition-colors">
+                                            {{ settings?.contact_email }}
                                         </a>
                                     </li>
                                     <li class="flex items-center">
                                         <svg class="shrink-0 h-6 w-6 text-accent-content" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                                         </svg>
-                                        <a :href="`tel:${settings?.contact_phone || '+234 800 000 0000'}`" class="ml-3 flex-1 min-w-0 break-words text-base text-zinc-500 hover:text-accent-content transition-colors">
-                                            {{ settings?.contact_phone || '+234 800 000 0000' }}
+                                        <a :href="`tel:${settings?.contact_phone }`" class="ml-3 flex-1 min-w-0 break-words text-base text-zinc-500 hover:text-accent-content transition-colors">
+                                            {{ settings?.contact_phone }}
                                         </a>
                                     </li>
                                 </ul>
@@ -151,7 +151,7 @@
                 </div>
                 <div class="mt-12 border-t border-zinc-200 pt-8 flex flex-col md:flex-row md:items-center md:justify-between">
                     <p class="text-base text-zinc-400 xl:text-center">
-                        &copy; {{ new Date().getFullYear() }} {{ settings?.website_name || 'Community School of Health Technology Gusau' }}. All rights reserved.
+                        &copy; {{ new Date().getFullYear() }} {{ settings?.website_name }}. All rights reserved.
                     </p>
                     <div class="mt-4 md:mt-0 text-sm text-zinc-400">
                         Powered by <a href="#" class="text-zinc-500 hover:text-accent-content font-medium transition-colors">YUM IT SOLUTIONS</a>

@@ -11,8 +11,8 @@
                                 <div>
                                     <dt class="sr-only">Email</dt>
                                     <dd>
-                                        <a :href="`mailto:${settings?.contact_email || 'info@cshtgusau.edu.ng'}`" class="hover:text-accent-content transition-colors">
-                                            {{ settings?.contact_email || 'info@cshtgusau.edu.ng' }}
+                                        <a :href="`mailto:${settings?.contact_email}`" class="hover:text-accent-content transition-colors">
+                                            {{ settings?.contact_email }}
                                         </a>
                                     </dd>
                                 </div>
@@ -24,8 +24,8 @@
                                 <div>
                                     <dt class="sr-only">Phone number</dt>
                                     <dd>
-                                        <a :href="`tel:${settings?.contact_phone || '+234 800 000 0000'}`" class="hover:text-accent-content transition-colors">
-                                            {{ settings?.contact_phone || '+234 800 000 0000' }}
+                                        <a :href="`tel:${settings?.contact_phone}`" class="hover:text-accent-content transition-colors">
+                                            {{ settings?.contact_phone }}
                                         </a>
                                     </dd>
                                 </div>
@@ -36,7 +36,7 @@
                             <dl class="mt-2 text-base text-zinc-500">
                                 <div>
                                     <dt class="sr-only">Physical Address</dt>
-                                    <dd class="whitespace-pre-wrap">{{ settings?.address || 'Community School of Health Technology, Gusau, Zamfara State, Nigeria' }}</dd>
+                                    <dd class="whitespace-pre-wrap">{{ settings?.address }}</dd>
                                 </div>
                             </dl>
                         </div>

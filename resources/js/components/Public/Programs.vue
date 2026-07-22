@@ -21,17 +21,17 @@
                         <div class="px-6 py-5">
                             <div class="flex items-center justify-between mb-2">
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-800 uppercase tracking-wide">
-                                    {{ program.type || 'Program' }}
+                                    {{ program.type }}
                                 </span>
                                 <span class="text-sm font-mono text-zinc-400">{{ program.code }}</span>
                             </div>
                             <h3 class="text-lg leading-6 font-medium text-zinc-900">{{ program.name }}</h3>
                             <p class="mt-2 text-sm text-zinc-500">
-                                {{ program.department || 'General Department' }}
+                                {{ program.department }}
                             </p>
                         </div>
                         <div class="bg-zinc-50 px-6 py-3 flex justify-between items-center border-t border-zinc-100">
-                            <span class="text-xs text-zinc-500">{{ program.institution || 'Main Campus' }}</span>
+                            <span class="text-xs text-zinc-500">{{ program.institution }}</span>
                             <a href="/apply" class="text-sm font-semibold text-accent-content hover:underline">Apply &rarr;</a>
                         </div>
                     </div>

@@ -90,20 +90,23 @@ class CoursesImport
             }
 
             try {
+                $rawCourseType = ! empty($row['course_type']) ? strtolower(trim($row['course_type'])) : 'core';
+                $courseType = in_array($rawCourseType, ['core', 'elective']) ? $rawCourseType : 'core';
+
                 Course::updateOrCreate(
                     [
                         'institution_id' => $this->institutionId,
+                        'department_id' => $program->department_id,
+                        'program_id' => $program->id,
                         'course_code' => strtoupper(str_replace(' ', '', $row['course_code'])),
+                        'semester' => (int) $row['semester'],
                     ],
                     [
-                        'program_id' => $program->id,
-                        'department_id' => $program->department_id,
                         'title' => strtoupper(trim($row['title'])),
                         'credit_unit' => (int) $row['credit_unit'],
                         'level' => (int) $row['level'],
-                        'semester' => (int) $row['semester'],
-                        'course_type' => ! empty($row['course_type']) ? trim($row['course_type']) : 'compulsory',
-                        'status' => ! empty($row['status']) ? trim($row['status']) : 'active',
+                        'course_type' => $courseType,
+                        'status' => ! empty($row['status']) ? strtolower(trim($row['status'])) : 'active',
                     ]
                 );
 

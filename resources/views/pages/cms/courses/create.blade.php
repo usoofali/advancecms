@@ -74,9 +74,24 @@ new #[Layout('layouts.app')] #[Title('Add Course')] class extends Component
             'course_code.size' => 'The course code must be exactly 6 characters.',
         ]);
 
-        Course::create($validated);
+        Course::updateOrCreate(
+            [
+                'institution_id' => $validated['institution_id'],
+                'department_id' => $validated['department_id'],
+                'program_id' => $validated['program_id'],
+                'course_code' => $validated['course_code'],
+                'semester' => $validated['semester'],
+            ],
+            [
+                'title' => $validated['title'],
+                'credit_unit' => $validated['credit_unit'],
+                'course_type' => $validated['course_type'],
+                'level' => $validated['level'],
+                'status' => $validated['status'],
+            ]
+        );
 
-        session()->flash('success', 'Course created successfully.');
+        session()->flash('success', 'Course saved successfully.');
 
         $this->redirect(route('cms.courses.index'), navigate: true);
     }

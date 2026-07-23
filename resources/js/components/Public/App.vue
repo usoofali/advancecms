@@ -29,7 +29,7 @@
                             {{ settings?.website_name || 'Loading...' }}
                         </h2>
                         <p class="text-xs text-zinc-500 dark:text-zinc-400 font-medium tracking-wide">
-                            Loading website...
+                            Loading...
                         </p>
                     </div>
 

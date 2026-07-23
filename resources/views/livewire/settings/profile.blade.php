@@ -273,12 +273,12 @@ $profile = $this->profile;
                         <flux:heading size="sm" weight="semibold" class="uppercase tracking-wider text-zinc-400">{{ __('Digital Signature') }}</flux:heading>
                         
                         <div wire:ignore x-data="signaturePad()" class="space-y-4 max-w-lg">
-                            <div class="relative rounded-xl overflow-hidden border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900">
+                            <div class="relative rounded-xl overflow-hidden border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-white">
                                 <!-- Existing signature display -->
                                 <template x-if="!isDrawing && existingSignature">
-                                    <div class="absolute inset-0 flex flex-col items-center justify-center p-4">
-                                        <img :src="existingSignature" class="max-h-full object-contain opacity-80" />
-                                        <button @click.prevent="startNewSignature" class="absolute bottom-2 right-2 text-xs bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded shadow-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white">Change Signature</button>
+                                    <div class="absolute inset-0 flex flex-col items-center justify-center p-4 bg-white">
+                                        <img :src="existingSignature" class="max-h-full object-contain opacity-90" />
+                                        <button @click.prevent="startNewSignature" class="absolute bottom-2 right-2 text-xs bg-zinc-100 hover:bg-zinc-200 px-2 py-1 rounded shadow-sm text-zinc-700 transition-colors">Change Signature</button>
                                     </div>
                                 </template>
                                 
@@ -288,7 +288,7 @@ $profile = $this->profile;
                                 
                                 <!-- Canvas overlay to instruct the user -->
                                 <template x-if="(isDrawing || !existingSignature) && isEmpty">
-                                    <div class="absolute inset-0 pointer-events-none flex items-center justify-center text-zinc-300 dark:text-zinc-700 select-none">
+                                    <div class="absolute inset-0 pointer-events-none flex items-center justify-center text-zinc-400 select-none">
                                         {{ __('Draw your signature here') }}
                                     </div>
                                 </template>
@@ -325,7 +325,7 @@ $profile = $this->profile;
                                             const canvas = this.$refs.canvas;
                                             this.signaturePad = new SignaturePad(canvas, {
                                                 backgroundColor: 'rgba(255, 255, 255, 0)',
-                                                penColor: document.documentElement.classList.contains('dark') ? '#ffffff' : '#000000'
+                                                penColor: '#0033aa'
                                             });
                                             
                                             this.resizeCanvas();

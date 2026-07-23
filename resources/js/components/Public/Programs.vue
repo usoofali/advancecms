@@ -6,8 +6,16 @@
                 <p class="mt-4 max-w-2xl mx-auto text-xl text-zinc-500">Discover our range of accredited programs designed for your success.</p>
             </div>
 
-            <div v-if="loading" class="mt-12 text-center text-zinc-500">
-                Loading programs...
+            <div v-if="loading" class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                <div v-for="n in 6" :key="n" class="bg-white overflow-hidden shadow-sm rounded-lg border border-zinc-200 p-6 animate-pulse space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="h-4 bg-zinc-200 rounded w-16"></div>
+                        <div class="h-4 bg-zinc-200 rounded w-12 font-mono"></div>
+                    </div>
+                    <div class="h-6 bg-zinc-200 rounded w-3/4"></div>
+                    <div class="h-4 bg-zinc-200 rounded w-1/2"></div>
+                    <div class="h-4 bg-zinc-100 rounded w-full pt-4 border-t border-zinc-100"></div>
+                </div>
             </div>
             <div v-else-if="error" class="mt-12 text-center text-red-500">
                 Failed to load programs.

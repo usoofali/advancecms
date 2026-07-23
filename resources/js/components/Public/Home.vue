@@ -52,17 +52,26 @@
                     <p class="mt-3 text-xl text-zinc-300 sm:mt-4">Our platform manages the entire academic lifecycle seamlessly.</p>
                 </div>
                 <dl class="mt-10 text-center sm:max-w-3xl sm:mx-auto sm:grid sm:grid-cols-3 sm:gap-8">
-                    <div class="flex flex-col">
+                    <div class="flex flex-col items-center">
                         <dt class="order-2 mt-2 text-lg leading-6 font-medium text-zinc-400">Students</dt>
-                        <dd class="order-1 text-5xl font-extrabold text-white">{{ stats?.students || '...' }}</dd>
+                        <dd class="order-1 text-5xl font-extrabold text-white min-h-[3.5rem] flex items-center justify-center">
+                            <span v-if="stats">{{ stats.students }}</span>
+                            <span v-else class="h-10 w-24 bg-zinc-800 rounded-lg animate-pulse inline-block"></span>
+                        </dd>
                     </div>
-                    <div class="flex flex-col mt-10 sm:mt-0">
+                    <div class="flex flex-col items-center mt-10 sm:mt-0">
                         <dt class="order-2 mt-2 text-lg leading-6 font-medium text-zinc-400">Programs</dt>
-                        <dd class="order-1 text-5xl font-extrabold text-white">{{ stats?.programs || '...' }}</dd>
+                        <dd class="order-1 text-5xl font-extrabold text-white min-h-[3.5rem] flex items-center justify-center">
+                            <span v-if="stats">{{ stats.programs }}</span>
+                            <span v-else class="h-10 w-24 bg-zinc-800 rounded-lg animate-pulse inline-block"></span>
+                        </dd>
                     </div>
-                    <div class="flex flex-col mt-10 sm:mt-0">
+                    <div class="flex flex-col items-center mt-10 sm:mt-0">
                         <dt class="order-2 mt-2 text-lg leading-6 font-medium text-zinc-400">Staff</dt>
-                        <dd class="order-1 text-5xl font-extrabold text-white">{{ stats?.staff || '...' }}</dd>
+                        <dd class="order-1 text-5xl font-extrabold text-white min-h-[3.5rem] flex items-center justify-center">
+                            <span v-if="stats">{{ stats.staff }}</span>
+                            <span v-else class="h-10 w-24 bg-zinc-800 rounded-lg animate-pulse inline-block"></span>
+                        </dd>
                     </div>
                 </dl>
             </div>

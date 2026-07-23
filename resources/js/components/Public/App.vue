@@ -1,7 +1,48 @@
 <template>
-    <div class="min-h-screen flex flex-col bg-zinc-50 text-zinc-900 selection:bg-accent selection:text-accent-foreground">
+    <div class="min-h-screen flex flex-col bg-zinc-50 text-zinc-900 selection:bg-accent selection:text-accent-foreground relative">
+        <!-- Top Navigation Loading Bar -->
+        <div v-if="isNavigating" class="fixed top-0 left-0 right-0 z-[60] h-1 bg-accent/20 overflow-hidden">
+            <div class="h-full bg-accent animate-pulse-fast w-full"></div>
+        </div>
+
+        <!-- Initial Full-Page Logo Loading Screen -->
+        <Transition name="splash-fade">
+            <div v-if="!isReady" class="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-950">
+                <!-- Background Ambient Decorative Gradients -->
+                <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-accent/20 rounded-full blur-3xl pointer-events-none animate-pulse"></div>
+
+                <div class="relative flex flex-col items-center p-8 sm:p-10 rounded-3xl bg-white/90 dark:bg-zinc-900/90 backdrop-blur-xl border border-zinc-200/80 dark:border-zinc-800 shadow-2xl max-w-sm w-full mx-4 space-y-6">
+                    <!-- Brand Logo / Emblem -->
+                    <div class="relative flex items-center justify-center">
+                        <div class="absolute -inset-3 bg-accent/30 rounded-2xl blur-lg animate-pulse"></div>
+                        <div v-if="settings?.system_logo" class="relative z-10 p-3 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm">
+                            <img :src="settings.system_logo" alt="System Logo" class="h-16 w-auto object-contain animate-pulse">
+                        </div>
+                        <div v-else class="relative z-10 w-16 h-16 rounded-2xl bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 flex items-center justify-center font-bold text-3xl shadow-lg">
+                            {{ settings?.website_name ? settings.website_name.charAt(0) : 'A' }}
+                        </div>
+                    </div>
+
+                    <!-- Brand Name & Status Text -->
+                    <div class="text-center space-y-1">
+                        <h2 class="font-bold text-xl text-zinc-900 dark:text-white tracking-tight">
+                            {{ settings?.website_name || 'Loading...' }}
+                        </h2>
+                        <p class="text-xs text-zinc-500 dark:text-zinc-400 font-medium tracking-wide">
+                            Loading website...
+                        </p>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="w-44 h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden relative">
+                        <div class="h-full bg-accent rounded-full animate-progress-slide"></div>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+
         <!-- Navigation -->
-        <nav class="bg-white border-b border-zinc-200 sticky top-0 z-50">
+        <nav class="bg-white/95 backdrop-blur-md border-b border-zinc-200 sticky top-0 z-50 transition-all duration-300">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16">
                     <div class="flex">
@@ -9,6 +50,9 @@
                         <div class="shrink-0 flex items-center">
                             <router-link :to="{ name: 'home' }" class="flex items-center gap-2">
                                 <img v-if="settings?.system_logo" :src="settings.system_logo" alt="System Logo" class="h-10 w-auto">
+                                <div v-else class="w-8 h-8 bg-zinc-900 text-white flex items-center justify-center rounded-lg font-bold text-lg">
+                                    {{ settings?.website_name ? settings.website_name.charAt(0) : 'A' }}
+                                </div>
                                 <span class="font-bold text-xl tracking-tight">{{ settings?.website_name }}</span>
                             </router-link>
                         </div>
@@ -75,7 +119,7 @@
                         <router-link :to="{ name: 'home' }" class="flex items-center gap-2">
                             <img v-if="settings?.system_logo" :src="settings.system_logo" alt="System Logo" class="h-10 w-auto grayscale opacity-80 hover:grayscale-0 hover:opacity-100 transition-all">
                             <div v-else class="w-10 h-10 bg-accent text-accent-foreground flex items-center justify-center rounded-lg font-bold text-2xl">
-                                A
+                                {{ settings?.website_name ? settings.website_name.charAt(0) : 'A' }}
                             </div>
                             <span class="font-bold text-2xl tracking-tight text-zinc-900">{{ settings?.website_name }}</span>
                         </router-link>
@@ -163,11 +207,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, inject, onMounted } from 'vue';
 import { useSettings } from '../../composables/useSettings';
 
 const mobileMenuOpen = ref(false);
-const { settings, fetchSettings } = useSettings();
+const isNavigating = inject('isNavigating', ref(false));
+const { settings, isReady, fetchSettings } = useSettings();
 
 onMounted(() => {
     fetchSettings();
@@ -184,4 +229,44 @@ onMounted(() => {
 .fade-leave-to {
   opacity: 0;
 }
+
+.splash-fade-enter-active,
+.splash-fade-leave-active {
+  transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.splash-fade-enter-from,
+.splash-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.97);
+}
+
+@keyframes progressSlide {
+  0% {
+    width: 0%;
+    margin-left: 0%;
+  }
+  50% {
+    width: 70%;
+    margin-left: 15%;
+  }
+  100% {
+    width: 100%;
+    margin-left: 0%;
+  }
+}
+
+.animate-progress-slide {
+  animation: progressSlide 1.2s infinite ease-in-out;
+}
+
+@keyframes pulseFast {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.animate-pulse-fast {
+  animation: pulseFast 0.8s infinite ease-in-out;
+}
 </style>
+

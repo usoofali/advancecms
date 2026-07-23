@@ -68,7 +68,7 @@ class CoursesImport
 
             $missing = [];
             foreach (['course_code', 'title', 'credit_unit', 'level', 'semester', 'program_acronym'] as $field) {
-                if (empty($row[$field])) {
+                if ($row[$field] === null || trim((string) $row[$field]) === '') {
                     $missing[] = $field;
                 }
             }

@@ -8,7 +8,10 @@ use App\Models\Program;
 use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\RbacSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
+
+uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
     $this->seed(RbacSeeder::class);
@@ -95,4 +98,64 @@ test('importing a course updates existing course matching institution, departmen
     $course->refresh();
     expect($course->title)->toBe('UPDATED MATH TITLE');
     expect($course->credit_unit)->toBe(4);
+});
+
+test('a course with 0 credit units can be created, updated, and imported', function () {
+    $institution = Institution::factory()->create();
+    $department = Department::factory()->for($institution)->create();
+    $program = Program::factory()->for($institution)->for($department)->create(['acronym' => 'GST']);
+
+    $superRole = Role::where('role_name', 'Super Admin')->first();
+    $user = User::factory()->create([
+        'institution_id' => $institution->id,
+    ]);
+    $user->roles()->sync([$superRole->role_id]);
+
+    // 1. Create 0 unit course via Livewire
+    Livewire::actingAs($user)
+        ->test('pages::cms.courses.create')
+        ->set('institution_id', $institution->id)
+        ->set('department_id', $department->id)
+        ->set('program_id', $program->id)
+        ->set('course_code', 'GST101')
+        ->set('title', 'USE OF ENGLISH')
+        ->set('credit_unit', 0)
+        ->set('course_type', 'core')
+        ->set('level', 100)
+        ->set('semester', 1)
+        ->set('status', 'active')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $createdCourse = Course::where('institution_id', $institution->id)->where('course_code', 'GST101')->first();
+    expect($createdCourse)->not->toBeNull();
+    expect($createdCourse->credit_unit)->toBe(0);
+
+    // 2. Edit 0 unit course via Livewire
+    Livewire::actingAs($user)
+        ->test('pages::cms.courses.edit', ['course' => $createdCourse])
+        ->set('credit_unit', 0)
+        ->set('title', 'USE OF ENGLISH I')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    $createdCourse->refresh();
+    expect($createdCourse->title)->toBe('USE OF ENGLISH I');
+    expect($createdCourse->credit_unit)->toBe(0);
+
+    // 3. Import 0 unit course via CSV
+    $csvContent = "course_code,title,credit_unit,level,semester,program_acronym,course_type,status\n";
+    $csvContent .= "GST102,CITIZENSHIP EDUCATION,0,100,2,GST,core,active\n";
+
+    $tmpFilePath = sys_get_temp_dir().'/test_zero_unit_import.csv';
+    file_put_contents($tmpFilePath, $csvContent);
+
+    $importer = new CoursesImport($institution->id);
+    $importer->import($tmpFilePath);
+    @unlink($tmpFilePath);
+
+    expect($importer->imported)->toBe(1);
+    $importedCourse = Course::where('institution_id', $institution->id)->where('course_code', 'GST102')->first();
+    expect($importedCourse)->not->toBeNull();
+    expect($importedCourse->credit_unit)->toBe(0);
 });

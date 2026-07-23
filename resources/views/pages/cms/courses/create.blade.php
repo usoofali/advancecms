@@ -64,7 +64,7 @@ new #[Layout('layouts.app')] #[Title('Add Course')] class extends Component
             'department_id' => ['required', 'exists:departments,id'],
             'course_code' => ['required', 'string', 'size:6', 'regex:/^[A-Z]{3}[0-9]{3}$/'],
             'title' => ['required', 'string', 'max:255'],
-            'credit_unit' => ['required', 'integer', 'min:1', 'max:6'],
+            'credit_unit' => ['required', 'integer', 'min:0', 'max:6'],
             'course_type' => ['required', 'in:core,elective'],
             'level' => ['required', 'integer', 'multiple_of:100', 'min:100', 'max:600'],
             'semester' => ['required', 'in:1,2'],
@@ -168,7 +168,7 @@ new #[Layout('layouts.app')] #[Title('Add Course')] class extends Component
                 </div>
 
                 <div class="grid grid-cols-1 gap-6 sm:grid-cols-3">
-                    <flux:input wire:model="credit_unit" :label="__('Credit Units')" type="number" required />
+                    <flux:input wire:model="credit_unit" :label="__('Credit Units')" type="number" min="0" required />
                     <flux:select wire:model="level" :label="__('Level')">
                         <flux:select.option value="100">100</flux:select.option>
                         <flux:select.option value="200">200</flux:select.option>

@@ -159,3 +159,22 @@ test('a course with 0 credit units can be created, updated, and imported', funct
     expect($importedCourse)->not->toBeNull();
     expect($importedCourse->credit_unit)->toBe(0);
 });
+
+test('course import handles header variations and missing header columns gracefully without throwing exception', function () {
+    $institution = Institution::factory()->create();
+
+    // CSV file missing course_code header entirely
+    $csvContent = "Title,Credit Unit,Level,Semester,Program Acronym\n";
+    $csvContent .= "SOME COURSE,2,100,1,CS\n";
+
+    $tmpFilePath = sys_get_temp_dir().'/test_missing_header_import.csv';
+    file_put_contents($tmpFilePath, $csvContent);
+
+    $importer = new CoursesImport($institution->id);
+    $importer->import($tmpFilePath);
+    @unlink($tmpFilePath);
+
+    expect($importer->imported)->toBe(0);
+    expect($importer->failures)->not->toBeEmpty();
+    expect($importer->failures[0])->toContain('Missing required fields: course_code');
+});

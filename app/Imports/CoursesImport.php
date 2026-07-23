@@ -46,7 +46,12 @@ class CoursesImport
         }
 
         $headerRow = array_shift($rows);
-        $headings = array_map(fn ($h) => strtolower(trim((string) $h)), $headerRow);
+        $headings = array_map(function ($h) {
+            $h = preg_replace('/[\x{EF}\x{BB}\x{BF}]/u', '', (string) $h);
+            $h = strtolower(trim((string) $h));
+
+            return str_replace([' ', '-'], '_', $h);
+        }, $headerRow);
         $rowNumber = 1;
 
         foreach ($rows as $rawValues) {
@@ -63,12 +68,14 @@ class CoursesImport
 
             $row = [];
             foreach ($headings as $index => $heading) {
-                $row[$heading] = $rawValues[$index] !== null ? trim((string) $rawValues[$index]) : '';
+                if ($heading !== '') {
+                    $row[$heading] = isset($rawValues[$index]) && $rawValues[$index] !== null ? trim((string) $rawValues[$index]) : '';
+                }
             }
 
             $missing = [];
             foreach (['course_code', 'title', 'credit_unit', 'level', 'semester', 'program_acronym'] as $field) {
-                if ($row[$field] === null || trim((string) $row[$field]) === '') {
+                if (! isset($row[$field]) || $row[$field] === '') {
                     $missing[] = $field;
                 }
             }
@@ -79,12 +86,13 @@ class CoursesImport
                 continue;
             }
 
+            $programAcronym = strtoupper(trim($row['program_acronym']));
             $program = Program::where('institution_id', $this->institutionId)
-                ->where('acronym', strtoupper(trim($row['program_acronym'])))
+                ->where('acronym', $programAcronym)
                 ->first();
 
             if (! $program) {
-                $this->failures[] = "Row {$rowNumber}: Program '{$row['program_acronym']}' not found.";
+                $this->failures[] = "Row {$rowNumber}: Program '{$programAcronym}' not found.";
 
                 continue;
             }

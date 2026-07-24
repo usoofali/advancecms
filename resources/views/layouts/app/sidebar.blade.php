@@ -250,6 +250,10 @@
                                 :current="request()->routeIs('cms.cbt.exams*')" wire:navigate>
                                 {{ __('Manage Exams') }}
                             </flux:sidebar.item>
+                            <flux:sidebar.item icon="key" :href="route('cms.cbt.pin-access')"
+                                :current="request()->routeIs('cms.cbt.pin-access*')" wire:navigate>
+                                {{ __('PIN Access Control') }}
+                            </flux:sidebar.item>
                         @endcan
 
                         @can('cbt_questions.view')

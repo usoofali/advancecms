@@ -5,6 +5,9 @@ namespace App\Exports;
 use App\Models\Course;
 use App\Models\CourseRegistration;
 use App\Models\Result;
+use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LecturerResultsExport
@@ -30,6 +33,11 @@ class LecturerResultsExport
      */
     public function rows(): array
     {
+        $course = Course::find($this->courseId);
+        $courseCode = $course?->course_code ?? '';
+        $courseTitle = $course?->title ?? '';
+        $courseLevel = $course?->level ?? '';
+
         $registrations = CourseRegistration::query()
             ->with(['student'])
             ->where('academic_session_id', $this->sessionId)
@@ -48,12 +56,15 @@ class LecturerResultsExport
             ->get()
             ->keyBy('student_id');
 
-        return $registrations->map(function ($registration) use ($results) {
+        return $registrations->map(function ($registration) use ($results, $courseCode, $courseTitle, $courseLevel) {
             $result = $results->get($registration->student_id);
 
             return [
                 'matric_number' => $registration->student->matric_number,
                 'student_name' => $registration->student->full_name,
+                'course_code' => $courseCode,
+                'course_title' => $courseTitle,
+                'level' => $registration->level ?? $courseLevel,
                 'ca_score' => $result ? $result->ca_score : '',
                 'exam_score' => $result ? $result->exam_score : '',
             ];
@@ -65,6 +76,9 @@ class LecturerResultsExport
         return [
             'matric_number',
             'student_name',
+            'course_code',
+            'course_title',
+            'level',
             'ca_score',
             'exam_score',
         ];
@@ -76,7 +90,8 @@ class LecturerResultsExport
         $headings = $this->headings();
 
         $course = Course::findOrFail($this->courseId);
-        $filename = "results_{$course->course_code}_{$this->sessionId}_{$this->semesterId}_".date('Ymd_His').'.csv';
+        $cleanCode = Str::slug($course->course_code);
+        $filename = "results_{$cleanCode}_level{$course->level}_".date('Ymd_His').'.csv';
 
         $callback = function () use ($rows, $headings) {
             $out = fopen('php://output', 'w');
@@ -90,6 +105,42 @@ class LecturerResultsExport
         return response()->stream($callback, 200, [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+        ]);
+    }
+
+    public function downloadExcel(): StreamedResponse
+    {
+        $rows = $this->rows();
+        $headings = $this->headings();
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $sheet->fromArray([$headings], null, 'A1');
+        $sheet->getStyle('A1:G1')->getFont()->setBold(true);
+
+        $data = array_map(fn ($row) => array_values($row), $rows);
+        if (! empty($data)) {
+            $sheet->fromArray($data, null, 'A2');
+        }
+
+        foreach (range('A', 'G') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $course = Course::findOrFail($this->courseId);
+        $cleanCode = Str::slug($course->course_code);
+        $filename = "results_{$cleanCode}_level{$course->level}_".date('Ymd_His').'.xlsx';
+
+        $callback = function () use ($spreadsheet) {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+        };
+
+        return response()->stream($callback, 200, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+            'Cache-Control' => 'max-age=0',
         ]);
     }
 }

@@ -1,9 +1,11 @@
 <?php
 
 use App\Models\AcademicSession;
+use App\Models\CbtPinAccessControl;
 use App\Models\CourseRegistration;
 use App\Models\RegistrationStatus;
 use App\Models\Semester;
+use App\Models\Staff;
 use App\Models\Student;
 use App\Models\StudentCbtProfile;
 use App\Services\PaymentAccessService;
@@ -106,6 +108,35 @@ new #[Layout('layouts.app')] #[Title('Examination Card')] class extends Componen
             }
         }
 
+        $examOfficerSignature = null;
+        if ($this->student && $this->student->institution_id) {
+            $officerStaff = Staff::where('institution_id', $this->student->institution_id)
+                ->whereNotNull('signature_path')
+                ->where(function ($q) {
+                    $q->whereHas('role', function ($rq) {
+                        $rq->whereIn('role_name', ['Exam Officer', 'Examination Officer']);
+                    })->orWhereHas('user.roles', function ($rq) {
+                        $rq->whereIn('role_name', ['Exam Officer', 'Examination Officer']);
+                    })->orWhere('designation', 'like', '%Exam%')
+                      ->orWhere('designation', 'like', '%Examination%');
+                })
+                ->first();
+
+            if ($officerStaff && $officerStaff->signature_path) {
+                $examOfficerSignature = asset('storage/'.$officerStaff->signature_path);
+            }
+        }
+
+        $isPinUnlocked = false;
+        if ($this->student && $this->session_id && $this->semester_id) {
+            $isPinUnlocked = CbtPinAccessControl::isUnlocked(
+                $this->student->institution_id,
+                (int) $this->session_id,
+                (int) $this->semester_id,
+                $this->student->program_id
+            );
+        }
+
         return [
             'sessions' => AcademicSession::orderBy('name', 'desc')->get(),
             'semesters' => $this->session_id ? Semester::where('academic_session_id', $this->session_id)->get() : [],
@@ -117,6 +148,8 @@ new #[Layout('layouts.app')] #[Title('Examination Card')] class extends Componen
             'canAccess' => $canAccess,
             'missingInvoices' => $missingInvoices,
             'cbtPin' => $cbtPin,
+            'examOfficerSignature' => $examOfficerSignature,
+            'isPinUnlocked' => $isPinUnlocked,
         ];
     }
 }; ?>
@@ -220,10 +253,37 @@ new #[Layout('layouts.app')] #[Title('Examination Card')] class extends Componen
                     __('Matric No:') }}</span>
                             <span class="font-bold font-mono text-xs w-full">{{ $student->matric_number }}</span>
                         </div>
-                        <div class="flex border-b border-dashed border-zinc-300 pb-0.5">
-                            <span class="w-28 font-bold uppercase text-[9px] tracking-wide text-zinc-500 whitespace-nowrap">{{
-                    __('CBT Login PIN:') }}</span>
-                            <span class="font-bold uppercase text-[10px] w-full">{{ $cbtPin }}</span>
+                        <div class="flex border-b border-dashed border-zinc-300 pb-0.5 items-center">
+                            <span class="w-28 font-bold uppercase text-[9px] tracking-wide text-zinc-500 whitespace-nowrap">{{ __('CBT Login PIN:') }}</span>
+                            <div class="w-full">
+                                @if (!$isPinUnlocked)
+                                    <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800 print:bg-zinc-200 print:text-zinc-800 print:border-zinc-400">
+                                        <flux:icon.lock-closed class="size-3" />
+                                        <span>{{ __('LOCKED (CONTACT EXAM OFFICE)') }}</span>
+                                    </div>
+                                @else
+                                    <div x-data="{ revealed: false }" class="relative inline-block select-none cursor-pointer" @click="revealed = true">
+                                        {{-- Scratch foil layer --}}
+                                        <div x-show="!revealed" class="print:hidden flex items-center gap-1 px-2.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest bg-gradient-to-r from-zinc-300 via-zinc-200 to-zinc-400 text-zinc-800 border border-zinc-400 shadow-inner hover:from-zinc-200 hover:to-zinc-300 transition-all">
+                                            <flux:icon.sparkles class="size-3 text-zinc-600 animate-pulse" />
+                                            <span>{{ __('░░░░ CLICK TO SCRATCH PIN ░░░░') }}</span>
+                                        </div>
+
+                                        {{-- Uncovered PIN state --}}
+                                        <div x-show="revealed" x-cloak class="print:block flex items-center gap-1.5">
+                                            <span class="font-mono font-black tracking-widest text-[11px] text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded border border-zinc-300 dark:border-zinc-700">
+                                                {{ $cbtPin }}
+                                            </span>
+                                            <span class="text-[7px] text-emerald-600 font-bold uppercase tracking-wider print:hidden">✓ Uncovered</span>
+                                        </div>
+
+                                        {{-- Print fallback --}}
+                                        <div class="hidden print:block font-mono font-bold text-[10px] text-black">
+                                            {{ $cbtPin }}
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
                         </div>
                         <div class="flex border-b border-dashed border-zinc-300 pb-0.5">
                             <span class="w-28 font-bold uppercase text-[9px] tracking-wide text-zinc-500 whitespace-nowrap">{{
@@ -365,32 +425,34 @@ new #[Layout('layouts.app')] #[Title('Examination Card')] class extends Componen
                 {{-- Verification Signatures --}}
                 <div class="mt-4 pt-2">
                     <h4
-                        class="font-bold uppercase text-[9px] tracking-widest mb-4 underline decoration-dashed underline-offset-4">
+                        class="font-bold uppercase text-[9px] tracking-widest mb-3 underline decoration-dashed underline-offset-4">
                         Clearance & Approvals</h4>
-                    <div class="grid grid-cols-3 gap-6">
+                    <div class="grid grid-cols-2 gap-8">
                         <div class="text-center">
-                            <div class="border-b border-black h-8 mb-1.5"></div>
+                            <div class="h-10 flex items-end justify-center mb-1">
+                                @if ($student->signature_path)
+                                    <img src="{{ asset('storage/' . $student->signature_path) }}" class="h-9 max-w-[140px] object-contain" alt="Student Signature">
+                                @endif
+                            </div>
+                            <div class="border-b border-black mb-1.5"></div>
                             <span
-                                class="font-bold uppercase text-[8px] tracking-widest block text-zinc-600 print:text-black">Student's
-                                Signature & Date</span>
+                                class="font-bold uppercase text-[8px] tracking-widest block text-zinc-600 print:text-black">{{ __('Student\'s Signature & Date') }}</span>
                         </div>
                         <div class="text-center">
-                            <div class="border-b border-black h-8 mb-1.5"></div>
-                            <span
-                                class="font-bold uppercase text-[8px] tracking-widest block text-zinc-600 print:text-black">Bursary
-                                Clearance (Stamp/Sign)</span>
-                        </div>
-                        <div class="text-center">
-                            <div class="border-b border-black h-8 mb-1.5 relative">
+                            <div class="h-10 flex items-end justify-center mb-1">
+                                @if ($examOfficerSignature)
+                                    <img src="{{ $examOfficerSignature }}" class="h-9 max-w-[140px] object-contain" alt="Examination Officer Signature">
+                                @endif
+                            </div>
+                            <div class="border-b border-black mb-1.5 relative">
                                 {{-- Watermark stamp indicator --}}
                                 <div
-                                    class="absolute inset-0 flex items-center justify-center opacity-10 font-bold uppercase outline-2 outline -rotate-12 text-[10px] text-zinc-500">
-                                    ACADEMIC SECRETARY OFFICIAL STAMP
+                                    class="absolute inset-0 flex items-center justify-center opacity-10 font-bold uppercase outline-2 outline -rotate-12 text-[9px] text-zinc-500">
+                                    EXAMINATION OFFICER OFFICIAL STAMP
                                 </div>
                             </div>
                             <span
-                                class="font-bold uppercase text-[8px] tracking-widest block text-zinc-600 print:text-black">Level
-                                Coordinator Sign & Date</span>
+                                class="font-bold uppercase text-[8px] tracking-widest block text-zinc-600 print:text-black">{{ __('Examination Officer Signature, Stamp & Date') }}</span>
                         </div>
                     </div>
                 </div>

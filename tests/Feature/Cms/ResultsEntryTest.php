@@ -152,3 +152,21 @@ it('clears scores when course selection is set to null string', function (): voi
         ->set('course_id', 'null')
         ->assertSet('scores', []);
 });
+
+it('exports results as excel file in import-compatible format', function (): void {
+    $f = seedEntryFixture();
+    $user = User::factory()
+        ->for($f['institution'])
+        ->withRole('Institutional Admin')
+        ->create();
+
+    $this->actingAs($user);
+
+    $response = Livewire::test('pages::cms.results.entry')
+        ->set('session_id', (string) $f['session']->id)
+        ->set('semester_id', (string) $f['semester']->id)
+        ->set('course_id', (string) $f['courseA']->id)
+        ->call('exportExcel');
+
+    $response->assertFileDownloaded();
+});

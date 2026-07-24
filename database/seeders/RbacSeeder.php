@@ -231,7 +231,7 @@ class RbacSeeder extends Seeder
             ],
         ];
 
-        if (app()->environment('local')) {
+        if (app()->environment('local', 'testing')) {
             foreach ($roles as $name => $data) {
                 $role = Role::updateOrCreate(
                     ['role_name' => $name],

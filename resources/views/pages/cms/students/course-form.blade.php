@@ -4,6 +4,7 @@ use App\Models\AcademicSession;
 use App\Models\CourseRegistration;
 use App\Models\RegistrationStatus;
 use App\Models\Semester;
+use App\Models\Staff;
 use App\Models\Student;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -85,6 +86,25 @@ new #[Layout('layouts.app')] #[Title('Course Form')] class extends Component
             }
         }
 
+        $academicSecretarySignature = null;
+        if ($this->student && $this->student->institution_id) {
+            $secStaff = Staff::where('institution_id', $this->student->institution_id)
+                ->whereNotNull('signature_path')
+                ->where(function ($q) {
+                    $q->whereHas('role', function ($rq) {
+                        $rq->where('role_name', 'Academic Secretary');
+                    })->orWhereHas('user.roles', function ($rq) {
+                        $rq->where('role_name', 'Academic Secretary');
+                    })->orWhere('designation', 'like', '%Academic Secretary%')
+                      ->orWhere('designation', 'like', '%Secretary%');
+                })
+                ->first();
+
+            if ($secStaff && $secStaff->signature_path) {
+                $academicSecretarySignature = asset('storage/'.$secStaff->signature_path);
+            }
+        }
+
         return [
             'sessions' => AcademicSession::orderBy('name', 'desc')->get(),
             'semesters' => $this->session_id ? Semester::where('academic_session_id', $this->session_id)->get() : [],
@@ -94,6 +114,7 @@ new #[Layout('layouts.app')] #[Title('Course Form')] class extends Component
             'semester' => $semester,
             'isBlockedByPayment' => $isBlockedByPayment,
             'missingInvoices' => $missingInvoices,
+            'academicSecretarySignature' => $academicSecretarySignature,
         ];
     }
 }; ?>
@@ -251,12 +272,22 @@ new #[Layout('layouts.app')] #[Title('Course Form')] class extends Component
 
         {{-- Signatures --}}
         <div class="grid grid-cols-2 gap-8 pt-6">
-            <div class="text-center space-y-8">
+            <div class="text-center">
+                <div class="h-12 flex items-end justify-center mb-1">
+                    @if ($student->signature_path)
+                        <img src="{{ asset('storage/' . $student->signature_path) }}" class="h-10 max-w-[150px] object-contain" alt="Student Signature">
+                    @endif
+                </div>
                 <div class="border-t border-zinc-300 dark:border-zinc-600 pt-1.5">
                     <p class="font-bold uppercase text-[9px] tracking-widest">{{ __('Student Signature & Date') }}</p>
                 </div>
             </div>
-            <div class="text-center space-y-8">
+            <div class="text-center">
+                <div class="h-12 flex items-end justify-center mb-1">
+                    @if ($academicSecretarySignature)
+                        <img src="{{ $academicSecretarySignature }}" class="h-10 max-w-[150px] object-contain" alt="Academic Secretary Signature">
+                    @endif
+                </div>
                 <div class="border-t border-zinc-300 dark:border-zinc-600 pt-1.5">
                     <p class="font-bold uppercase text-[9px] tracking-widest">{{ __('Academic Secretary Signature, Stamp & Date') }}
                     </p>

@@ -195,6 +195,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware(['exam.module'])->group(function () {
         Route::prefix('cbt')->name('cms.cbt.')->group(function () {
             Route::livewire('exams', 'pages::cms.cbt.exams')->name('exams')->middleware('can:cbt_exams.view');
+            Route::livewire('pin-access', 'pages::cms.cbt.pin-access')->name('pin-access')->middleware('can:cbt_exams.view');
             Route::livewire('questions', 'pages::cms.cbt.questions')->name('questions')->middleware('can:cbt_questions.view');
             Route::livewire('sync', 'pages::cms.cbt.sync')->name('sync')->middleware('can:cbt_sync.view');
             Route::livewire('results', 'pages::cms.cbt.results')->name('results')->middleware('can:cbt_results.view');

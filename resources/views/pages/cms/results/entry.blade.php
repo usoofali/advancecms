@@ -166,6 +166,26 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
         return $export->download();
     }
 
+    public function exportExcel()
+    {
+        Gate::authorize('results.export');
+
+        $this->validate([
+            'session_id' => 'required',
+            'semester_id' => 'required',
+            'course_id' => 'required',
+        ]);
+
+        $export = new LecturerResultsExport(
+            $this->institution_id ?: auth()->user()->institution_id,
+            $this->session_id,
+            $this->semester_id,
+            $this->course_id
+        );
+
+        return $export->downloadExcel();
+    }
+
     public function importCsv()
     {
         Gate::authorize('results.import');
@@ -304,15 +324,18 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
             </x-action-message>
 
             @if ($course_id && $course_id !== 'null' && count($students) > 0)
-                @can('results.export')
-                    <flux:button size="sm" variant="ghost" icon="document-arrow-down" wire:click="exportCsv">
-                        {{ __('Export CSV') }}
-                    </flux:button>
-                @endcan
                 @can('results.import')
                     <flux:button size="sm" variant="ghost" icon="document-arrow-up"
                         x-on:click="$flux.modal('import-results').show()">
                         {{ __('Import Excel / CSV') }}
+                    </flux:button>
+                @endcan
+                @can('results.export')
+                    <flux:button size="sm" variant="ghost" icon="table-cells" wire:click="exportExcel">
+                        {{ __('Export Excel') }}
+                    </flux:button>
+                    <flux:button size="sm" variant="ghost" icon="document-arrow-down" wire:click="exportCsv">
+                        {{ __('Export CSV') }}
                     </flux:button>
                 @endcan
             @endif

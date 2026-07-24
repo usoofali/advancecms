@@ -132,8 +132,7 @@
                             {{ __('Students') }}
                         </flux:sidebar.item>
                         <flux:sidebar.item icon="academic-cap" :href="route('cms.alumni.index')"
-                            :current="request()->routeIs('cms.alumni.index')"
-                            wire:navigate>
+                            :current="request()->routeIs('cms.alumni.index')" wire:navigate>
                             {{ __('Alumni') }}
                         </flux:sidebar.item>
                     @endcan
@@ -245,7 +244,7 @@
 
             @if(auth()->user()->institution?->hasAddon('exam_module'))
                 @canany(['cbt_exams.view', 'cbt_questions.view', 'cbt_sync.view', 'cbt_results.view'])
-                    <flux:sidebar.group :heading="__('Examinations')" class="grid" expandable expanded="false">
+                    <flux:sidebar.group :heading="__('CBT Exams')" class="grid" expandable expanded="false">
                         @can('cbt_exams.view')
                             <flux:sidebar.item icon="clipboard-document-list" :href="route('cms.cbt.exams')"
                                 :current="request()->routeIs('cms.cbt.exams*')" wire:navigate>

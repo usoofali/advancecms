@@ -172,7 +172,7 @@ new #[Layout('layouts.app')] #[Title('Course Form')] class extends Component
             @endif
             <h1 class="text-xl font-black uppercase tracking-tight text-zinc-900 dark:text-white">{{ $inst->name }}
             </h1>
-            <h2 class="text-lg font-bold uppercase text-zinc-700 dark:text-zinc-300">{{ __('Departmenta Course Registration Form')
+            <h2 class="text-lg font-bold uppercase text-zinc-700 dark:text-zinc-300">{{ __('Departmental Course Registration Form')
                 }}</h2>
             <div class="flex items-center justify-center gap-3 text-xs font-semibold text-zinc-500">
                 <span>{{ $session?->name }}</span>

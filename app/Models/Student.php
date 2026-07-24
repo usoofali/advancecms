@@ -213,7 +213,7 @@ class Student extends Model
     {
         $sessionStartYear = (int) explode('/', $session->name)[0];
 
-        return $query->whereRaw('entry_level + (? - admission_year) * 100 = ?', [
+        return $query->whereRaw('entry_level + (CAST(? AS SIGNED) - CAST(admission_year AS SIGNED)) * 100 = ?', [
             $sessionStartYear,
             (int) $level,
         ]);

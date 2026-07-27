@@ -3,7 +3,9 @@
 use App\Models\AcademicSession;
 use App\Models\Student;
 use App\Models\StudentInvoice;
+use App\Models\User;
 use App\Services\GradingService;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -47,6 +49,55 @@ new #[Layout('layouts.app')] #[Title('Student Profile')] class extends Component
         $this->newStatus = $student->status;
     }
 
+    public function createUserAccount(): void
+    {
+        Gate::authorize('students.edit');
+
+        if (! $this->student->email) {
+            $this->dispatch('notify', [
+                'type' => 'danger',
+                'message' => 'Student has no email address configured.',
+            ]);
+
+            return;
+        }
+
+        Student::$suppressEnrollmentNotification = true;
+        $this->student->save();
+
+        $this->dispatch('notify', [
+            'type' => 'success',
+            'message' => 'User account created successfully for '.$this->student->full_name.'. Default password is 12345678.',
+        ]);
+    }
+
+    public function resetUserPassword(): void
+    {
+        Gate::authorize('students.edit');
+
+        $user = User::where('email', $this->student->email)->first();
+
+        if (! $user) {
+            $this->dispatch('notify', [
+                'type' => 'danger',
+                'message' => 'No user account found for this student. Please create the account first.',
+            ]);
+
+            return;
+        }
+
+        $user->update([
+            'password' => \Illuminate\Support\Facades\Hash::make('12345678'),
+        ]);
+
+        $this->dispatch('notify', [
+            'type' => 'success',
+            'message' => 'Password for '.$this->student->full_name.' has been reset to default (12345678).',
+        ]);
+
+        $this->js('$flux.modal("reset-password").close()');
+    }
+
     public function updateStatus(): void
     {
         Gate::authorize('students.change_status');
@@ -69,6 +120,7 @@ new #[Layout('layouts.app')] #[Title('Student Profile')] class extends Component
     {
         $activeSession = AcademicSession::where('status', 'active')->first();
         $invoices = StudentInvoice::where('student_id', $this->student->id)->with('invoice.academicSession')->get();
+        $hasUserAccount = User::where('email', $this->student->email)->exists();
 
         return [
             'cgpa' => $gradingService->computeCgpa($this->student),
@@ -79,6 +131,7 @@ new #[Layout('layouts.app')] #[Title('Student Profile')] class extends Component
             'currentLevel' => $activeSession ? $this->student->currentLevel($activeSession) : '—',
             'institutionLogo' => $this->student->institution->logo_path ? Storage::url($this->student->institution->logo_path) : null,
             'studentInvoices' => $invoices->sortByDesc('created_at'),
+            'hasUserAccount' => $hasUserAccount,
             'statusColorMap' => [
                 'active' => 'green',
                 'graduated' => 'indigo',
@@ -97,33 +150,51 @@ new #[Layout('layouts.app')] #[Title('Student Profile')] class extends Component
 
 <div class="space-y-6">
     {{-- Header Section --}}
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 shadow-sm">
-        <div class="flex items-center gap-6">
-            <div class="relative group">
-                <div class="h-24 w-24 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-700 overflow-hidden flex items-center justify-center shadow-inner">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 sm:p-6 bg-white dark:bg-zinc-800 rounded-2xl border border-zinc-200 dark:border-zinc-700 shadow-sm">
+        <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 min-w-0">
+            <div class="relative group shrink-0">
+                <div class="h-20 w-20 sm:h-24 sm:w-24 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border-2 border-zinc-200 dark:border-zinc-700 overflow-hidden flex items-center justify-center shadow-inner">
                     @if ($student->photo_path)
                         <img src="{{ $student->photo_url }}" class="h-full w-full object-cover">
                     @else
-                        <flux:icon icon="user" class="size-12 text-zinc-300" />
+                        <flux:icon icon="user" class="size-10 sm:size-12 text-zinc-300" />
                     @endif
                 </div>
             </div>
             
-            <div class="space-y-1">
-                <flux:heading size="xl" class="font-black">{{ $student->full_name }}</flux:heading>
-                <div class="flex flex-wrap items-center gap-3">
-                    <span class="font-mono text-sm font-bold text-zinc-500 uppercase tracking-tighter bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
+            <div class="space-y-1 min-w-0">
+                <flux:heading size="xl" class="font-black text-xl sm:text-2xl md:text-3xl break-words leading-tight">{{ $student->full_name }}</flux:heading>
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <span class="font-mono text-xs sm:text-sm font-bold text-zinc-500 uppercase tracking-tighter bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700 break-all">
                         {{ $student->matric_number }}
                     </span>
                     <flux:badge :color="$statusColorMap[$student->status] ?? 'zinc'" inset="top bottom" size="sm" class="font-bold">
                         {{ ucfirst($student->status) }}
                     </flux:badge>
+                    @if ($hasUserAccount)
+                        <flux:badge color="green" inset="top bottom" size="sm" class="font-bold" icon="check-circle">
+                            {{ __('User Account OK') }}
+                        </flux:badge>
+                    @else
+                        <flux:badge color="red" inset="top bottom" size="sm" class="font-bold" icon="exclamation-triangle">
+                            {{ __('User Account Missing') }}
+                        </flux:badge>
+                    @endif
                 </div>
-                <p class="text-sm text-zinc-500 font-medium">{{ $student->program->name }} • {{ $student->program->department->name }}</p>
+                <p class="text-xs sm:text-sm text-zinc-500 font-medium break-words">{{ $student->program->name }} • {{ $student->program->department->name }}</p>
             </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2 w-full md:w-auto shrink-0">
+            @if (! $hasUserAccount && auth()->user()->can('students.edit'))
+                <flux:button icon="user-plus" variant="primary" color="red" wire:click="createUserAccount">
+                    {{ __('Create User Account') }}
+                </flux:button>
+            @elseif ($hasUserAccount && auth()->user()->can('students.edit'))
+                <flux:button icon="key" variant="ghost" x-on:click="$flux.modal('reset-password').show()">
+                    {{ __('Reset Password') }}
+                </flux:button>
+            @endif
             @can('applications.print_letter')
                 <flux:button icon="document-text" variant="ghost" :href="route('cms.students.admission-letter', $student)"
                     target="_blank">{{ __('Admission letter') }}</flux:button>
@@ -136,6 +207,23 @@ new #[Layout('layouts.app')] #[Title('Student Profile')] class extends Component
             @endcan
         </div>
     </div>
+
+    @if (! $hasUserAccount)
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-900 dark:text-red-200 shadow-sm">
+            <div class="flex items-center gap-3">
+                <flux:icon.exclamation-triangle class="size-6 text-red-600 dark:text-red-400 shrink-0" />
+                <div>
+                    <h4 class="font-bold text-sm">{{ __('Missing Portal Login Account') }}</h4>
+                    <p class="text-xs text-red-700 dark:text-red-300">{{ __('This student record does not have a linked user account for portal login. Click the button to generate the account.') }}</p>
+                </div>
+            </div>
+            @can('students.edit')
+                <flux:button icon="user-plus" variant="primary" color="red" size="sm" wire:click="createUserAccount" class="shrink-0">
+                    {{ __('Create Account Now') }}
+                </flux:button>
+            @endcan
+        </div>
+    @endif
 
     {{-- Metrics Grid --}}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -385,8 +473,8 @@ new #[Layout('layouts.app')] #[Title('Student Profile')] class extends Component
     <flux:modal name="change-status" variant="filled" class="min-w-[22rem]">
         <form wire:submit="updateStatus" class="space-y-6">
             <div>
-                <flux:heading size="lg">{{ __('Change Student Status') }}</flux:heading>
-                <flux:subheading>{{ __('Modify the current administrative status of :name.', ['name' => $student->full_name]) }}</flux:subheading>
+                <flux:heading size="lg" class="text-base sm:text-lg">{{ __('Change Student Status') }}</flux:heading>
+                <flux:subheading class="text-xs sm:text-sm">{{ __('Modify the current administrative status of :name.', ['name' => $student->full_name]) }}</flux:subheading>
             </div>
 
             <flux:select wire:model.live="newStatus" :label="__('New Status')">
@@ -405,5 +493,36 @@ new #[Layout('layouts.app')] #[Title('Student Profile')] class extends Component
                 <flux:button type="submit" variant="primary">{{ __('Update Status') }}</flux:button>
             </div>
         </form>
+    </flux:modal>
+
+    {{-- Reset Password Modal --}}
+    <flux:modal name="reset-password" variant="filled" class="min-w-[22rem] space-y-6">
+        <div>
+            <flux:heading size="lg" class="text-base sm:text-lg">{{ __('Reset Student Password') }}</flux:heading>
+            <flux:subheading class="text-xs sm:text-sm">{{ __('Are you sure you want to reset the login password for :name to default (12345678)?', ['name' => $student->full_name]) }}</flux:subheading>
+        </div>
+
+        <div class="rounded-xl bg-zinc-50 dark:bg-zinc-900 p-4 border border-zinc-200 dark:border-zinc-700/60 text-xs space-y-2.5">
+            <div class="flex justify-between items-center gap-2">
+                <span class="text-zinc-500 font-medium">{{ __('Student Name') }}</span>
+                <span class="font-bold text-zinc-900 dark:text-zinc-100 text-right truncate">{{ $student->full_name }}</span>
+            </div>
+            <div class="flex justify-between items-center gap-2">
+                <span class="text-zinc-500 font-medium">{{ __('Matric Number') }}</span>
+                <span class="font-mono font-bold text-zinc-900 dark:text-zinc-100">{{ $student->matric_number }}</span>
+            </div>
+            <div class="flex justify-between items-center gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                <span class="text-zinc-500 font-medium">{{ __('New Default Password') }}</span>
+                <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">12345678</span>
+            </div>
+        </div>
+
+        <div class="flex gap-2">
+            <flux:spacer />
+            <flux:modal.close>
+                <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+            </flux:modal.close>
+            <flux:button variant="primary" color="red" wire:click="resetUserPassword">{{ __('Reset Password') }}</flux:button>
+        </div>
     </flux:modal>
 </div>

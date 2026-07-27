@@ -56,15 +56,12 @@ class LecturerResultsExport
             ->get()
             ->keyBy('student_id');
 
-        return $registrations->map(function ($registration) use ($results, $courseCode, $courseTitle, $courseLevel) {
+        return $registrations->map(function ($registration) use ($results) {
             $result = $results->get($registration->student_id);
 
             return [
-                'matric_number' => $registration->student->matric_number,
-                'student_name' => $registration->student->full_name,
-                'course_code' => $courseCode,
-                'course_title' => $courseTitle,
-                'level' => $registration->level ?? $courseLevel,
+                'matric_number' => $registration->student?->matric_number ?? '',
+                'student_name' => $registration->student?->full_name ?? '',
                 'ca_score' => $result ? $result->ca_score : '',
                 'exam_score' => $result ? $result->exam_score : '',
             ];
@@ -76,9 +73,6 @@ class LecturerResultsExport
         return [
             'matric_number',
             'student_name',
-            'course_code',
-            'course_title',
-            'level',
             'ca_score',
             'exam_score',
         ];
@@ -117,14 +111,14 @@ class LecturerResultsExport
         $sheet = $spreadsheet->getActiveSheet();
 
         $sheet->fromArray([$headings], null, 'A1');
-        $sheet->getStyle('A1:G1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:D1')->getFont()->setBold(true);
 
         $data = array_map(fn ($row) => array_values($row), $rows);
         if (! empty($data)) {
             $sheet->fromArray($data, null, 'A2');
         }
 
-        foreach (range('A', 'G') as $col) {
+        foreach (range('A', 'D') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 

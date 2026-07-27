@@ -312,13 +312,13 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
 }; ?>
 
 <div class="mx-auto max-w-5xl">
-    <div class="mb-8 items-center justify-between flex">
+    <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-            <flux:heading size="xl">{{ __('Result Entry') }}</flux:heading>
-            <flux:subheading>{{ __('Record scores for students registered in a course') }}</flux:subheading>
+            <flux:heading size="xl" class="text-xl sm:text-2xl font-black">{{ __('Result Entry') }}</flux:heading>
+            <flux:subheading class="text-xs sm:text-sm">{{ __('Record scores for students registered in a course') }}</flux:subheading>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-2 sm:gap-3">
             <x-action-message on="results-saved">
                 <flux:badge color="green">{{ __('Results saved & graded successfully!') }}</flux:badge>
             </x-action-message>
@@ -451,14 +451,14 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
             </flux:card>
 
             <div
-                class="sticky bottom-6 p-4 bg-white/90 dark:bg-zinc-900/90 backdrop-blur border border-zinc-200 dark:border-zinc-700 rounded-2xl flex items-center justify-between shadow-xl z-30">
+                class="sticky bottom-6 p-4 bg-white/90 dark:bg-zinc-900/90 backdrop-blur border border-zinc-200 dark:border-zinc-700 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl z-30">
                 <div class="flex items-center gap-2 text-xs text-zinc-500">
-                    <flux:icon.check-circle class="size-4 text-green-500" />
-                    {{ __('Results are auto-saved as you move between fields.') }}
+                    <flux:icon.check-circle class="size-4 text-green-500 shrink-0" />
+                    <span>{{ __('Results are auto-saved as you move between fields.') }}</span>
                 </div>
 
-                <div class="flex items-center gap-3">
-                    <flux:button variant="primary" wire:click="saveResults" icon="check">
+                <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+                    <flux:button variant="primary" wire:click="saveResults" icon="check" class="w-full sm:w-auto">
                         {{ __('Finalize & Grade All') }}
                     </flux:button>
                 </div>

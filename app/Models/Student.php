@@ -20,6 +20,10 @@ class Student extends Model
     protected static function booted(): void
     {
         static::creating(function ($student) {
+            if ($student->email) {
+                $student->email = strtolower(trim($student->email));
+            }
+
             if (! $student->matric_number) {
                 $program = Program::find($student->program_id);
                 $institution = Institution::find($student->institution_id);
@@ -43,9 +47,24 @@ class Student extends Model
             }
         });
 
+        static::updating(function ($student) {
+            if ($student->email) {
+                $student->email = strtolower(trim($student->email));
+            }
+        });
+
         static::saved(function ($student) {
             if ($student->email) {
-                $user = User::where('email', $student->email)->first();
+                $email = strtolower(trim($student->email));
+
+                if ($student->wasChanged('email') && $student->getOriginal('email')) {
+                    $oldEmail = strtolower(trim($student->getOriginal('email')));
+                    if ($oldEmail !== $email) {
+                        User::where('email', $oldEmail)->delete();
+                    }
+                }
+
+                $user = User::where('email', $email)->first();
 
                 if (! $user) {
                     $password = '12345678';
@@ -54,7 +73,7 @@ class Student extends Model
 
                     $user = User::create([
                         'name' => "{$student->first_name} {$student->last_name}",
-                        'email' => $student->email,
+                        'email' => $email,
                         'institution_id' => $student->institution_id,
                         'password' => $defaultPasswordHash,
                     ]);
@@ -65,6 +84,7 @@ class Student extends Model
                 } else {
                     $user->update([
                         'name' => "{$student->first_name} {$student->last_name}",
+                        'email' => $email,
                         'institution_id' => $student->institution_id,
                     ]);
                 }
@@ -78,7 +98,8 @@ class Student extends Model
 
         static::deleting(function ($student) {
             if ($student->email) {
-                User::where('email', $student->email)->delete();
+                $email = strtolower(trim($student->email));
+                User::where('email', $email)->orWhere('email', $student->email)->delete();
             }
         });
     }

@@ -124,7 +124,7 @@
             @endcanany
 
             @canany(['students.view_dept', 'registrations.view', 'registration_status.update', 'registrations.view_personal', 'courses.view', 'courses.view_dept', 'courses.view_assigned', 'attendance.take', 'id_cards.request'])
-                <flux:sidebar.group :heading="__('Academic')" class="grid" expandable expanded="false">
+                <flux:sidebar.group :heading="__('Academics')" class="grid" expandable expanded="false">
                     @can('students.view_dept')
                         <flux:sidebar.item icon="users" :href="route('cms.students.index')"
                             :current="request()->routeIs('cms.students.index') || request()->routeIs('cms.students.create') || request()->routeIs('cms.students.edit')"
@@ -218,7 +218,7 @@
             @endcanany
 
             @canany(['placements.manage', 'students.view_dept'])
-                <flux:sidebar.group :heading="__('Placements & Postings')" class="grid" expandable expanded="false">
+                <flux:sidebar.group :heading="__('Placements')" class="grid" expandable expanded="false">
                     <flux:sidebar.item icon="chart-bar" :href="route('cms.placements.index')"
                         :current="request()->routeIs('cms.placements.index')" wire:navigate>
                         {{ __('Placements Dashboard') }}
@@ -281,7 +281,7 @@
             @endif
 
             @if(auth()->user()->institution?->hasAddon('ca_module'))
-                <flux:sidebar.group :heading="__('Continuous Assessment')" class="grid" expandable expanded="false">
+                <flux:sidebar.group :heading="__('Online C.A')" class="grid" expandable expanded="false">
                     @canany(['courses.view', 'courses.view_dept', 'courses.view_assigned'])
                         <flux:sidebar.item icon="document-text" :href="route('cms.ca-tests.lecturer.index')"
                             :current="request()->routeIs('cms.ca-tests.lecturer.*') && !request()->routeIs('cms.ca-tests.lecturer.results')"

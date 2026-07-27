@@ -14806,11 +14806,11 @@ namespace App\Models {
     /**
      * App\Models\Staff
      *
-     * @property string|null $signature_path
      * @property string|null $next_of_kin_address
      * @property string|null $next_of_kin_phone
      * @property string|null $next_of_kin_relationship
      * @property string|null $next_of_kin_name
+     * @property string|null $signature_path
      * @property \Illuminate\Support\Carbon|null $updated_at
      * @property \Illuminate\Support\Carbon|null $created_at
      * @property string|null $photo_path
@@ -14857,11 +14857,11 @@ namespace App\Models {
      * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff wherePhotoPath($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff whereCreatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff whereUpdatedAt($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff whereSignaturePath($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff whereNextOfKinName($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff whereNextOfKinRelationship($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff whereNextOfKinPhone($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff whereNextOfKinAddress($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff whereSignaturePath($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff newModelQuery()
      * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff newQuery()
      * @method static \Illuminate\Database\Eloquent\Builder<Staff>|Staff query()
@@ -15180,11 +15180,11 @@ namespace App\Models {
     /**
      * App\Models\Student
      *
-     * @property string|null $signature_path
      * @property string|null $next_of_kin_address
      * @property string|null $next_of_kin_phone
      * @property string|null $next_of_kin_relationship
      * @property string|null $next_of_kin_name
+     * @property string|null $signature_path
      * @property \Illuminate\Support\Carbon|null $updated_at
      * @property \Illuminate\Support\Carbon|null $created_at
      * @property mixed $status
@@ -15267,11 +15267,11 @@ namespace App\Models {
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereStatus($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereCreatedAt($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereUpdatedAt($value)
+     * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereSignaturePath($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereNextOfKinName($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereNextOfKinRelationship($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereNextOfKinPhone($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereNextOfKinAddress($value)
-     * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student whereSignaturePath($value)
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student newModelQuery()
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student newQuery()
      * @method static \Illuminate\Database\Eloquent\Builder<Student>|Student query()

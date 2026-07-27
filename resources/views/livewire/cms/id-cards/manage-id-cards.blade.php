@@ -92,14 +92,17 @@
                             // Determine user and profile based on view mode
                             if ($view_mode === 'requests') {
                                 $user = $item->user;
-                                $profile = $type === 'student' ? $user->student : $user->staff;
+                                $profile = $type === 'student' ? $user?->student : $user?->staff;
                             } else {
                                 $profile = $item;
-                                $user = $item->user;
+                                $user = $item?->user;
                             }
                             
-                            $displayName = $user?->name ?? 'Unknown';
-                            $displayId = $type === 'student' ? ($profile->matric_number ?? 'N/A') : ($profile->staff_number ?? 'N/A');
+                            $displayName = $user?->name ?? ($profile ? trim(($profile->first_name ?? '').' '.($profile->last_name ?? '')) : 'Unknown');
+                            if (empty(trim($displayName))) {
+                                $displayName = 'Unknown';
+                            }
+                            $displayId = $type === 'student' ? ($profile?->matric_number ?? 'N/A') : ($profile?->staff_number ?? 'N/A');
                         @endphp
                         <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors">
                             <td class="px-4 py-4">
@@ -132,14 +135,14 @@
                             @else
                                 <td class="px-4 py-4">
                                     <span class="text-xs text-zinc-600 dark:text-zinc-400">
-                                        {{ $type === 'student' ? ($profile->program?->name ?? 'N/A') : ($profile->designation ?? 'N/A') }}
+                                        {{ $type === 'student' ? ($profile?->program?->name ?? 'N/A') : ($profile?->designation ?? 'N/A') }}
                                     </span>
                                 </td>
                             @endif
                             <td class="px-4 py-4">
                                 <div class="flex items-center gap-3">
                                     <div class="size-10 rounded-lg overflow-hidden border-2 border-zinc-100 dark:border-zinc-800 shadow-sm bg-zinc-200 dark:bg-zinc-900">
-                                        @if($profile->photo_path)
+                                        @if($profile?->photo_path)
                                             <img src="{{ asset('storage/'.$profile->photo_path) }}" class="w-full h-full object-cover">
                                         @else
                                             <div class="w-full h-full flex items-center justify-center text-zinc-400">
@@ -147,7 +150,7 @@
                                             </div>
                                         @endif
                                     </div>
-                                    @if(!$profile->photo_path)
+                                    @if(!$profile?->photo_path)
                                         <flux:badge size="sm" color="red" variant="neutral">{{ __('Missing') }}</flux:badge>
                                     @else
                                         <flux:badge size="sm" color="green" variant="neutral">{{ __('Ready') }}</flux:badge>
@@ -161,7 +164,7 @@
                                         <flux:button variant="ghost" size="xs" color="red" icon="x-mark" wire:click="rejectRequest({{ $item->id }})" title="{{ __('Reject Request') }}" />
                                     @endif
                                     
-                                    <flux:button :disabled="!$profile->photo_path" icon="printer" variant="ghost" size="xs" wire:click="$set('selected_ids', [{{ $item->id }}]); bulkGenerate()" />
+                                    <flux:button :disabled="!$profile?->photo_path" icon="printer" variant="ghost" size="xs" wire:click="$set('selected_ids', [{{ $item->id }}]); bulkGenerate()" />
                                 </div>
                             </td>
                         </tr>

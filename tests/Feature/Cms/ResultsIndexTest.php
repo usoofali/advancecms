@@ -239,7 +239,7 @@ it('allows users with permission to view the results index', function (): void {
     $this->get(route('cms.results.index'))->assertSuccessful();
 });
 
-it('does not load the results table until a semester is selected', function (): void {
+it('does not load the results table until session and level are selected', function (): void {
     $f = seedResultsFixture();
     $user = User::factory()
         ->for($f['institution'])
@@ -249,8 +249,26 @@ it('does not load the results table until a semester is selected', function (): 
     $this->actingAs($user);
 
     Livewire::test('pages::cms.results.index')
-        ->assertSet('semester_id', '')
-        ->assertSee(__('Choose session, level, and semester to load results.'), false);
+        ->assertSet('session_id', '')
+        ->assertSee(__('Choose session and course level to load results.'), false);
+});
+
+it('loads matrix grid when session and level are selected', function (): void {
+    $f = seedResultsFixture();
+    $user = User::factory()
+        ->for($f['institution'])
+        ->withRole('Institutional Admin')
+        ->create();
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::cms.results.index')
+        ->set('session_id', (string) $f['session']->id)
+        ->set('level', '100')
+        ->assertSee('CSC101', false)
+        ->assertSee('MTH101', false)
+        ->assertSee($f['student']->matric_number, false)
+        ->assertSee('75/B', false);
 });
 
 it('shows semester matrix with course columns and pass or fail counts', function (): void {
@@ -297,7 +315,7 @@ it('shows single-course columns when a course is selected', function (): void {
         ->assertSee('55', false);
 });
 
-it('downloads filtered matrix csv when semester is selected', function (): void {
+it('downloads filtered matrix csv when session is selected', function (): void {
     $f = seedResultsFixture();
     $user = User::factory()
         ->for($f['institution'])
@@ -340,16 +358,14 @@ it('downloads course csv when course_id is set', function (): void {
         ->and($response->streamedContent())->toContain('CSC101');
 });
 
-it('rejects csv export without semester', function (): void {
+it('rejects csv export without session', function (): void {
     $institution = Institution::factory()->create();
     $user = User::factory()
         ->for($institution)
         ->withRole('Institutional Admin')
         ->create();
 
-    $this->actingAs($user)->get(route('cms.results.export.csv', [
-        'session_id' => AcademicSession::factory()->create()->id,
-    ]))->assertStatus(400);
+    $this->actingAs($user)->get(route('cms.results.export.csv'))->assertStatus(400);
 });
 
 it('embeds every matrix row in the page html for print beyond pagination', function (): void {

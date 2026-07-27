@@ -1,0 +1,18 @@
+Step 1: Preview Retake Records (Safe Check First)
+Before running a DELETE, run this SELECT query to preview all retake records that have an older existing result for the same student and course:
+
+SELECT r1.id, r1.student_id, r1.course_id, r1.academic_session_id AS newer_session_id, r2.academic_session_id AS older_session_id, r1.total_score, r1.grade
+FROM results r1
+INNER JOIN results r2 
+    ON r1.student_id = r2.student_id 
+    AND r1.course_id = r2.course_id 
+    AND r1.academic_session_id > r2.academic_session_id;
+
+
+
+DELETE r1 
+FROM results r1
+INNER JOIN results r2 
+    ON r1.student_id = r2.student_id 
+    AND r1.course_id = r2.course_id 
+    AND r1.academic_session_id > r2.academic_session_id;

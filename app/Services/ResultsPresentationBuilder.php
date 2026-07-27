@@ -21,8 +21,7 @@ class ResultsPresentationBuilder
     public static function catalogCourses(array $filters): EloquentCollection
     {
         if (! ResultsFilterService::filterActive($filters['session_id'] ?? null)
-            || ! ResultsFilterService::filterActive($filters['level'] ?? null)
-            || ! ResultsFilterService::filterActive($filters['semester_id'] ?? null)) {
+            || ! ResultsFilterService::filterActive($filters['level'] ?? null)) {
             return new EloquentCollection([]);
         }
 
@@ -30,11 +29,19 @@ class ResultsPresentationBuilder
             ->when(ResultsFilterService::filterActive($filters['institution_id'] ?? null), fn ($q) => $q->where('institution_id', $filters['institution_id']))
             ->when(ResultsFilterService::filterActive($filters['department_id'] ?? null), fn ($q) => $q->where('department_id', $filters['department_id']))
             ->when(ResultsFilterService::filterActive($filters['program_id'] ?? null), fn ($q) => $q->where('program_id', $filters['program_id']))
-            ->where('level', (int) $filters['level']);
+            ->when(ResultsFilterService::filterActive($filters['level'] ?? null), function ($q) use ($filters) {
+                $level = (int) $filters['level'];
+                $q->where(function ($sq) use ($level) {
+                    $sq->where('level', $level)
+                        ->orWhereHas('programs', fn ($pq) => $pq->where('program_courses.level', $level));
+                });
+            });
 
-        $semester = Semester::query()->find($filters['semester_id']);
-        if ($semester) {
-            $query->where('semester', $semester->name === 'second' ? 2 : 1);
+        if (ResultsFilterService::filterActive($filters['semester_id'] ?? null)) {
+            $semester = Semester::query()->find($filters['semester_id']);
+            if ($semester) {
+                $query->where('semester', $semester->name === 'second' ? 2 : 1);
+            }
         }
 
         return $query->orderBy('course_code')->get();

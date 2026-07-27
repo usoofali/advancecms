@@ -18,8 +18,9 @@ class FilteredResultsCsvExport
 
     public function download(): StreamedResponse
     {
-        if (! ResultsFilterService::filterActive($this->filters['semester_id'] ?? null)) {
-            abort(400, __('Select an academic semester before exporting.'));
+        if (! ResultsFilterService::filterActive($this->filters['session_id'] ?? null)
+            || ! ResultsFilterService::filterActive($this->filters['level'] ?? null)) {
+            abort(400, __('Select an academic session and course level before exporting.'));
         }
 
         $filename = 'results_export_'.date('Ymd_His').'.csv';

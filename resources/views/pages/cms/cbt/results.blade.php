@@ -15,11 +15,12 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
     public $selectedResultId = null;
     public bool $showReviewModal = false;
     public string $filter_exam_id = '';
+    public string $filter_program_id = '';
+    public string $filter_level = '';
     
     #[\Livewire\Attributes\Url]
     public string $filter_status = 'pending';
     
-    public string $search = '';
     public array $selectedResults = [];
     public bool $selectAll = false;
     public bool $showApproveAllModal = false;
@@ -31,8 +32,17 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
         $this->selectAll = false;
     }
 
-    public function updatedSearch(): void
+    public function updatedFilterProgramId(): void
     {
+        $this->filter_exam_id = '';
+        $this->resetPage();
+        $this->selectedResults = [];
+        $this->selectAll = false;
+    }
+
+    public function updatedFilterLevel(): void
+    {
+        $this->filter_exam_id = '';
         $this->resetPage();
         $this->selectedResults = [];
         $this->selectAll = false;
@@ -210,19 +220,20 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
             $query->where('cbt_exam_id', $this->filter_exam_id);
         }
 
-        if ($this->search) {
-            $query->where(function ($q) {
-                $q->whereHas('student', function ($sq) {
-                    $sq->where('first_name', 'like', '%' . $this->search . '%')
-                        ->orWhere('last_name', 'like', '%' . $this->search . '%')
-                        ->orWhere('matric_number', 'like', '%' . $this->search . '%');
-                })
-                ->orWhereHas('exam', function ($eq) {
-                    $eq->where('title', 'like', '%' . $this->search . '%')
-                        ->orWhereHas('course', function ($cq) {
-                            $cq->where('course_code', 'like', '%' . $this->search . '%');
-                        });
+        if ($this->filter_program_id) {
+            $query->whereHas('exam.course', function ($cq) {
+                $cq->where(function ($sq) {
+                    $sq->where('program_id', $this->filter_program_id)
+                        ->orWhereHas('programs', fn ($pq) => $pq->where('programs.id', $this->filter_program_id));
                 });
+            });
+        }
+
+        if ($this->filter_level) {
+            $level = (int) $this->filter_level;
+            $query->whereHas('exam.course', function ($cq) use ($level) {
+                $cq->where('level', $level)
+                    ->orWhereHas('programs', fn ($pq) => $pq->where('program_courses.level', $level));
             });
         }
 
@@ -281,7 +292,28 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
 
         return [
             'results' => $stagingQuery->with(['student', 'exam.course'])->latest()->paginate(20),
+            'programs' => \App\Models\Program::query()
+                ->when($instId, function ($q, $id) {
+                    $q->whereHas('department', fn ($dq) => $dq->where('institution_id', $id));
+                })
+                ->orderBy('name')
+                ->get(),
             'exams' => \App\Models\CbtExam::where('institution_id', $instId)
+                ->when($this->filter_program_id, function ($q) {
+                    $q->whereHas('course', function ($cq) {
+                        $cq->where(function ($sq) {
+                            $sq->where('program_id', $this->filter_program_id)
+                                ->orWhereHas('programs', fn ($pq) => $pq->where('programs.id', $this->filter_program_id));
+                        });
+                    });
+                })
+                ->when($this->filter_level, function ($q) {
+                    $level = (int) $this->filter_level;
+                    $q->whereHas('course', function ($cq) use ($level) {
+                        $cq->where('level', $level)
+                            ->orWhereHas('programs', fn ($pq) => $pq->where('program_courses.level', $level));
+                    });
+                })
                 ->when($isRestrictedLecturer, function ($q) use ($user) {
                     $q->whereIn('course_id', function ($sub) use ($user) {
                         $sub->select('course_id')
@@ -327,21 +359,30 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
             @endif
         </div>
     </div>
-    <div class="flex flex-col md:flex-row mb-8 gap-4">
-        <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass"
-                placeholder="{{ __('Search student, matric, exam or course...') }}" class="w-full md:w-[250px]" />
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 mb-8 gap-4">
+        <flux:select wire:model.live="filter_program_id" :label="__('Program')">
+            <flux:select.option value="">{{ __('Select program...') }}</flux:select.option>
+            @foreach($programs as $prog)
+                <flux:select.option :value="$prog->id">{{ $prog->name }}</flux:select.option>
+            @endforeach
+        </flux:select>
 
-        <div class="w-full md:w-[200px]">
-            <flux:select wire:model.live="filter_status">
-                <option value="">{{ __('All Statuses') }}</option>
-                <option value="pending">{{ __('Pending') }}</option>
-                <option value="approved">{{ __('Approved') }}</option>
-                <option value="rejected">{{ __('Rejected') }}</option>
-            </flux:select>
-        </div>
+        <flux:select wire:model.live="filter_level" :label="__('Course Level')">
+            <flux:select.option value="">{{ __('Select level...') }}</flux:select.option>
+            @foreach([100, 200, 300] as $lvl)
+                <flux:select.option :value="$lvl">{{ $lvl }}</flux:select.option>
+            @endforeach
+        </flux:select>
 
-        <flux:select wire:model.live="filter_exam_id" placeholder="{{ __('Choose Examination...') }}" class="w-full md:min-w-[250px]">
-            <flux:select.option value="">{{ __('--- All Exams ---') }}</flux:select.option>
+        <flux:select wire:model.live="filter_status" :label="__('Status')">
+            <flux:select.option value="">{{ __('All Statuses') }}</flux:select.option>
+            <flux:select.option value="pending">{{ __('Pending') }}</flux:select.option>
+            <flux:select.option value="approved">{{ __('Approved') }}</flux:select.option>
+            <flux:select.option value="rejected">{{ __('Rejected') }}</flux:select.option>
+        </flux:select>
+
+        <flux:select wire:model.live="filter_exam_id" :label="__('Examination')">
+            <flux:select.option value="">{{ __('Select exam...') }}</flux:select.option>
             @foreach($exams as $exam)
                 <flux:select.option :value="$exam->id">{{ $exam->course->course_code }} - {{ $exam->title }} ({{ $exam->exam_date->format('M d, Y') }})</flux:select.option>
             @endforeach

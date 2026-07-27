@@ -323,14 +323,14 @@
                     @can('reports.generate')
                         <flux:sidebar.item icon="academic-cap" :href="route('cms.results.transcripts')"
                             :current="request()->routeIs('cms.results.transcripts')" wire:navigate>
-                            {{ __('Transcript Manager') }}
+                            {{ __('Transcript') }}
                         </flux:sidebar.item>
                     @endcan
 
                     @can('results.view_personal')
                         <flux:sidebar.item icon="identification" :href="route('cms.results.portal')"
                             :current="request()->routeIs('cms.results.portal')" wire:navigate>
-                            {{ __('Examination Results') }}
+                            {{ __('Exam Results') }}
                         </flux:sidebar.item>
                     @endcan
                 </flux:sidebar.group>

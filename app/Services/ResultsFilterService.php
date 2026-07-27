@@ -53,7 +53,11 @@ class ResultsFilterService
         }
 
         if (self::filterActive($filters['level'] ?? null)) {
-            $query->whereHas('course', fn ($cq) => $cq->where('level', (int) $filters['level']));
+            $level = (int) $filters['level'];
+            $query->whereHas('course', function ($cq) use ($level) {
+                $cq->where('level', $level)
+                    ->orWhereHas('programs', fn ($pq) => $pq->where('program_courses.level', $level));
+            });
         }
 
         if (self::filterActive($filters['semester_id'] ?? null)) {

@@ -255,9 +255,8 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
             $students = CourseRegistration::with('student.program')
                 ->where('course_id', $this->course_id)
                 ->where('semester_id', $this->semester_id)
-                ->whereHas('student', function ($query) use ($selectedSession) {
-                    $query->when($this->filter_program, fn($q) => $q->where('program_id', $this->filter_program))
-                        ->when($this->filter_level && $selectedSession, fn($q) => $q->atLevel($this->filter_level, $selectedSession));
+                ->whereHas('student', function ($query) {
+                    $query->when($this->filter_program, fn($q) => $q->where('program_id', $this->filter_program));
                 })
                 ->get()
                 ->sortBy(fn($reg) => $reg->student->matric_number)
@@ -362,15 +361,15 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
             </flux:select>
 
             <flux:select wire:model.live="filter_program" :label="__('Program')" :disabled="!$session_id">
-                <flux:select.option value="">{{ __('All Programs') }}</flux:select.option>
+                <flux:select.option value="">{{ __('Select program...') }}</flux:select.option>
                 @foreach ($programs as $prog)
                     <flux:select.option :value="$prog->id">{{ $prog->name }}</flux:select.option>
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model.live="filter_level" :label="__('Level')" :disabled="!$session_id">
-                <flux:select.option value="">{{ __('All Levels') }}</flux:select.option>
-                @foreach ([100, 200, 300] as $lvl)
+            <flux:select wire:model.live="filter_level" :label="__('Course Level')" :disabled="!$session_id">
+                <flux:select.option value="">{{ __('Select level...') }}</flux:select.option>
+                @foreach ([100, 200, 300, 400, 500] as $lvl)
                     <flux:select.option :value="$lvl">{{ $lvl }}</flux:select.option>
                 @endforeach
             </flux:select>

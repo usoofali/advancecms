@@ -163,7 +163,7 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
     #[Computed]
     public function exportCsvUrl(): string
     {
-        if (! $this->filterActive($this->semester_id)) {
+        if (! $this->filterActive($this->session_id) || ! $this->filterActive($this->level)) {
             return '#';
         }
 
@@ -222,7 +222,9 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
         }
 
         if ($this->filterActive($this->level)) {
-            $rows[] = ['label' => __('Level'), 'value' => (string) $this->level];
+            $rows[] = ['label' => __('Course Level'), 'value' => (string) $this->level];
+        } else {
+            $rows[] = ['label' => __('Course Level'), 'value' => __('All Levels')];
         }
 
         if ($this->filterActive($this->semester_id)) {
@@ -230,6 +232,11 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
             $rows[] = [
                 'label' => __('Semester'),
                 'value' => $semester ? ucfirst((string) $semester->name) : '—',
+            ];
+        } else {
+            $rows[] = [
+                'label' => __('Semester'),
+                'value' => __('All Semesters'),
             ];
         }
 
@@ -241,10 +248,10 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
                     ? strtoupper((string) $course->course_code).' — '.$course->title
                     : '—',
             ];
-        } elseif ($this->filterActive($this->semester_id)) {
+        } else {
             $rows[] = [
                 'label' => __('Results scope'),
-                'value' => __('Whole semester (all courses)'),
+                'value' => __('Overview (all courses)'),
             ];
         }
 
@@ -322,9 +329,7 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
             : collect();
 
         $filters = $this->filterPayload();
-        $courses = ($this->filterActive($this->session_id)
-            && $this->filterActive($this->level)
-            && $this->filterActive($this->semester_id))
+        $courses = ($this->filterActive($this->session_id) && $this->filterActive($this->level))
             ? ResultsPresentationBuilder::catalogCourses($filters)
             : collect();
 
@@ -333,8 +338,8 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
             'program' => $this->filterActive($this->department_id),
             'session' => $this->filterActive($this->program_id),
             'level' => $this->filterActive($this->session_id),
-            'semester' => $this->filterActive($this->session_id),
-            'course' => $this->filterActive($this->level) && $this->filterActive($this->semester_id),
+            'semester' => $this->filterActive($this->level),
+            'course' => $this->filterActive($this->level),
         ];
 
         $institutions = auth()->user()->institution_id
@@ -343,7 +348,7 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
 
         $printSummary = $this->buildPrintFilterSummary();
 
-        $resultsReady = $this->filterActive($this->semester_id);
+        $resultsReady = $this->filterActive($this->session_id) && $this->filterActive($this->level);
 
         if (! $resultsReady) {
             return [
@@ -522,7 +527,7 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model.live="level" :label="__('Level')" :disabled="!$cascade['level']">
+            <flux:select wire:model.live="level" :label="__('Course Level')" :disabled="!$cascade['level']">
                 <flux:select.option value="null">{{ __('Select level…') }}</flux:select.option>
                 @foreach ($levels as $lvl)
                 <flux:select.option :value="$lvl">{{ $lvl }}</flux:select.option>
@@ -539,7 +544,7 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
 
             <flux:select wire:model.live="course_id" :label="__('Course')"
                 :disabled="!$cascade['course']">
-                <flux:select.option value="null">{{ __('Whole semester (all courses)') }}</flux:select.option>
+                <flux:select.option value="null">{{ __('Select course…') }}</flux:select.option>
                 @foreach ($courses as $course)
                 <flux:select.option :value="$course->id">{{ $course->course_code }}</flux:select.option>
                 @endforeach
@@ -623,7 +628,7 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
 
     @if(!$resultsReady)
     <flux:callout variant="secondary" icon="information-circle">
-        {{ __('Choose session, level, and semester to load results. Optionally pick one course for a detailed CA / exam breakdown.') }}
+        {{ __('Choose session and course level to load results. Optionally filter by semester or course.') }}
     </flux:callout>
     @elseif($metrics['mode'] === 'matrix' && ($metrics['students'] ?? 0) > 0)
     <flux:card class="mt-2 print:hidden mb-4">

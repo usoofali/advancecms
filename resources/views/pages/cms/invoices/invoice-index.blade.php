@@ -75,7 +75,7 @@ new #[Layout('layouts.app')] #[Title('Invoices')] class extends Component
                 if ($invoice->studentInvoices()->exists()) {
                     $this->dispatch('notify', [
                         'type' => 'error',
-                        'message' => 'Cannot delete template that has already been issued to students.',
+                        'message' => 'Cannot delete template that has already been issued to students. Please delete all student invoices first.',
                     ]);
                 } else {
                     $invoice->items()->delete();
@@ -339,18 +339,41 @@ new #[Layout('layouts.app')] #[Title('Invoices')] class extends Component
     </div>
 
     <flux:modal name="delete-invoice" class="min-w-[400px]">
+        @php
+            $deletingInvoice = $deletingId ? App\Models\Invoice::withCount('studentInvoices')->find($deletingId) : null;
+            $hasIssuedStudents = $deletingInvoice && $deletingInvoice->student_invoices_count > 0;
+        @endphp
+
         <form wire:submit="delete" class="space-y-6">
             <div>
                 <flux:heading size="lg">Delete Invoice Template?</flux:heading>
-                <flux:subheading>This action cannot be undone. You can only delete templates that haven't been issued to
-                    students yet.</flux:subheading>
+                @if($hasIssuedStudents)
+                    <div class="mt-3 p-4 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg space-y-2">
+                        <p class="text-sm font-semibold text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                            Cannot delete template issued to students
+                        </p>
+                        <p class="text-xs text-amber-700 dark:text-amber-300">
+                            This template has already been issued to <strong>{{ $deletingInvoice->student_invoices_count }}</strong> student(s). You must delete all student invoices before deleting this template.
+                        </p>
+                        <div class="pt-1">
+                            <flux:button size="sm" variant="subtle" icon="users" :href="route('cms.invoices.students', $deletingInvoice->id)" wire:navigate>
+                                Manage & Delete Student Invoices
+                            </flux:button>
+                        </div>
+                    </div>
+                @else
+                    <flux:subheading>This action cannot be undone. You can only delete templates that haven't been issued to
+                        students yet.</flux:subheading>
+                @endif
             </div>
 
             <div class="flex items-center justify-end gap-3">
                 <flux:modal.close>
                     <flux:button variant="ghost">Cancel</flux:button>
                 </flux:modal.close>
-                <flux:button type="submit" variant="danger">Delete Template</flux:button>
+                @if(!$hasIssuedStudents)
+                    <flux:button type="submit" variant="danger">Delete Template</flux:button>
+                @endif
             </div>
         </form>
     </flux:modal>

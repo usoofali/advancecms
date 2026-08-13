@@ -19,7 +19,7 @@
         </div>
         <flux:menu.separator />
         <flux:menu.radio.group>
-            <flux:menu.item :href="route('profile.edit')" icon="cog" wire:navigate>
+            <flux:menu.item :href="route('profile.edit')" icon="cog" icon:class="text-indigo-500 dark:text-indigo-400" wire:navigate>
                 {{ __('Settings') }}
             </flux:menu.item>
             <form method="POST" action="{{ route('logout') }}" class="w-full">
@@ -28,6 +28,7 @@
                     as="button"
                     type="submit"
                     icon="arrow-right-start-on-rectangle"
+                    icon:class="text-rose-500 dark:text-rose-400"
                     class="w-full cursor-pointer"
                     data-test="logout-button"
                 >

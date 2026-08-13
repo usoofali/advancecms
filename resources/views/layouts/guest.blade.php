@@ -3,7 +3,7 @@
 <head>
     @include('partials.head')
 </head>
-<body class="min-h-screen bg-white font-sans antialiased text-zinc-900">
+<body class="min-h-screen theme-textured-bg font-sans antialiased text-zinc-900 dark:text-zinc-100">
     {{ $slot }}
 
     {{-- @include('components.partials.flash-alerts') --}}

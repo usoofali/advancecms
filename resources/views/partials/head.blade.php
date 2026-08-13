@@ -25,6 +25,8 @@
         --color-accent-foreground:
             {{ config('theme.accent_foreground') }}
         ;
+        --theme-gradient-start: color-mix(in srgb, {{ config('theme.accent') }} 18%, transparent);
+        --theme-gradient-end: color-mix(in srgb, {{ config('theme.accent_content') }} 12%, transparent);
     }
 
     .dark {
@@ -37,5 +39,7 @@
         --color-accent-foreground:
             {{ config('theme.dark_accent_foreground') }}
         ;
+        --theme-gradient-start: color-mix(in srgb, {{ config('theme.dark_accent') }} 22%, transparent);
+        --theme-gradient-end: color-mix(in srgb, {{ config('theme.dark_accent_content') }} 15%, transparent);
     }
 </style>

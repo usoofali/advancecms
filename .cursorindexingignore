@@ -1,0 +1,26 @@
+# Exclude heavy folders from Cursor indexing to make @ mention work instantly
+node_modules/
+vendor/
+storage/
+public/build/
+public/storage/
+bootstrap/cache/
+.git/
+.github/
+.idea/
+.vscode/
+.fleet/
+.nova/
+.zed/
+
+# Exclude log and temp files
+*.log
+.env
+.env.*
+.phpunit.cache/
+.phpunit.result.cache
+npm-debug.log
+yarn-error.log
+Homestead.json
+Homestead.yaml
+auth.json

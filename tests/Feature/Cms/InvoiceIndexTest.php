@@ -4,7 +4,9 @@ use App\Models\AcademicSession;
 use App\Models\Department;
 use App\Models\Institution;
 use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\Program;
+use App\Models\Receipt;
 use App\Models\Student;
 use App\Models\StudentInvoice;
 use App\Models\User;
@@ -189,4 +191,112 @@ it('can filter student invoices by status without ambiguous column query excepti
         ->assertOk()
         ->set('statusFilter', 'pending')
         ->assertSee($student->first_name);
+});
+
+it('cannot delete an invoice template when student invoices have been issued', function (): void {
+    $institution = Institution::factory()->create();
+    $department = Department::factory()->for($institution)->create();
+    $session = AcademicSession::factory()->create();
+    $user = User::factory()->withRole('Institutional Admin')->create([
+        'institution_id' => $institution->id,
+    ]);
+
+    $invoice = Invoice::query()->create([
+        'institution_id' => $institution->id,
+        'title' => 'Issued Template',
+        'academic_session_id' => $session->id,
+        'due_date' => now()->addMonth()->toDateString(),
+        'target_type' => 'dept',
+        'department_id' => $department->id,
+        'status' => 'published',
+        'created_by' => $user->id,
+    ]);
+
+    $student = Student::factory()->create(['institution_id' => $institution->id]);
+
+    $studentInvoice = StudentInvoice::query()->create([
+        'institution_id' => $institution->id,
+        'student_id' => $student->id,
+        'invoice_id' => $invoice->id,
+        'total_amount' => 5000,
+        'amount_paid' => 0,
+        'balance' => 5000,
+        'status' => 'pending',
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::cms.invoices.invoice-index')
+        ->set('deletingId', $invoice->id)
+        ->call('delete')
+        ->assertDispatched('notify', fn ($name, $params) => ($params[0]['type'] ?? $params['type'] ?? null) === 'error');
+
+    expect(Invoice::find($invoice->id))->not->toBeNull();
+});
+
+it('can delete all student invoices with payments and then delete the template', function (): void {
+    $institution = Institution::factory()->create();
+    $department = Department::factory()->for($institution)->create();
+    $session = AcademicSession::factory()->create();
+    $user = User::factory()->withRole('Institutional Admin')->create([
+        'institution_id' => $institution->id,
+    ]);
+
+    $invoice = Invoice::query()->create([
+        'institution_id' => $institution->id,
+        'title' => 'Template To Purge',
+        'academic_session_id' => $session->id,
+        'due_date' => now()->addMonth()->toDateString(),
+        'target_type' => 'dept',
+        'department_id' => $department->id,
+        'status' => 'published',
+        'created_by' => $user->id,
+    ]);
+
+    $student = Student::factory()->create(['institution_id' => $institution->id]);
+
+    $studentInvoice = StudentInvoice::query()->create([
+        'institution_id' => $institution->id,
+        'student_id' => $student->id,
+        'invoice_id' => $invoice->id,
+        'total_amount' => 5000,
+        'amount_paid' => 5000,
+        'balance' => 0,
+        'status' => 'paid',
+    ]);
+
+    $payment = Payment::query()->create([
+        'institution_id' => $institution->id,
+        'student_invoice_id' => $studentInvoice->id,
+        'amount_paid' => 5000,
+        'payment_method' => 'bank_transfer',
+        'reference' => 'REF-TEST-123',
+        'status' => 'success',
+    ]);
+
+    $receipt = Receipt::query()->create([
+        'institution_id' => $institution->id,
+        'payment_id' => $payment->id,
+        'receipt_number' => 'REC-TEST-123',
+        'issued_at' => now(),
+    ]);
+
+    $this->actingAs($user);
+
+    // Delete all student invoices for the template
+    Livewire::test('pages::cms.invoices.student-invoices', ['invoice' => $invoice])
+        ->call('deleteAll')
+        ->assertDispatched('notify', fn ($name, $params) => ($params[0]['type'] ?? $params['type'] ?? null) === 'success');
+
+    expect(StudentInvoice::find($studentInvoice->id))->toBeNull()
+        ->and(Payment::find($payment->id))->toBeNull()
+        ->and(Receipt::find($receipt->id))->toBeNull();
+
+    // Now delete the template itself
+    Livewire::test('pages::cms.invoices.invoice-index')
+        ->set('deletingId', $invoice->id)
+        ->call('delete')
+        ->assertDispatched('notify', fn ($name, $params) => ($params[0]['type'] ?? $params['type'] ?? null) === 'success');
+
+    expect(Invoice::find($invoice->id))->toBeNull();
 });

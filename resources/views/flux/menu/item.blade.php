@@ -2,6 +2,7 @@
 
 @php $iconTrailing ??= $attributes->pluck('icon:trailing'); @endphp
 @php $iconVariant ??= $attributes->pluck('icon:variant'); @endphp
+@php $iconClass ??= $attributes->pluck('icon:class'); @endphp
 
 @props([
     'iconTrailing' => null,
@@ -18,6 +19,7 @@ if ($kbd) $suffix = $kbd;
 
 $iconClasses = Flux::classes()
     ->add('me-2')
+    ->add($iconClass)
     // When using the outline icon variant, we need to size it down to match the default icon sizes...
     ->add($iconVariant === 'outline' ? 'size-5' : null)
     ;
@@ -36,11 +38,11 @@ $classes = Flux::classes()
     ->add(match ($variant) {
         'danger' => [
             'text-zinc-800 data-active:text-red-600 data-active:bg-red-50 dark:text-white dark:data-active:bg-red-400/20 dark:data-active:text-red-400',
-            '**:data-flux-menu-item-icon:text-zinc-400 dark:**:data-flux-menu-item-icon:text-white/60 [&[data-active]_[data-flux-menu-item-icon]]:text-current',
+            $iconClass ? null : '**:data-flux-menu-item-icon:text-zinc-400 dark:**:data-flux-menu-item-icon:text-white/60 [&[data-active]_[data-flux-menu-item-icon]]:text-current',
         ],
         'default' => [
             'text-zinc-800 data-active:bg-zinc-50 dark:text-white dark:data-active:bg-zinc-600',
-            '**:data-flux-menu-item-icon:text-zinc-400 dark:**:data-flux-menu-item-icon:text-white/60 [&[data-active]_[data-flux-menu-item-icon]]:text-current',
+            $iconClass ? null : '**:data-flux-menu-item-icon:text-zinc-400 dark:**:data-flux-menu-item-icon:text-white/60 [&[data-active]_[data-flux-menu-item-icon]]:text-current',
         ]
     })
     ;

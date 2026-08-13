@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\Invoice;
+use App\Models\Payment;
+use App\Models\Receipt;
 use App\Models\StudentInvoice;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
@@ -139,18 +141,16 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
 
         if ($studentInvoice) {
             if ($this->actionType === 'delete') {
-                if ($studentInvoice->amount_paid > 0) {
-                    $this->dispatch('notify', [
-                        'type' => 'error',
-                        'message' => 'Cannot delete an invoice with recorded payments.',
-                    ]);
-                } else {
-                    $studentInvoice->delete();
-                    $this->dispatch('notify', [
-                        'type' => 'success',
-                        'message' => 'Student invoice deleted successfully.',
-                    ]);
+                $paymentIds = $studentInvoice->payments()->pluck('id');
+                if ($paymentIds->isNotEmpty()) {
+                    Receipt::whereIn('payment_id', $paymentIds)->delete();
+                    Payment::whereIn('id', $paymentIds)->delete();
                 }
+                $studentInvoice->delete();
+                $this->dispatch('notify', [
+                    'type' => 'success',
+                    'message' => 'Student invoice deleted successfully.',
+                ]);
             } elseif ($this->actionType === 'cancel') {
                 $studentInvoice->update(['status' => 'cancelled']);
                 $this->dispatch('notify', [
@@ -163,6 +163,37 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
         $this->actionId = null;
         $this->actionType = '';
         $this->js('$flux.modal("confirm-action").close()');
+    }
+
+    public function confirmDeleteAll()
+    {
+        $this->js('$flux.modal("confirm-delete-all").show()');
+    }
+
+    public function deleteAll()
+    {
+        Gate::authorize('invoices.delete');
+
+        $studentInvoiceIds = $this->invoice->studentInvoices()->pluck('id');
+
+        if ($studentInvoiceIds->isNotEmpty()) {
+            $paymentIds = Payment::whereIn('student_invoice_id', $studentInvoiceIds)->pluck('id');
+
+            if ($paymentIds->isNotEmpty()) {
+                Receipt::whereIn('payment_id', $paymentIds)->delete();
+                Payment::whereIn('id', $paymentIds)->delete();
+            }
+
+            $this->invoice->studentInvoices()->delete();
+
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'message' => 'All student invoices and their corresponding payments deleted successfully.',
+            ]);
+        }
+
+        $this->js('$flux.modal("confirm-delete-all").close()');
+        $this->resetPage();
     }
 
     public function exportCsv()
@@ -267,16 +298,21 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
 ?>
 
 <div class="space-y-6">
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div class="flex items-center gap-4">
-            <flux:button icon="chevron-left" variant="ghost" :href="route('cms.invoices.index')" wire:navigate />
-            <div>
-                <flux:heading size="xl">Invoices for: {{ $invoice->title }}</flux:heading>
-                <flux:subheading>Manage individual student records for this template.</flux:subheading>
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div class="flex items-start sm:items-center gap-3 sm:gap-4 min-w-0">
+            <flux:button icon="chevron-left" variant="ghost" :href="route('cms.invoices.index')" wire:navigate class="shrink-0" />
+            <div class="min-w-0 flex-1">
+                <flux:heading size="xl" class="break-words text-lg sm:text-xl leading-tight">Invoices for: {{ $invoice->title }}</flux:heading>
+                <flux:subheading class="text-xs sm:text-sm text-zinc-500">Manage individual student records for this template.</flux:subheading>
             </div>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+            @can('invoices.delete')
+            <flux:button variant="danger" icon="trash" wire:click="confirmDeleteAll">
+                Delete All Invoices
+            </flux:button>
+            @endcan
             @can('invoices.generate')
             <flux:button variant="subtle" icon="bolt" wire:click="openGenerationModal">
                 Force Generate
@@ -318,26 +354,28 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
             </flux:heading>
         </flux:card>
     </div>
-    <div class="flex items-center gap-4">
-        <div class="flex-1">
+    <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+        <div class="w-full sm:flex-1">
             <flux:input wire:model.live="search" icon="magnifying-glass" placeholder="Search student name or matric..."
                 clearable />
         </div>
 
-        <flux:select wire:model.live="levelFilter" class="max-w-[150px]">
-            <flux:select.option value="all">All Levels</flux:select.option>
-            <flux:select.option value="100">100 Level</flux:select.option>
-            <flux:select.option value="200">200 Level</flux:select.option>
-            <flux:select.option value="300">300 Level</flux:select.option>
-        </flux:select>
+        <div class="flex items-center gap-3 w-full sm:w-auto">
+            <flux:select wire:model.live="levelFilter" class="w-1/2 sm:w-[150px]">
+                <flux:select.option value="all">All Levels</flux:select.option>
+                <flux:select.option value="100">100 Level</flux:select.option>
+                <flux:select.option value="200">200 Level</flux:select.option>
+                <flux:select.option value="300">300 Level</flux:select.option>
+            </flux:select>
 
-        <flux:select wire:model.live="statusFilter" :placeholder="__('Filter Status')" class="max-w-[150px]">
-            <flux:select.option value="all">All Statuses</flux:select.option>
-            <flux:select.option value="pending">Pending</flux:select.option>
-            <flux:select.option value="partial">Partial</flux:select.option>
-            <flux:select.option value="paid">Paid</flux:select.option>
-            <flux:select.option value="cancelled">Cancelled</flux:select.option>
-        </flux:select>
+            <flux:select wire:model.live="statusFilter" :placeholder="__('Filter Status')" class="w-1/2 sm:w-[150px]">
+                <flux:select.option value="all">All Statuses</flux:select.option>
+                <flux:select.option value="pending">Pending</flux:select.option>
+                <flux:select.option value="partial">Partial</flux:select.option>
+                <flux:select.option value="paid">Paid</flux:select.option>
+                <flux:select.option value="cancelled">Cancelled</flux:select.option>
+            </flux:select>
+        </div>
     </div>
 
     @php $paginated = $this->studentInvoices(); @endphp
@@ -479,6 +517,28 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
                         Generating...
                     </span>
                 </flux:button>
+            </div>
+        </form>
+    </flux:modal>
+
+    <flux:modal name="confirm-delete-all" class="min-w-[400px]">
+        <form wire:submit="deleteAll" class="space-y-6">
+            <div>
+                <flux:heading size="lg">Delete All Student Invoices?</flux:heading>
+                <flux:subheading>
+                    This will permanently delete all issued student invoices for this template along with their corresponding payment records and receipts.
+                </flux:subheading>
+            </div>
+
+            <div class="p-4 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200 dark:bg-red-950/40 dark:border-red-800 dark:text-red-300">
+                <strong>Warning:</strong> You are about to delete <strong>{{ $this->invoice->studentInvoices()->count() }}</strong> student invoice(s) and all associated payment records. This action cannot be undone.
+            </div>
+
+            <div class="flex items-center justify-end gap-3">
+                <flux:modal.close>
+                    <flux:button variant="ghost">Cancel</flux:button>
+                </flux:modal.close>
+                <flux:button type="submit" variant="danger">Confirm Delete All</flux:button>
             </div>
         </form>
     </flux:modal>

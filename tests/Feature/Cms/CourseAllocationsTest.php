@@ -71,3 +71,26 @@ it('filters courses select by selected semester and resets course_id when semest
             return ! $courses->contains($course1) && $courses->contains($course2);
         });
 });
+
+it('renders the course allocations print report with selected filter criteria', function (): void {
+    $institution = Institution::factory()->create();
+    $session = AcademicSession::factory()->create(['status' => 'active']);
+    $semester = Semester::factory()->create(['academic_session_id' => $session->id, 'name' => 'first']);
+    $department = Department::factory()->for($institution)->create();
+
+    $superRole = Role::where('role_name', 'Super Admin')->first();
+    $user = User::factory()->create([
+        'institution_id' => $institution->id,
+    ]);
+    $user->roles()->sync([$superRole->role_id]);
+
+    $this->actingAs($user);
+
+    Livewire::withQueryParams([
+        'session_id' => $session->id,
+        'semester_id' => $semester->id,
+        'department_id' => $department->id,
+    ])->test('pages::cms.courses.print-allocations')
+        ->assertOk()
+        ->assertSee('Course Allocation Report');
+});

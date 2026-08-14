@@ -44,4 +44,9 @@ class CourseAllocation extends Model
     {
         return $this->belongsTo(Semester::class);
     }
+
+    public function timetables()
+    {
+        return $this->morphMany(Timetable::class, 'allocatable');
+    }
 }

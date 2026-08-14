@@ -642,11 +642,13 @@ new #[Layout('layouts.app')] class extends Component {
 
     public function with(): array
     {
+        $instId = auth()->user()?->institution_id;
         $activeSession = AcademicSession::where('status', 'active')->first();
 
         return [
             'placements' => StudentPlacement::query()
                 ->with(['student', 'organization', 'placementType'])
+                ->when($instId, fn ($q) => $q->whereHas('student', fn ($sq) => $sq->where('institution_id', $instId)))
                 ->when($this->search, function ($query) {
                     $query->whereHas('student', function ($q) {
                         $q->where('first_name', 'like', '%' . $this->search . '%')
@@ -670,16 +672,24 @@ new #[Layout('layouts.app')] class extends Component {
                 ->paginate(10),
 
             'modalStudents' => ($this->create_program_id && $this->create_level && $activeSession)
-                ? Student::where('program_id', $this->create_program_id)
+                ? Student::query()
+                    ->when($instId, fn ($q) => $q->where('institution_id', $instId))
+                    ->where('program_id', $this->create_program_id)
                     ->whereRaw("entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS SIGNED) - CAST(admission_year AS SIGNED)) * 100 = ?", [
                         $activeSession->name,
                         $this->create_level,
                     ])->orderBy('first_name')->get()
                 : collect(),
             'organizations' => Organization::where('active_status', true)->get(),
-            'types' => PlacementType::where('is_active', true)->get(),
+            'types' => PlacementType::query()
+                ->when($instId, fn ($q) => $q->where('institution_id', $instId))
+                ->where('is_active', true)
+                ->get(),
             'templates' => DocumentTemplate::where('active', true)->get(),
-            'programs' => Program::when(auth()->user()->institution_id, fn($q) => $q->where('institution_id', auth()->user()->institution_id))->orderBy('name')->get(),
+            'programs' => Program::query()
+                ->when($instId, fn ($q) => $q->where('institution_id', $instId))
+                ->orderBy('name')
+                ->get(),
             'academicSessions' => AcademicSession::orderBy('name', 'desc')->get(),
         ];
     }

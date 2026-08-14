@@ -303,14 +303,14 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
 }; ?>
 
 <div class="mx-auto max-w-6xl print:max-w-none print:mx-0">
-    <div class="mb-8 items-center justify-between flex print:hidden">
+    <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
         <div>
-            <flux:heading size="xl">{{ __('Course Allocations') }}</flux:heading>
-            <flux:subheading>{{ __('Assign courses to lecturers for specific sessions and semesters') }}
+            <flux:heading size="xl" class="text-xl md:text-2xl font-bold">{{ __('Course Allocations') }}</flux:heading>
+            <flux:subheading class="text-xs md:text-sm">{{ __('Assign courses to lecturers for specific sessions and semesters') }}
             </flux:subheading>
         </div>
 
-        <div class="flex items-center gap-3">
+        <div class="flex flex-wrap items-center gap-3">
             <x-action-message on="allocation-created">
                 <flux:badge color="green">{{ __('Course allocated successfully!') }}</flux:badge>
             </x-action-message>
@@ -322,11 +322,12 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
             <x-action-message on="allocation-failed">
                 <flux:badge color="red">{{ __('Allocation failed (already exists).') }}</flux:badge>
             </x-action-message>
-        </div>
 
-        <flux:button variant="ghost" icon="printer" class="hidden md:flex print:hidden" onclick="window.print()">
-            {{ __('Print Allocations') }}
-        </flux:button>
+            <flux:button variant="primary" icon="printer" class="w-full sm:w-auto print:hidden"
+                x-on:click="window.open('{{ route('cms.courses.allocations.print') }}?session_id=' + $wire.session_id + '&semester_id=' + $wire.semester_id + '&department_id=' + $wire.department_id + '&program_id=' + $wire.program_id + '&level=' + $wire.level + '&institution_id=' + $wire.institution_id, '_blank')">
+                {{ __('Print Allocations Report') }}
+            </flux:button>
+        </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-8 print:block">

@@ -19,98 +19,140 @@ class RbacSeeder extends Seeder
             'roles', 'permissions', 'settings', 'application_forms', 'invoices',
             'payments', 'cbt_exams', 'cbt_questions', 'students', 'registrations',
             'grading_systems', 'academic_sessions', 'ca_tests', 'ca_results', 'ca_attempts', 'ca_questions', 'ca_answers', 'student_coins',
+            'timetables', 'placements', 'placement_supervisors',
         ];
 
-        // Define Permissions
+        // Define Permissions with explicit, clear descriptions
         $permissions = [
-            'dashboard.view' => 'View the main application dashboard',
-            'id_cards.request' => 'Submit requests for institutional ID cards',
-            'id_cards.manage' => 'Approve, reject, and generate ID cards for students and staff',
+            'dashboard.view' => 'Access main institutional metrics dashboard and overview analytics',
+            'id_cards.request' => 'Submit personal request for digital or printed student/staff ID card',
+            'id_cards.manage' => 'Manage, approve, and print student and staff institutional ID cards',
 
             // Specialized Scopes
-            'students.view_dept' => 'View students in department',
-            'courses.view_dept' => 'View departmental courses',
-            'courses.view_assigned' => 'View assigned courses and student lists',
+            'students.view_dept' => 'View and search list of registered students within own department',
+            'courses.view_dept' => 'View list and curriculum of courses offered by own department',
+            'courses.view_assigned' => 'View courses allocated to self as a lecturer and access assigned student rosters',
 
-            'results.view_dept' => 'View departmental academic results',
-            'results.enter' => 'Enter student marks for assigned courses',
-            'results.modify' => 'Modify results before final approval',
-            'results.view_personal' => 'View own academic results',
+            'results.view_dept' => 'View broadsheets and published academic examination results for own department',
+            'results.enter' => 'Input and save continuous assessment and examination marks for assigned courses',
+            'results.modify' => 'Edit or update entered student scores prior to departmental approval',
+            'results.view_personal' => 'Access personal semester exam results, GPA, and grade statements',
 
-            'registrations.view_personal' => 'View own course registrations',
-            'registration_status.update' => 'Lock or unlock student course registrations',
+            'registrations.view_personal' => 'View personal registered courses and access student course portal',
+            'registration_status.update' => 'Approve, lock, or unlock student course registrations',
 
-            'reports.generate' => 'Generate transcripts and academic reports',
+            'reports.generate' => 'Generate official student academic transcripts and summary reports',
 
-            'applications.view' => 'View student admission applications',
-            'applications.approve' => 'Approve or reject student admissions',
-            'applicants.enroll' => 'Manually enroll admitted applicants as registered students',
+            'applications.view' => 'View and filter incoming candidate admission applications',
+            'applications.approve' => 'Grant or deny admission approval for candidate applications',
+            'applicants.enroll' => 'Convert admitted applicants into active registered students',
 
-            'admission_status.update' => 'Open, close or schedule admission windows for an institution',
+            'admission_status.update' => 'Configure and toggle institution admission application cycles',
 
-            'attendance.take' => 'Record student attendance for assigned courses',
-            'attendance.view_history' => 'View own past attendance records and contact hours',
-            'attendance.manage' => 'Oversee and audit all institutional attendance sessions and payout tallies',
-            'attendance.view_own' => 'View personal attendance percentages and history as a student',
-            'attendance.view_all' => 'View attendance records for any student in the institution',
+            'attendance.take' => 'Mark and submit live student class attendance for assigned courses',
+            'attendance.view_history' => 'View history of conducted attendance sessions and taught contact hours',
+            'attendance.manage' => 'Manage, audit, and override all institutional attendance records and tallies',
+            'attendance.view_own' => 'View personal class attendance record and percentage progress as a student',
+            'attendance.view_all' => 'View complete attendance logs across all departments and programs',
 
-            'attendance_payments.process' => 'Process and manage monthly lecturer attendance payments',
+            'attendance_payments.process' => 'Calculate and process monthly lecturer attendance lecture payouts',
 
-            'invoices.generate' => 'Force generate bulk student invoices from template',
-            'invoices.cancel' => 'Cancel issued student invoices',
-            'invoices.print_report' => 'Generate and print detailed financial reports for invoices',
-            'payments.verify' => 'Approve or reject student payment verification requests',
+            'invoices.generate' => 'Generate bulk student fee invoices based on institutional fee structures',
+            'invoices.cancel' => 'Cancel or void active student fee invoices',
+            'invoices.print_report' => 'Export and print financial revenue and invoice collection reports',
+            'payments.verify' => 'Verify, approve, or reject manual student payment evidence',
 
-            'cbt_data.sync' => 'Export exam packages and import CBT results',
-            'cbt_results.view' => 'View list of synchronized CBT results',
-            'cbt_results.review' => 'Audit detailed student examination scripts',
-            'cbt_results.approve' => 'Validate and finalize individual CBT results',
-            'cbt_results.reject' => 'Discard or reject staged CBT results',
-            'cbt_results.mass_action' => 'Perform batch approval or rejection of examination results',
-            'cbt_sync.view' => 'Monitor CBT connectivity and sync logs',
-            'cbt_sync.manage_tokens' => 'Generate and revoke Lab access tokens',
-            'cbt_questions.import' => 'Bulk import questions from CSV into an examination bank',
+            'cbt_data.sync' => 'Sync examination question packages and import CBT exam scores from lab nodes',
+            'cbt_results.view' => 'Access synchronized CBT examination score sheets and student scores',
+            'cbt_results.review' => 'Inspect student question-by-question CBT answer scripts',
+            'cbt_results.approve' => 'Approve individual student CBT exam submissions into official results',
+            'cbt_results.reject' => 'Reject or invalidate staged CBT exam submissions',
+            'cbt_results.mass_action' => 'Batch approve or reject all staged CBT examination results',
+            'cbt_sync.view' => 'View CBT node sync status, server connectivity, and sync history',
+            'cbt_sync.manage_tokens' => 'Create, manage, and revoke CBT lab workstation access tokens',
+            'cbt_questions.import' => 'Bulk import examination questions from CSV templates into question banks',
 
-            // New Granular Permissions
-            'applications.notify' => 'Issue admission notifications for walk-in candidates',
-            'applications.print_letter' => 'Generate and print admission letters',
-            'applications.print_receipt' => 'Print application fee receipts',
-            'students.change_status' => 'Update student administrative status (Active, Graduated, etc.)',
-            'students.export' => 'Export student records to CSV/Excel',
-            'students.import' => 'Bulk import student records from CSV',
-            'registrations.print_form' => 'Generate and print student course registration forms',
-            'registrations.print_exam_card' => 'Generate and print student examination cards',
-            'invoices.view_personal' => 'View personal financial invoices and payment history',
-            'students.view_lecturers' => 'View list of lecturers assigned to personal courses',
+            // Granular Specialized Permissions
+            'applications.notify' => 'Generate and issue provisional admission notification slips',
+            'applications.print_letter' => 'Download and print official candidate admission letters',
+            'applications.print_receipt' => 'Print official payment receipts for application fees',
+            'students.change_status' => 'Change student administrative status (Active, Suspended, Graduated, Withdrawn)',
+            'students.export' => 'Export student directories and registers to CSV or Excel files',
+            'students.import' => 'Bulk import student bio-data and admission records from CSV files',
+            'registrations.print_form' => 'Print official signed student course registration forms',
+            'registrations.print_exam_card' => 'Print official student examination eligibility cards',
+            'invoices.view_personal' => 'View personal student fee invoices, payment receipts, and balance',
+            'students.view_lecturers' => 'View names and contact info of lecturers assigned to registered courses',
+            'timetables.view_personal' => 'Access personal class timetable schedule',
 
-            'courses.allocate' => 'Assign courses to lecturers for specific academic sessions',
-            'courses.revoke_allocation' => 'Remove course assignments from lecturers',
-            'courses.export' => 'Export course lists to CSV/Excel',
-            'courses.import' => 'Bulk import course records from CSV',
+            'courses.allocate' => 'Allocate departmental courses to lecturers for active academic sessions',
+            'courses.revoke_allocation' => 'Deallocate or remove course assignments from lecturers',
+            'courses.export' => 'Export course directory and syllabus outlines to CSV or Excel',
+            'courses.import' => 'Bulk import course curriculum records from CSV files',
 
-            'results.export' => 'Export examination results and broadsheets',
-            'results.import' => 'Bulk import examination results from CSV',
+            'results.export' => 'Export departmental result broadsheets to Excel or CSV files',
+            'results.import' => 'Bulk upload student exam marks from CSV spreadsheet files',
 
-            'invoices.manage_students' => 'View and manage individual student fee records and status',
+            'invoices.manage_students' => 'Manage individual student fee accounts, waivers, and invoice balances',
 
-            'system.manage' => 'Manage production environment, migrations, and system-wide configurations',
-            'system.manage_addons' => 'Enable or disable specialized modules for institutions',
-            'system.view_all_data' => 'Access data across all institutions',
+            // Placements Granular Permissions
+            'placements.view' => 'Access placement analytics dashboard and personal placement status',
+            'placements.organizations' => 'Manage host company/organization directories for student placements',
+            'placements.types' => 'Create and manage placement program types (SIWES, Internship, Clinical, etc.)',
+            'placements.manage' => 'Create, assign, and manage student placement postings and official letters',
+            'placements.supervisors' => 'Assign institutional and industry supervisors to student placements',
+            'placements.supervise' => 'Access assigned supervisee rosters, inspect logbooks, and submit evaluation scores',
+            'placements.reports' => 'Generate and print comprehensive placement supervision performance reports',
+            'placements.templates' => 'Design and edit official placement letter templates',
+
+            'system.manage' => 'Access global website settings, system configurations, and environment maintenance',
+            'system.manage_addons' => 'Toggle specialized institution add-on modules (CBT Exam, Online CA, etc.)',
+            'system.view_all_data' => 'Bypass multi-tenancy filters to view data across all institutions',
 
             // Scoped Role Assignment Permissions
-            'institutions.assign_roles' => 'Dynamically assign scoped roles strictly to institutions',
-            'departments.assign_roles' => 'Dynamically assign scoped roles strictly to departments',
-            'courses.assign_roles' => 'Dynamically assign scoped roles strictly to courses',
-            'cbt_exams.assign_roles' => 'Dynamically assign scoped roles strictly to CBT exams',
+            'institutions.assign_roles' => 'Assign administrative roles scoped to specific institutions',
+            'departments.assign_roles' => 'Assign administrative roles scoped to specific departments',
+            'courses.assign_roles' => 'Assign roles scoped to specific course modules',
+            'cbt_exams.assign_roles' => 'Assign invigilator or examiner roles scoped to specific CBT exams',
         ];
 
-        // Generate CRUD permissions
+        // Human-friendly labels for standard CRUD models
+        $modelLabels = [
+            'institutions' => 'institution profiles',
+            'departments' => 'department records',
+            'programs' => 'degree program offerings',
+            'courses' => 'course curriculum catalog',
+            'staff' => 'staff employee accounts',
+            'roles' => 'system access roles',
+            'permissions' => 'permission definitions',
+            'settings' => 'system settings',
+            'application_forms' => 'admission application form templates',
+            'invoices' => 'student fee invoices',
+            'payments' => 'student fee payment records',
+            'cbt_exams' => 'CBT examination schedules',
+            'cbt_questions' => 'CBT exam question banks',
+            'students' => 'student bio-data profiles',
+            'registrations' => 'student course registration records',
+            'grading_systems' => 'academic grading scale schemes',
+            'academic_sessions' => 'academic calendar sessions',
+            'ca_tests' => 'online continuous assessment tests',
+            'ca_results' => 'CA test score submissions',
+            'ca_attempts' => 'student CA test attempt logs',
+            'ca_questions' => 'CA test question banks',
+            'ca_answers' => 'student CA test question responses',
+            'student_coins' => 'student gamification coin balances',
+            'timetables' => 'lecture class timetable schedules',
+            'placements' => 'student industrial placement postings',
+            'placement_supervisors' => 'placement supervisor allocations',
+        ];
+
+        // Generate CRUD permissions with clear, human-readable descriptions
         foreach ($crudModels as $model) {
-            $modelName = str_replace('_', ' ', $model);
-            $permissions["{$model}.view"] = "View and list {$modelName} records";
-            $permissions["{$model}.create"] = "Create new {$modelName} records";
-            $permissions["{$model}.edit"] = "Modify existing {$modelName} records";
-            $permissions["{$model}.delete"] = "Delete {$modelName} records from the system";
+            $label = $modelLabels[$model] ?? str_replace('_', ' ', $model);
+            $permissions["{$model}.view"] = "View and search list of {$label}";
+            $permissions["{$model}.create"] = "Create new {$label} entries";
+            $permissions["{$model}.edit"] = "Modify existing {$label} entries";
+            $permissions["{$model}.delete"] = "Delete {$label} entries from the system";
         }
 
         foreach ($permissions as $name => $desc) {
@@ -142,7 +184,7 @@ class RbacSeeder extends Seeder
             'Institutional Admin' => [
                 'description' => 'Full administrative control within one institution',
                 'permissions' => array_merge(
-                    $crud(['staff', 'departments', 'programs', 'courses', 'application_forms', 'invoices', 'payments', 'cbt_exams', 'cbt_questions', 'students', 'registrations', 'grading_systems', 'ca_tests']),
+                    $crud(['staff', 'departments', 'programs', 'courses', 'application_forms', 'invoices', 'payments', 'cbt_exams', 'cbt_questions', 'students', 'registrations', 'grading_systems', 'ca_tests', 'placements', 'placement_supervisors']),
                     [
                         'students.view_dept', 'courses.view_dept', 'results.view_dept',
                         'courses.view_assigned', 'results.enter', 'results.modify',
@@ -157,6 +199,7 @@ class RbacSeeder extends Seeder
                         'registrations.print_form', 'registrations.print_exam_card',
                         'courses.allocate', 'courses.revoke_allocation', 'courses.export', 'courses.import',
                         'results.export', 'results.import', 'invoices.manage_students',
+                        'placements.view', 'placements.organizations', 'placements.types', 'placements.manage', 'placements.supervisors', 'placements.supervise', 'placements.reports', 'placements.templates',
                         'dashboard.view', 'id_cards.request', 'id_cards.manage',
                         'institutions.assign_roles', 'departments.assign_roles', 'courses.assign_roles', 'cbt_exams.assign_roles',
                     ]
@@ -173,6 +216,7 @@ class RbacSeeder extends Seeder
                         'cbt_sync.view', 'cbt_data.sync', 'cbt_questions.import', 'students.export',
                         'courses.allocate', 'courses.revoke_allocation', 'courses.export',
                         'results.export', 'invoices.manage_students', 'reports.generate',
+                        'placements.view', 'placements.organizations', 'placements.types', 'placements.manage', 'placements.supervisors', 'placements.supervise', 'placements.reports', 'placements.templates',
                         'dashboard.view', 'id_cards.request',
                     ]
                 ),
@@ -181,15 +225,14 @@ class RbacSeeder extends Seeder
                 'description' => 'Academic instruction and result entry',
                 'permissions' => array_merge(
                     $crud(['cbt_questions', 'ca_tests']),
-                    ['cbt_exams.view', 'cbt_questions.import', 'courses.view_assigned', 'results.enter', 'results.modify', 'attendance.take', 'attendance.view_history', 'dashboard.view', 'id_cards.request']
-                    // Note: Lecturers get attendance.view_history (own history) but NOT attendance.manage
+                    ['cbt_exams.view', 'cbt_questions.import', 'courses.view_assigned', 'results.enter', 'results.modify', 'attendance.take', 'attendance.view_history', 'timetables.view_personal', 'placements.supervise', 'dashboard.view', 'id_cards.request']
                 ),
             ],
             'Academic Secretary' => [
                 'description' => 'Coordinate academic record keeping',
                 'permissions' => array_merge(
                     $crud(['registrations']),
-                    ['reports.generate', 'attendance.view_history', 'attendance.manage', 'cbt_data.sync', 'cbt_sync.view', 'cbt_sync.manage_tokens', 'cbt_results.view', 'cbt_results.review', 'students.change_status', 'registrations.print_form', 'registrations.print_exam_card', 'dashboard.view', 'id_cards.request']
+                    ['reports.generate', 'attendance.view_history', 'attendance.manage', 'cbt_data.sync', 'cbt_sync.view', 'cbt_sync.manage_tokens', 'cbt_results.view', 'cbt_results.review', 'students.change_status', 'registrations.print_form', 'registrations.print_exam_card', 'placements.reports', 'placements.view', 'dashboard.view', 'id_cards.request']
                 ),
             ],
             'Admission Officer' => [
@@ -208,6 +251,7 @@ class RbacSeeder extends Seeder
                         'attendance.manage',
                         'cbt_data.sync', 'cbt_results.view', 'cbt_results.review', 'cbt_results.approve', 'cbt_results.reject', 'cbt_results.mass_action',
                         'cbt_sync.view', 'cbt_questions.import', 'results.export', 'results.import',
+                        'placements.reports',
                         'dashboard.view', 'id_cards.request',
                     ]
                 ),
@@ -225,27 +269,39 @@ class RbacSeeder extends Seeder
                     'results.view_personal', 'registrations.view_personal', 'attendance.view_own',
                     'applications.print_letter', 'applications.print_receipt',
                     'registrations.print_form', 'registrations.print_exam_card',
-                    'invoices.view_personal', 'students.view_lecturers',
+                    'invoices.view_personal', 'students.view_lecturers', 'timetables.view_personal',
+                    'placements.view',
                     'dashboard.view', 'id_cards.request',
                 ],
             ],
         ];
 
-        if (app()->environment('local', 'testing')) {
-            foreach ($roles as $name => $data) {
+        foreach ($roles as $name => $data) {
+            $permissionIds = Permission::whereIn('permission_name', $data['permissions'])
+                ->pluck('permission_id')
+                ->toArray();
+
+            if (app()->environment('local', 'testing')) {
                 $role = Role::updateOrCreate(
                     ['role_name' => $name],
                     ['description' => $data['description']]
                 );
 
-                // Sync Permissions
-                $permissionIds = Permission::whereIn('permission_name', $data['permissions'])
-                    ->pluck('permission_id')
-                    ->toArray();
-
                 $role->permissions()->sync($permissionIds);
+            } else {
+                // Production environment: do not overwrite existing role metadata
+                $role = Role::firstOrCreate(
+                    ['role_name' => $name],
+                    ['description' => $data['description']]
+                );
+
+                if ($name === 'Super Admin') {
+                    $role->permissions()->sync($permissionIds);
+                } else {
+                    // Attach newly defined permissions without stripping custom production permissions
+                    $role->permissions()->syncWithoutDetaching($permissionIds);
+                }
             }
         }
-
     }
 }

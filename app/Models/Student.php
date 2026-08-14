@@ -197,6 +197,11 @@ class Student extends Model
         return $this->belongsTo(Program::class);
     }
 
+    public function department()
+    {
+        return $this->hasOneThrough(Department::class, Program::class, 'id', 'id', 'program_id', 'department_id');
+    }
+
     public function courseRegistrations(): HasMany
     {
         return $this->hasMany(CourseRegistration::class);
@@ -213,6 +218,21 @@ class Student extends Model
     public function getFullNameAttribute(): string
     {
         return "{$this->first_name} {$this->last_name}";
+    }
+
+    /**
+     * Accessor for student's current level.
+     */
+    public function getLevelAttribute(): int
+    {
+        static $activeSession = null;
+        $activeSession ??= AcademicSession::where('status', 'active')->first();
+
+        if ($activeSession) {
+            return $this->currentLevel($activeSession);
+        }
+
+        return (int) ($this->entry_level ?? 100);
     }
 
     /**

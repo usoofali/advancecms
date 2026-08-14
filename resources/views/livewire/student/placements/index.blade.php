@@ -243,6 +243,23 @@ new #[Layout('layouts.app')] class extends Component {
                                     <p class="text-xs font-medium text-gray-500 uppercase">Location</p>
                                     <p class="font-medium">{{ $placement->organization_display_address }}</p>
                                 </div>
+                                <div class="col-span-1 md:col-span-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+                                    <p class="text-xs font-medium text-gray-500 uppercase mb-1">Academic Supervisor</p>
+                                    @php
+                                        $supervisorRule = app(\App\Services\PlacementSupervisorResolver::class)->resolveForPlacement($placement);
+                                        $supervisor = $supervisorRule?->supervisor;
+                                    @endphp
+                                    @if($supervisor)
+                                        <div class="flex items-center space-x-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                            <span>{{ $supervisor->name }} ({{ $supervisor->email }})</span>
+                                        </div>
+                                    @else
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
+                                            Awaiting Supervisor Assignment
+                                        </span>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                         

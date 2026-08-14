@@ -52,6 +52,11 @@ class StudentPlacement extends Model
         return $this->belongsTo(PlacementType::class);
     }
 
+    public function evaluation()
+    {
+        return $this->hasOne(PlacementEvaluation::class, 'placement_id');
+    }
+
     public function assigner()
     {
         return $this->belongsTo(User::class, 'assigned_by');

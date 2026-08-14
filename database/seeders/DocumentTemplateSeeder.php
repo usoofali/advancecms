@@ -277,7 +277,7 @@ HTML;
 </div>
 HTML;
 
-        DocumentTemplate::updateOrCreate(
+        DocumentTemplate::firstOrCreate(
             ['type' => 'Posting Letter'],
             [
                 'title' => 'Official Placement & Posting Authorization Letter',

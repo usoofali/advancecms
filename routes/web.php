@@ -111,9 +111,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('can:courses.view')->group(function () {
         Route::livewire('courses/create', 'pages::cms.courses.create')->name('cms.courses.create')->middleware('can:courses.create');
         Route::livewire('courses/allocations', 'pages::cms.courses.allocations')->name('cms.courses.allocations');
+        Route::livewire('courses/allocations/print', 'pages::cms.courses.print-allocations')->name('cms.courses.allocations.print');
         Route::livewire('courses/{course}', 'pages::cms.courses.show')->name('cms.courses.show');
         Route::livewire('courses/{course}/edit', 'pages::cms.courses.edit')->name('cms.courses.edit')->middleware('can:courses.edit');
     });
+
+    // Lecture Timetables
+    Route::middleware('can:timetables.view')->group(function () {
+        Route::livewire('timetables', 'pages::cms.timetables.index')->name('cms.timetables.index');
+    });
+    Route::middleware('can:timetables.view_personal')->group(function () {
+        Route::livewire('timetables/my-schedule', 'pages::cms.timetables.my-timetable')->name('cms.timetables.my-timetable');
+    });
+    Route::livewire('timetables/print', 'pages::cms.timetables.print-timetable')->name('cms.timetables.print');
 
     // Attendance
     Route::middleware('can:attendance.take')->group(function () {
@@ -181,9 +191,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Admin
         Route::livewire('/', 'admin.placements.index')->name('index');
         Route::livewire('/manage', 'admin.placements.manage')->name('manage');
+        Route::livewire('/supervisors', 'admin.placements.supervisors')->name('supervisors');
+        Route::livewire('/reports', 'admin.placements.reports')->name('reports');
+        Route::livewire('/reports/print', 'pages::cms.placements.print-report')->name('print-report');
         Route::livewire('/organizations', 'admin.placements.organizations')->name('organizations');
         Route::livewire('/types', 'admin.placements.types')->name('types');
         Route::livewire('/templates', 'admin.placements.templates')->name('templates');
+
+        // Lecturer / Supervisor
+        Route::livewire('/my-supervisions', 'lecturer.placements.my-supervisions')->name('my-supervisions');
 
         // Student
         Route::prefix('student')->name('student.')->group(function () {

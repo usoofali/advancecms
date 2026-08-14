@@ -123,8 +123,8 @@
                 </flux:sidebar.group>
             @endcanany
 
-            @canany(['students.view_dept', 'registrations.view', 'registration_status.update', 'registrations.view_personal', 'courses.view', 'courses.view_dept', 'courses.view_assigned', 'attendance.take', 'id_cards.request'])
-                <flux:sidebar.group :heading="__('Academics')" class="grid" expandable expanded="false">
+            @canany(['students.view_dept', 'registrations.view', 'registration_status.update', 'registrations.view_personal', 'registrations.print_form', 'registrations.print_exam_card', 'students.view_lecturers', 'placements.view', 'id_cards.request'])
+                <flux:sidebar.group :heading="__('Student Records')" class="grid" expandable expanded="false">
                     @can('students.view_dept')
                         <flux:sidebar.item icon="users" icon:class="text-indigo-500 dark:text-indigo-400" :href="route('cms.students.index')"
                             :current="request()->routeIs('cms.students.index') || request()->routeIs('cms.students.create') || request()->routeIs('cms.students.edit')"
@@ -179,32 +179,10 @@
                         </flux:sidebar.item>
                     @endcan
 
-                    @can('registrations.view_personal')
+                    @can('placements.view')
                         <flux:sidebar.item icon="briefcase" icon:class="text-cyan-500 dark:text-cyan-400" :href="route('cms.placements.student.index')"
                             :current="request()->routeIs('cms.placements.student.index')" wire:navigate>
                             {{ __('My Placements') }}
-                        </flux:sidebar.item>
-                    @endcan
-
-                    @canany(['courses.view', 'courses.view_dept'])
-                        <flux:sidebar.item icon="book-open" icon:class="text-blue-500 dark:text-blue-400" :href="route('cms.courses.index')"
-                            :current="request()->routeIs('cms.courses.index') || request()->routeIs('cms.courses.create') || request()->routeIs('cms.courses.edit')"
-                            wire:navigate>
-                            {{ __('Courses') }}
-                        </flux:sidebar.item>
-                    @endcanany
-
-                    @canany(['courses.allocate', 'courses.view_dept'])
-                        <flux:sidebar.item icon="clipboard-document-check" icon:class="text-amber-500 dark:text-amber-400" :href="route('cms.courses.allocations')"
-                            :current="request()->routeIs('cms.courses.allocations')" wire:navigate>
-                            {{ __('Manage Allocations') }}
-                        </flux:sidebar.item>
-                    @endcanany
-
-                    @can('courses.view_assigned')
-                        <flux:sidebar.item icon="clipboard-document-check" icon:class="text-fuchsia-500 dark:text-fuchsia-400" :href="route('cms.courses.my-allocations')"
-                            :current="request()->routeIs('cms.courses.my-allocations')" wire:navigate>
-                            {{ __('My Allocations') }}
                         </flux:sidebar.item>
                     @endcan
 
@@ -217,28 +195,107 @@
                 </flux:sidebar.group>
             @endcanany
 
-            @canany(['placements.manage', 'students.view_dept'])
+            @canany(['courses.view', 'courses.view_dept', 'courses.allocate', 'courses.view_assigned'])
+                <flux:sidebar.group :heading="__('Courses')" class="grid" expandable expanded="false">
+                    @canany(['courses.view', 'courses.view_dept'])
+                        <flux:sidebar.item icon="book-open" icon:class="text-blue-500 dark:text-blue-400" :href="route('cms.courses.index')"
+                            :current="request()->routeIs('cms.courses.index') || request()->routeIs('cms.courses.create') || request()->routeIs('cms.courses.edit')"
+                            wire:navigate>
+                            {{ __('Courses') }}
+                        </flux:sidebar.item>
+                    @endcanany
+
+                    @can('courses.allocate')
+                        <flux:sidebar.item icon="clipboard-document-check" icon:class="text-amber-500 dark:text-amber-400" :href="route('cms.courses.allocations')"
+                            :current="request()->routeIs('cms.courses.allocations')" wire:navigate>
+                            {{ __('Manage Allocations') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('courses.view_assigned')
+                        <flux:sidebar.item icon="clipboard-document-check" icon:class="text-fuchsia-500 dark:text-fuchsia-400" :href="route('cms.courses.my-allocations')"
+                            :current="request()->routeIs('cms.courses.my-allocations')" wire:navigate>
+                            {{ __('My Allocations') }}
+                        </flux:sidebar.item>
+                    @endcan
+                </flux:sidebar.group>
+            @endcanany
+
+            @canany(['timetables.view', 'timetables.view_personal'])
+                <flux:sidebar.group :heading="__('Timetables')" class="grid" expandable expanded="false">
+                    @can('timetables.view')
+                        <flux:sidebar.item icon="calendar" icon:class="text-indigo-500 dark:text-indigo-400" :href="route('cms.timetables.index')"
+                            :current="request()->routeIs('cms.timetables.index')" wire:navigate>
+                            {{ __('Lecture Timetables') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('timetables.view_personal')
+                        <flux:sidebar.item icon="clock" icon:class="text-amber-500 dark:text-amber-400" :href="route('cms.timetables.my-timetable')"
+                            :current="request()->routeIs('cms.timetables.my-timetable')" wire:navigate>
+                            {{ __('My Timetable') }}
+                        </flux:sidebar.item>
+                    @endcan
+                </flux:sidebar.group>
+            @endcanany
+
+            @canany(['placements.view', 'placements.organizations', 'placements.types', 'placements.manage', 'placements.supervisors', 'placements.supervise', 'placements.reports', 'placements.templates'])
                 <flux:sidebar.group :heading="__('Placements')" class="grid" expandable expanded="false">
-                    <flux:sidebar.item icon="chart-bar" icon:class="text-cyan-500 dark:text-cyan-400" :href="route('cms.placements.index')"
-                        :current="request()->routeIs('cms.placements.index')" wire:navigate>
-                        {{ __('Placements Dashboard') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="building-office" icon:class="text-indigo-500 dark:text-indigo-400" :href="route('cms.placements.organizations')"
-                        :current="request()->routeIs('cms.placements.organizations')" wire:navigate>
-                        {{ __('Organizations') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="tag" icon:class="text-pink-500 dark:text-pink-400" :href="route('cms.placements.types')"
-                        :current="request()->routeIs('cms.placements.types')" wire:navigate>
-                        {{ __('Placement Types') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="briefcase" icon:class="text-amber-500 dark:text-amber-400" :href="route('cms.placements.manage')"
-                        :current="request()->routeIs('cms.placements.manage')" wire:navigate>
-                        {{ __('Manage Placements') }}
-                    </flux:sidebar.item>
-                    <flux:sidebar.item icon="document-duplicate" icon:class="text-purple-500 dark:text-purple-400" :href="route('cms.placements.templates')"
-                        :current="request()->routeIs('cms.placements.templates')" wire:navigate>
-                        {{ __('Letter Templates') }}
-                    </flux:sidebar.item>
+                    @can('placements.view')
+                        <flux:sidebar.item icon="chart-bar" icon:class="text-cyan-500 dark:text-cyan-400" :href="route('cms.placements.index')"
+                            :current="request()->routeIs('cms.placements.index')" wire:navigate>
+                            {{ __('Placements Dashboard') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('placements.organizations')
+                        <flux:sidebar.item icon="building-office" icon:class="text-indigo-500 dark:text-indigo-400" :href="route('cms.placements.organizations')"
+                            :current="request()->routeIs('cms.placements.organizations')" wire:navigate>
+                            {{ __('Organizations') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('placements.types')
+                        <flux:sidebar.item icon="tag" icon:class="text-pink-500 dark:text-pink-400" :href="route('cms.placements.types')"
+                            :current="request()->routeIs('cms.placements.types')" wire:navigate>
+                            {{ __('Placement Types') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('placements.manage')
+                        <flux:sidebar.item icon="briefcase" icon:class="text-amber-500 dark:text-amber-400" :href="route('cms.placements.manage')"
+                            :current="request()->routeIs('cms.placements.manage')" wire:navigate>
+                            {{ __('Manage Placements') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('placements.supervisors')
+                        <flux:sidebar.item icon="user-group" icon:class="text-teal-500 dark:text-teal-400" :href="route('cms.placements.supervisors')"
+                            :current="request()->routeIs('cms.placements.supervisors')" wire:navigate>
+                            {{ __('Placement Supervisors') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('placements.supervise')
+                        <flux:sidebar.item icon="clipboard-document-check" icon:class="text-emerald-500 dark:text-emerald-400" :href="route('cms.placements.my-supervisions')"
+                            :current="request()->routeIs('cms.placements.my-supervisions')" wire:navigate>
+                            {{ __('My Supervisions') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('placements.reports')
+                        <flux:sidebar.item icon="document-text" icon:class="text-sky-500 dark:text-sky-400" :href="route('cms.placements.reports')"
+                            :current="request()->routeIs('cms.placements.reports')" wire:navigate>
+                            {{ __('Supervision Reports') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('placements.templates')
+                        <flux:sidebar.item icon="document-duplicate" icon:class="text-purple-500 dark:text-purple-400" :href="route('cms.placements.templates')"
+                            :current="request()->routeIs('cms.placements.templates')" wire:navigate>
+                            {{ __('Letter Templates') }}
+                        </flux:sidebar.item>
+                    @endcan
                 </flux:sidebar.group>
             @endcanany
 
@@ -281,27 +338,29 @@
             @endif
 
             @if(auth()->user()->institution?->hasAddon('ca_module'))
-                <flux:sidebar.group :heading="__('Online C.A')" class="grid" expandable expanded="false">
-                    @canany(['courses.view', 'courses.view_dept', 'courses.view_assigned'])
-                        <flux:sidebar.item icon="document-text" icon:class="text-violet-500 dark:text-violet-400" :href="route('cms.ca-tests.lecturer.index')"
-                            :current="request()->routeIs('cms.ca-tests.lecturer.*') && !request()->routeIs('cms.ca-tests.lecturer.results')"
-                            wire:navigate>
-                            {{ __('Manage C.A Tests') }}
-                        </flux:sidebar.item>
+                @canany(['ca_tests.view', 'courses.view_assigned', 'courses.view_dept', 'registrations.view_personal'])
+                    <flux:sidebar.group :heading="__('Online C.A')" class="grid" expandable expanded="false">
+                        @canany(['ca_tests.view', 'courses.view_assigned', 'courses.view_dept'])
+                            <flux:sidebar.item icon="document-text" icon:class="text-violet-500 dark:text-violet-400" :href="route('cms.ca-tests.lecturer.index')"
+                                :current="request()->routeIs('cms.ca-tests.lecturer.*') && !request()->routeIs('cms.ca-tests.lecturer.results')"
+                                wire:navigate>
+                                {{ __('Manage C.A Tests') }}
+                            </flux:sidebar.item>
 
-                        <flux:sidebar.item icon="chart-bar" icon:class="text-teal-500 dark:text-teal-400" :href="route('cms.ca-tests.lecturer.results')"
-                            :current="request()->routeIs('cms.ca-tests.lecturer.results')" wire:navigate>
-                            {{ __('C.A Test Results') }}
-                        </flux:sidebar.item>
-                    @endcanany
+                            <flux:sidebar.item icon="chart-bar" icon:class="text-teal-500 dark:text-teal-400" :href="route('cms.ca-tests.lecturer.results')"
+                                :current="request()->routeIs('cms.ca-tests.lecturer.results')" wire:navigate>
+                                {{ __('C.A Test Results') }}
+                            </flux:sidebar.item>
+                        @endcanany
 
-                    @can('registrations.view_personal')
-                        <flux:sidebar.item icon="pencil-square" icon:class="text-blue-500 dark:text-blue-400" :href="route('cms.ca-tests.student.index')"
-                            :current="request()->routeIs('cms.ca-tests.student.*')" wire:navigate>
-                            {{ __('My C.A Tests') }}
-                        </flux:sidebar.item>
-                    @endcan
-                </flux:sidebar.group>
+                        @can('registrations.view_personal')
+                            <flux:sidebar.item icon="pencil-square" icon:class="text-blue-500 dark:text-blue-400" :href="route('cms.ca-tests.student.index')"
+                                :current="request()->routeIs('cms.ca-tests.student.*')" wire:navigate>
+                                {{ __('My C.A Tests') }}
+                            </flux:sidebar.item>
+                        @endcan
+                    </flux:sidebar.group>
+                @endcanany
             @endif
 
             @canany(['results.enter', 'results.view_dept', 'reports.generate', 'results.view_personal'])
@@ -336,15 +395,8 @@
                 </flux:sidebar.group>
             @endcanany
 
-            @canany(['attendance_payments.process', 'invoices.view', 'payments.view', 'payments.verify', 'invoices.view_personal'])
+            @canany(['invoices.view', 'payments.view', 'payments.verify', 'invoices.view_personal'])
                 <flux:sidebar.group :heading="__('Finance')" class="grid" expandable expanded="false">
-                    {{-- @can('attendance_payments.process')
-                    <flux:sidebar.item icon="banknotes" icon:class="text-emerald-500 dark:text-emerald-400" :href="route('cms.attendance.payments')"
-                        :current="request()->routeIs('cms.attendance.payments')" wire:navigate>
-                        {{ __('Attendance Payments') }}
-                    </flux:sidebar.item>
-                    @endcan --}}
-
                     @can('invoices.view')
                         <flux:sidebar.item icon="banknotes" icon:class="text-emerald-500 dark:text-emerald-400" :href="route('cms.invoices.index')"
                             :current="request()->routeIs('cms.invoices.index') || request()->routeIs('cms.invoices.create') || request()->routeIs('cms.invoices.edit') || request()->routeIs('cms.invoices.students')"
@@ -353,12 +405,12 @@
                         </flux:sidebar.item>
                     @endcan
 
-                    @can('payments.view')
+                    @canany(['payments.view', 'payments.verify'])
                         <flux:sidebar.item icon="check-badge" icon:class="text-teal-500 dark:text-teal-400" :href="route('cms.invoices.payments')"
                             :current="request()->routeIs('cms.invoices.payments')" wire:navigate>
                             {{ __('Verify Payments') }}
                         </flux:sidebar.item>
-                    @endcan
+                    @endcanany
 
                     @can('invoices.view_personal')
                         <flux:sidebar.item icon="credit-card" icon:class="text-cyan-500 dark:text-cyan-400" :href="route('cms.students.portal-invoices')"

@@ -68,6 +68,11 @@ class Course extends Model
         return $this->hasMany(CourseAllocation::class);
     }
 
+    public function timetables(): MorphMany
+    {
+        return $this->morphMany(Timetable::class, 'allocatable');
+    }
+
     public function cbtExams(): HasMany
     {
         return $this->hasMany(CbtExam::class);

@@ -215,6 +215,10 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
                     {{ __('Import Excel / CSV') }}
                 </flux:button>
             @endcan
+            <flux:button icon="printer" variant="subtle" class="flex-1 sm:flex-none"
+                x-on:click="window.open('{{ route('cms.courses.allocations.print') }}?department_id=' + ($wire.departmentId || '') + '&program_id=' + ($wire.programId || '') + '&level=' + ($wire.level || '') + '&semester_id=' + ($wire.semester || '') + '&institution_id=' + ($wire.institutionId || ''), '_blank')">
+                {{ __('Print Allocations') }}
+            </flux:button>
             @can('courses.create')
                 <flux:button icon="plus" variant="primary" :href="route('cms.courses.create')" wire:navigate
                     class="w-full sm:w-auto">

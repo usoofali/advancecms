@@ -29,19 +29,31 @@ new #[Layout('layouts.app')] class extends Component {
 
     public function openSelectModal($placementId)
     {
-        $this->placementToSelect = StudentPlacement::find($placementId);
+        $student = auth()->user()?->student;
+        if (! $student) return;
+
+        $this->placementToSelect = StudentPlacement::where('student_id', $student->id)->find($placementId);
+        if (! $this->placementToSelect) {
+            Flux::toast('Placement record not found or access denied.', variant: 'danger');
+            return;
+        }
+
         $this->selectionMode = 'directory';
-        $this->selected_organization_id = $this->placementToSelect?->organization_id ?: '';
-        $this->custom_name = $this->placementToSelect?->custom_organization_name ?: '';
-        $this->custom_address = $this->placementToSelect?->custom_organization_address ?: '';
-        $this->custom_city = $this->placementToSelect?->custom_organization_city ?: '';
-        $this->custom_state = $this->placementToSelect?->custom_organization_state ?: '';
+        $this->selected_organization_id = $this->placementToSelect->organization_id ?: '';
+        $this->custom_name = $this->placementToSelect->custom_organization_name ?: '';
+        $this->custom_address = $this->placementToSelect->custom_organization_address ?: '';
+        $this->custom_city = $this->placementToSelect->custom_organization_city ?: '';
+        $this->custom_state = $this->placementToSelect->custom_organization_state ?: '';
         $this->selectPlaceModal = true;
     }
 
     public function savePlaceSelection()
     {
-        if (!$this->placementToSelect) return;
+        $student = auth()->user()?->student;
+        if (! $student || ! $this->placementToSelect || $this->placementToSelect->student_id !== $student->id) {
+            Flux::toast('Unauthorized action.', variant: 'danger');
+            return;
+        }
 
         if ($this->selectionMode === 'directory') {
             $this->validate([
@@ -86,8 +98,14 @@ new #[Layout('layouts.app')] class extends Component {
 
     public function downloadDocument($placementId, $purpose, DocumentGenerationService $generator)
     {
-        $placement = StudentPlacement::find($placementId);
-        if (!$placement) return;
+        $student = auth()->user()?->student;
+        if (! $student) return;
+
+        $placement = StudentPlacement::where('student_id', $student->id)->find($placementId);
+        if (! $placement) {
+            Flux::toast('Placement record not found or access denied.', variant: 'danger');
+            return;
+        }
 
         // Find existing generated document or generate one if template exists
         $doc = $placement->generatedDocuments()->where('purpose', $purpose)->first();
@@ -116,7 +134,15 @@ new #[Layout('layouts.app')] class extends Component {
 
     public function openUploadModal($placementId)
     {
-        $this->placementToUpload = StudentPlacement::find($placementId);
+        $student = auth()->user()?->student;
+        if (! $student) return;
+
+        $this->placementToUpload = StudentPlacement::where('student_id', $student->id)->find($placementId);
+        if (! $this->placementToUpload) {
+            Flux::toast('Placement record not found or access denied.', variant: 'danger');
+            return;
+        }
+
         $this->documentType = 'Acceptance Letter';
         $this->documentFile = null;
         $this->uploadModal = true;
@@ -124,12 +150,16 @@ new #[Layout('layouts.app')] class extends Component {
 
     public function uploadDocument()
     {
+        $student = auth()->user()?->student;
+        if (! $student || ! $this->placementToUpload || $this->placementToUpload->student_id !== $student->id) {
+            Flux::toast('Unauthorized action.', variant: 'danger');
+            return;
+        }
+
         $this->validate([
             'documentType' => 'required|string',
             'documentFile' => 'required|file|mimes:pdf,jpg,jpeg,png|max:2048',
         ]);
-
-        if (!$this->placementToUpload) return;
 
         $path = $this->documentFile->store('placement_documents', 'public');
 
@@ -156,13 +186,13 @@ new #[Layout('layouts.app')] class extends Component {
 
     public function with(): array
     {
-        $student = auth()->user()->student;
+        $student = auth()->user()?->student;
         
         return [
-            'placements' => StudentPlacement::with(['organization', 'placementType', 'generatedDocuments', 'placementDocuments'])
-                ->where('student_id', $student?->id)
+            'placements' => $student ? StudentPlacement::with(['organization', 'placementType', 'generatedDocuments', 'placementDocuments'])
+                ->where('student_id', $student->id)
                 ->orderBy('created_at', 'desc')
-                ->get(),
+                ->get() : collect(),
             'organizations' => Organization::orderBy('name')->get()
         ];
     }

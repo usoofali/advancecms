@@ -96,7 +96,8 @@ class RbacSeeder extends Seeder
             'invoices.manage_students' => 'Manage individual student fee accounts, waivers, and invoice balances',
 
             // Placements Granular Permissions
-            'placements.view' => 'Access placement analytics dashboard and personal placement status',
+            'placements.view' => 'Access placement analytics dashboard and management overview',
+            'placements.view_personal' => 'Access personal placement status, select place of posting, and upload acceptance documents',
             'placements.organizations' => 'Manage host company/organization directories for student placements',
             'placements.types' => 'Create and manage placement program types (SIWES, Internship, Clinical, etc.)',
             'placements.manage' => 'Create, assign, and manage student placement postings and official letters',
@@ -270,7 +271,7 @@ class RbacSeeder extends Seeder
                     'applications.print_letter', 'applications.print_receipt',
                     'registrations.print_form', 'registrations.print_exam_card',
                     'invoices.view_personal', 'students.view_lecturers', 'timetables.view_personal',
-                    'placements.view',
+                    'placements.view_personal',
                     'dashboard.view', 'id_cards.request',
                 ],
             ],

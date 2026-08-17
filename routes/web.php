@@ -189,21 +189,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::livewire('/documents/print/{doc}', 'pages::cms.placements.print')->name('print')->where('doc', '.*');
 
         // Admin
-        Route::livewire('/', 'admin.placements.index')->name('index');
-        Route::livewire('/manage', 'admin.placements.manage')->name('manage');
-        Route::livewire('/supervisors', 'admin.placements.supervisors')->name('supervisors');
-        Route::livewire('/reports', 'admin.placements.reports')->name('reports');
-        Route::livewire('/reports/print', 'pages::cms.placements.print-report')->name('print-report');
-        Route::livewire('/organizations', 'admin.placements.organizations')->name('organizations');
-        Route::livewire('/types', 'admin.placements.types')->name('types');
-        Route::livewire('/templates', 'admin.placements.templates')->name('templates');
+        Route::livewire('/', 'admin.placements.index')->name('index')->middleware('can:placements.view');
+        Route::livewire('/manage', 'admin.placements.manage')->name('manage')->middleware('can:placements.manage');
+        Route::livewire('/supervisors', 'admin.placements.supervisors')->name('supervisors')->middleware('can:placements.supervisors');
+        Route::livewire('/reports', 'admin.placements.reports')->name('reports')->middleware('can:placements.reports');
+        Route::livewire('/reports/print', 'pages::cms.placements.print-report')->name('print-report')->middleware('can:placements.reports');
+        Route::livewire('/organizations', 'admin.placements.organizations')->name('organizations')->middleware('can:placements.organizations');
+        Route::livewire('/types', 'admin.placements.types')->name('types')->middleware('can:placements.types');
+        Route::livewire('/templates', 'admin.placements.templates')->name('templates')->middleware('can:placements.templates');
 
         // Lecturer / Supervisor
-        Route::livewire('/my-supervisions', 'lecturer.placements.my-supervisions')->name('my-supervisions');
+        Route::livewire('/my-supervisions', 'lecturer.placements.my-supervisions')->name('my-supervisions')->middleware('can:placements.supervise');
 
         // Student
         Route::prefix('student')->name('student.')->group(function () {
-            Route::livewire('/', 'student.placements.index')->name('index');
+            Route::livewire('/', 'student.placements.index')->name('index')->middleware('can:placements.view_personal');
         });
     });
 

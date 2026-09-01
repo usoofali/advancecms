@@ -435,8 +435,15 @@ new #[Layout('layouts.app')] #[Title('Transcript Manager')] class extends Compon
 
     <style>
         @media print {
+            *, *::before, *::after {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
             body { 
-                background: white !important;
+                background-color: white !important;
+                background-image: none !important;
                 color: black !important;
                 font-size: 10px;
             }

@@ -531,10 +531,17 @@ new #[Layout('layouts.app')] #[Title('Examination Card')] class extends Componen
 
     <style>
         @media print {
+            *, *::before, *::after {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
             body {
                 font-family: Arial, Helvetica, sans-serif;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
+                background-color: white !important;
+                background-image: none !important;
+                color: black !important;
             }
 
             .mx-auto.max-w-4xl {

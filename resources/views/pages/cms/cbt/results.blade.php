@@ -638,8 +638,18 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
 
     <style>
         @media print {
+            *, *::before, *::after {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
             .no-print { display: none !important; }
-            body { background: white !important; }
+            body {
+                background-color: white !important;
+                background-image: none !important;
+                color: black !important;
+            }
             .p-6 { padding: 0 !important; }
         }
     </style>

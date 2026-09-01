@@ -219,10 +219,20 @@ new #[Layout('layouts.guest')] #[Title('Invoice Report')] class extends Componen
 
     <style>
         @media print {
+            *, *::before, *::after {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
             .bg-zinc-50 { background-color: #f4f4f5 !important; }
             .bg-zinc-100 { background-color: #f4f4f5 !important; }
             @page { margin: 1.5cm; }
-            body { -webkit-print-color-adjust: exact; }
+            body {
+                background-color: white !important;
+                background-image: none !important;
+                color: black !important;
+            }
         }
     </style>
     

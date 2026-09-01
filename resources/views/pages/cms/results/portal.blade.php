@@ -553,6 +553,17 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
 @push('styles')
 <style>
     @media print {
+        *, *::before, *::after {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+
+        body {
+            background-color: white !important;
+            background-image: none !important;
+            color: black !important;
+        }
 
         /* Hide Navigation and Sidebar (assuming standard layout classes) */
         header,

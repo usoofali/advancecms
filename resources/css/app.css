@@ -100,3 +100,29 @@ select:focus[data-flux-control] {
         linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
     background-size: 100% 100%, 100% 100%, 24px 24px, 48px 48px, 48px 48px;
 }
+
+@media print {
+    /* Hide theme background texture overlay during print so it doesn't force browser background graphics requirement or overlay content */
+    .theme-textured-bg::before {
+        display: none !important;
+        background-image: none !important;
+    }
+
+    /* Force print color adjust globally across all printable elements */
+    *, *::before, *::after {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+
+    /* Ensure clean white background and dark text for print */
+    body {
+        background-color: white !important;
+        background-image: none !important;
+        color: black !important;
+    }
+
+    .dark {
+        color-scheme: light !important;
+    }
+}

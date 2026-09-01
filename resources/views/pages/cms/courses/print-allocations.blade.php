@@ -237,6 +237,12 @@ new #[Layout('layouts.guest')] #[Title('Print Course Allocations')] class extend
 
     <style>
         @media print {
+            *, *::before, *::after {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
             .no-print {
                 display: none !important;
             }
@@ -244,7 +250,9 @@ new #[Layout('layouts.guest')] #[Title('Print Course Allocations')] class extend
             body {
                 padding: 0;
                 margin: 0;
-                background-color: white;
+                background-color: white !important;
+                background-image: none !important;
+                color: black !important;
             }
 
             @page {

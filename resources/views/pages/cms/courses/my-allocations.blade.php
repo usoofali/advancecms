@@ -181,6 +181,12 @@ new #[Layout('layouts.app')] #[Title('My Allocations')] class extends Component 
 @push('styles')
 <style>
     @media print {
+        *, *::before, *::after {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+
         /* Hide layout elements */
         nav, aside, footer {
             display: none !important;
@@ -205,6 +211,7 @@ new #[Layout('layouts.app')] #[Title('My Allocations')] class extends Component 
         /* Adjust colors and borders for printing */
         body {
             background-color: white !important;
+            background-image: none !important;
             color: black !important;
         }
 
@@ -215,14 +222,6 @@ new #[Layout('layouts.app')] #[Title('My Allocations')] class extends Component 
         th, td {
             color: black !important;
             border-bottom: 1px solid #ccc !important;
-        }
-
-        /* Remove card styles to save ink */
-        .rounded-xl, .shadow-sm, .dark\:bg-zinc-800, .bg-white {
-            border: none !important;
-            box-shadow: none !important;
-            background: transparent !important;
-            border-radius: 0 !important;
         }
     }
 </style>

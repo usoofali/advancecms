@@ -934,6 +934,11 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
 @push('styles')
 <style>
     @media print {
+        *, *::before, *::after {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
 
         nav,
         aside,
@@ -951,6 +956,7 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
 
         body {
             background-color: white !important;
+            background-image: none !important;
             color: black !important;
         }
 

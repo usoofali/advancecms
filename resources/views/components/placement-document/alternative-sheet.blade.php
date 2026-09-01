@@ -89,6 +89,12 @@ if ($institution) {
 
     <style>
         @media print {
+            *, *::before, *::after {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
             .print\:hidden {
                 display: none !important;
             }
@@ -96,7 +102,9 @@ if ($institution) {
             body {
                 padding: 0;
                 margin: 0;
-                background: white;
+                background-color: white !important;
+                background-image: none !important;
+                color: black !important;
             }
 
             .min-h-screen {

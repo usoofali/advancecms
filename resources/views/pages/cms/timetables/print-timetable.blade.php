@@ -197,6 +197,27 @@ new #[Layout('layouts.guest')] #[Title('Print Lecture Timetable')] class extends
         </div>
     </div>
 
+    <style>
+        @media print {
+            *, *::before, *::after {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
+            body {
+                background-color: white !important;
+                background-image: none !important;
+                color: black !important;
+            }
+
+            @page {
+                margin: 1cm;
+                size: landscape;
+            }
+        }
+    </style>
+
     <script>
         window.addEventListener('DOMContentLoaded', () => {
             window.print();

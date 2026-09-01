@@ -145,14 +145,24 @@
         }
 
         @media print {
-            body { background: white; }
+            *, *::before, *::after {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
+            body {
+                background-color: white !important;
+                background-image: none !important;
+                color: black !important;
+            }
             .no-print { display: none !important; }
             .id-card { 
                 break-inside: avoid;
                 margin-bottom: 5mm !important;
                 box-shadow: none !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
         }
     </style>

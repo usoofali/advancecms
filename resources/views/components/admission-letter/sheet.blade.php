@@ -196,6 +196,12 @@ $l = $letter;
     }
 
     @media print {
+        *, *::before, *::after {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }
+
         @page {
             size: A4 portrait;
             margin: 12mm 10mm 14mm 10mm;
@@ -206,13 +212,13 @@ $l = $letter;
         html,
         body {
             background: white !important;
+            background-image: none !important;
+            color: black !important;
             margin: 0 !important;
             padding: 0 !important;
             min-height: 0 !important;
             height: auto !important;
             overflow: visible !important;
-            -webkit-print-color-adjust: exact;
-            print-color-adjust: exact;
         }
 
         .min-h-screen {

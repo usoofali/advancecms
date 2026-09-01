@@ -363,8 +363,16 @@ function getOptimalFontSize(text, defaultPt, orientation = 'horizontal', maxChar
 }
 
 @media print {
+    *, *::before, *::after {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+
     body {
-        background: white !important;
+        background-color: white !important;
+        background-image: none !important;
+        color: black !important;
     }
     .id-card-pair {
         break-inside: avoid;

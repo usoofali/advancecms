@@ -4,12 +4,12 @@
     "name": "runtime-dom.esm-bundler"
   },
   "resources/css/app.css": {
-    "file": "assets/app-Ce6GN8HV.css",
+    "file": "assets/app-CTJ257Pw.css",
     "src": "resources/css/app.css",
     "isEntry": true
   },
   "resources/js/app.js": {
-    "file": "assets/app-NiY8LqtZ.js",
+    "file": "assets/app-B6vt2yUZ.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -17,7 +17,7 @@
       "_runtime-dom.esm-bundler-DkfED28w.js"
     ],
     "css": [
-      "assets/app-B1WT0_nB.css"
+      "assets/app-CRBR-d_P.css"
     ]
   },
   "resources/js/public.js": {

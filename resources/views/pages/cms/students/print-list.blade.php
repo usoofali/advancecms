@@ -155,13 +155,22 @@ new #[Layout('layouts.guest')] #[Title('Print Student List')] class extends Comp
 
     <style>
         @media print {
+            *, *::before, *::after {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
             .no-print {
-                display: none;
+                display: none !important;
             }
 
             body {
                 padding: 0;
                 margin: 0;
+                background-color: white !important;
+                background-image: none !important;
+                color: black !important;
             }
 
             @page {

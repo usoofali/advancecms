@@ -312,4 +312,25 @@ new #[Layout('layouts.app')] #[Title('Course Form')] class extends Component
         {{ __('Please select a session and semester to generate the course form.') }}
     </div>
     @endif
+
+    <style>
+        @media print {
+            *, *::before, *::after {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
+            body {
+                background-color: white !important;
+                background-image: none !important;
+                color: black !important;
+            }
+
+            @page {
+                margin: 1cm;
+                size: portrait;
+            }
+        }
+    </style>
 </div>

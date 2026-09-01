@@ -214,4 +214,25 @@ new #[Title('Print Supervision Report')] #[Layout('layouts.guest')] class extend
             <div class="text-[10px] font-normal text-slate-500 mt-1">Signature & Date</div>
         </div>
     </div>
+
+    <style>
+        @media print {
+            *, *::before, *::after {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+
+            body {
+                background-color: white !important;
+                background-image: none !important;
+                color: black !important;
+            }
+
+            @page {
+                margin: 1cm;
+                size: portrait;
+            }
+        }
+    </style>
 </div>

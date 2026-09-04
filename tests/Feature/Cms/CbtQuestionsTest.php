@@ -147,3 +147,68 @@ it('can import questions from a CSV file with non-UTF-8 characters', function ()
         'question_text' => 'Admission and discharge registers contain the patient’s ______.',
     ]);
 });
+
+it('can export questions to a CSV file', function (): void {
+    $institution = Institution::factory()->create([
+        'addons' => ['exam_module'],
+    ]);
+    $department = Department::factory()->for($institution)->create();
+    $program = Program::factory()->create([
+        'department_id' => $department->id,
+        'institution_id' => $institution->id,
+        'acronym' => 'CSC',
+    ]);
+    $session = AcademicSession::factory()->create();
+    $semester = Semester::factory()->create([
+        'academic_session_id' => $session->id,
+        'name' => 'first',
+    ]);
+    $course = Course::factory()->create([
+        'institution_id' => $institution->id,
+        'department_id' => $department->id,
+        'program_id' => $program->id,
+        'level' => 100,
+        'semester' => 1,
+        'course_code' => 'CSC101',
+    ]);
+
+    $exam = CbtExam::create([
+        'uuid' => (string) Str::uuid(),
+        'institution_id' => $institution->id,
+        'course_id' => $course->id,
+        'academic_session_id' => $session->id,
+        'semester_id' => $semester->id,
+        'title' => 'CSC101 Final Exam',
+        'duration_minutes' => 60,
+        'total_questions' => 50,
+        'pass_mark' => 40.00,
+        'status' => 'draft',
+    ]);
+
+    $question = $exam->questions()->create([
+        'uuid' => (string) Str::uuid(),
+        'question_text' => 'What is 2+2?',
+        'type' => 'single',
+        'marks' => 1,
+    ]);
+
+    $question->options()->createMany([
+        ['uuid' => (string) Str::uuid(), 'option_text' => '2', 'is_correct' => false],
+        ['uuid' => (string) Str::uuid(), 'option_text' => '4', 'is_correct' => true],
+        ['uuid' => (string) Str::uuid(), 'option_text' => '6', 'is_correct' => false],
+        ['uuid' => (string) Str::uuid(), 'option_text' => '8', 'is_correct' => false],
+    ]);
+
+    $user = User::factory()
+        ->for($institution)
+        ->withRole('Super Admin')
+        ->create();
+
+    $this->actingAs($user);
+
+    $response = Livewire::test('pages::cms.cbt.questions')
+        ->set('selectedExamId', $exam->id)
+        ->call('exportCsv');
+
+    $response->assertFileDownloaded();
+});

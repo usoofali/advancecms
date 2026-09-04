@@ -14,6 +14,7 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\WithFileUploads;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Component {
     use WithPagination, WithFileUploads;
@@ -174,7 +175,11 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
 
     public function importCsv(): void
     {
-        Gate::authorize('cbt_questions.import');
+        if (Gate::allows('cbt_questions.import')) {
+            Gate::authorize('cbt_questions.import');
+        } else {
+            Gate::authorize('cbt_questions.view');
+        }
 
         $user = auth()->user();
         $isSuperAdmin = $user->hasRole('Super Admin');
@@ -273,6 +278,89 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
             'type' => 'success',
             'message' => "Successfully imported {$importCount} questions.",
         ]);
+    }
+
+    public function exportCsv(): StreamedResponse
+    {
+        if (Gate::allows('cbt_questions.export')) {
+            Gate::authorize('cbt_questions.export');
+        } else {
+            Gate::authorize('cbt_questions.view');
+        }
+
+        $user = auth()->user();
+        $isSuperAdmin = $user->hasRole('Super Admin');
+        $isInstAdmin = $user->hasRole('Institutional Admin');
+        $scopedDeptIds = array_unique(array_merge(
+            $user->getScopedModelIds('Head of Department (HOD)', Department::class),
+            $user->getScopedModelIds('Academic Secretary', Department::class),
+            $user->getScopedModelIds('Exam Officer', Department::class)
+        ));
+        $isRestrictedLecturer = !$isSuperAdmin && !$isInstAdmin && empty($scopedDeptIds);
+
+        $this->validate([
+            'selectedExamId' => [
+                'required',
+                'exists:cbt_exams,id',
+                function ($attribute, $value, $fail) use ($isRestrictedLecturer, $user, $scopedDeptIds) {
+                    $exam = CbtExam::find($value);
+                    if ($exam) {
+                        if ($isRestrictedLecturer) {
+                            $isAllocated = DB::table('course_allocations')
+                                ->where('user_id', $user->id)
+                                ->where('course_id', $exam->course_id)
+                                ->exists();
+                            if (!$isAllocated) {
+                                $fail('You do not have access to this examination.');
+                            }
+                        } elseif (!empty($scopedDeptIds)) {
+                            $course = Course::find($exam->course_id);
+                            if ($course && !in_array($course->department_id, $scopedDeptIds)) {
+                                $fail('This examination belongs to a course outside your department.');
+                            }
+                        }
+                    }
+                }
+            ],
+        ]);
+
+        $exam = CbtExam::findOrFail($this->selectedExamId);
+        $questions = CbtQuestion::where('cbt_exam_id', $this->selectedExamId)->with('options')->get();
+
+        $filename = 'cbt_questions_' . Str::slug($exam->title ?: 'exam') . '_' . now()->format('YmdHis') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function () use ($questions) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['Question Text', 'Option 1', 'Option 2', 'Option 3', 'Option 4', 'Correct Index']);
+
+            foreach ($questions as $q) {
+                $options = $q->options->values();
+                $correctIdx = 1;
+                foreach ($options as $idx => $opt) {
+                    if ($opt->is_correct) {
+                        $correctIdx = $idx + 1;
+                        break;
+                    }
+                }
+
+                fputcsv($file, [
+                    $q->question_text,
+                    $options->get(0)?->option_text ?? '',
+                    $options->get(1)?->option_text ?? '',
+                    $options->get(2)?->option_text ?? '',
+                    $options->get(3)?->option_text ?? '',
+                    $correctIdx,
+                ]);
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     public function edit($id): void
@@ -468,9 +556,12 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
         </div>
         @if($selectedExamId)
             <div class="flex flex-wrap items-center gap-2">
-                @can('cbt_questions.import')
+                @canany(['cbt_questions.import', 'cbt_questions.view'])
                     <flux:button icon="arrow-up-tray" variant="subtle" wire:click="$set('showImportModal', true)" class="flex-1 sm:flex-none">{{ __('Import CSV') }}</flux:button>
-                @endcan
+                @endcanany
+                @canany(['cbt_questions.export', 'cbt_questions.view'])
+                    <flux:button icon="arrow-down-tray" variant="subtle" wire:click="exportCsv" class="flex-1 sm:flex-none">{{ __('Export CSV') }}</flux:button>
+                @endcanany
                 @can('cbt_questions.create')
                     <flux:button variant="primary" icon="plus" wire:click="$set('showModal', true)" class="flex-1 sm:flex-none">{{ __('New Question') }}</flux:button>
                 @endcan

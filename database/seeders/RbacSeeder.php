@@ -71,6 +71,7 @@ class RbacSeeder extends Seeder
             'cbt_sync.view' => 'View CBT node sync status, server connectivity, and sync history',
             'cbt_sync.manage_tokens' => 'Create, manage, and revoke CBT lab workstation access tokens',
             'cbt_questions.import' => 'Bulk import examination questions from CSV templates into question banks',
+            'cbt_questions.export' => 'Export examination questions and options from question banks to CSV files',
 
             // Granular Specialized Permissions
             'applications.notify' => 'Generate and issue provisional admission notification slips',
@@ -214,7 +215,7 @@ class RbacSeeder extends Seeder
                         'students.view_dept', 'courses.view_dept', 'results.view_dept',
                         'registration_status.update', 'attendance.view_history', 'attendance.manage',
                         'cbt_results.view', 'cbt_results.review', 'cbt_results.approve', 'cbt_results.reject', 'cbt_results.mass_action',
-                        'cbt_sync.view', 'cbt_data.sync', 'cbt_questions.import', 'students.export',
+                        'cbt_sync.view', 'cbt_data.sync', 'cbt_questions.import', 'cbt_questions.export', 'students.export',
                         'courses.allocate', 'courses.revoke_allocation', 'courses.export',
                         'results.export', 'invoices.manage_students', 'reports.generate',
                         'placements.view', 'placements.organizations', 'placements.types', 'placements.manage', 'placements.supervisors', 'placements.supervise', 'placements.reports', 'placements.templates',
@@ -226,7 +227,7 @@ class RbacSeeder extends Seeder
                 'description' => 'Academic instruction and result entry',
                 'permissions' => array_merge(
                     $crud(['cbt_questions', 'ca_tests']),
-                    ['cbt_exams.view', 'cbt_questions.import', 'courses.view_assigned', 'results.enter', 'results.modify', 'attendance.take', 'attendance.view_history', 'timetables.view_personal', 'placements.supervise', 'dashboard.view', 'id_cards.request']
+                    ['cbt_exams.view', 'cbt_questions.import', 'cbt_questions.export', 'courses.view_assigned', 'results.enter', 'results.modify', 'attendance.take', 'attendance.view_history', 'timetables.view_personal', 'placements.supervise', 'dashboard.view', 'id_cards.request']
                 ),
             ],
             'Academic Secretary' => [
@@ -251,7 +252,7 @@ class RbacSeeder extends Seeder
                         'students.view_dept', 'courses.view_dept', 'results.view_dept', 'results.enter', 'results.modify',
                         'attendance.manage',
                         'cbt_data.sync', 'cbt_results.view', 'cbt_results.review', 'cbt_results.approve', 'cbt_results.reject', 'cbt_results.mass_action',
-                        'cbt_sync.view', 'cbt_questions.import', 'results.export', 'results.import',
+                        'cbt_sync.view', 'cbt_questions.import', 'cbt_questions.export', 'results.export', 'results.import',
                         'placements.reports',
                         'dashboard.view', 'id_cards.request',
                     ]

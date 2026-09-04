@@ -47,7 +47,7 @@ class AdmissionDecisionNotification extends Notification
                 ->line('We are pleased to inform you that you have been offered provisional admission into '.$this->applicant->institution->name.' for the '.$this->applicant->program->name.' program.')
                 ->line('Your journey with us begins now. To formally accept this offer and complete your enrollment, please follow the steps below:')
                 ->line('1. Log in to your application portal.')
-                ->line('2. Pay the required admission and registration fees (minimum 50% for enrollment).')
+                ->line('2. Pay the required admission and registration fees.')
                 ->line('3. Complete your academic credential profile.')
                 ->line('You can view and print your provisional admission letter directly via the link below:')
                 ->line($letterUrl)

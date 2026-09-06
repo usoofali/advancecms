@@ -3,7 +3,9 @@
 use App\Models\CbtResultStaging;
 use App\Models\Result;
 use App\Services\GradingService;
+use App\Services\ActivityLogger;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -169,13 +171,29 @@ new #[Layout('layouts.app')] #[Title('Examination Results Review')] class extend
                 'status' => 'approved',
                 'processed_at' => now(),
             ]);
+
+            ActivityLogger::log(
+                action: 'approved',
+                module: 'CBT',
+                description: "Approved CBT result for student #{$staging->student_id} (Score: {$staging->score_raw})",
+                subject: $staging
+            );
         });
     }
 
     public function reject($id): void
     {
         Gate::authorize('cbt_results.reject');
-        CbtResultStaging::findOrFail($id)->update(['status' => 'rejected']);
+        $staging = CbtResultStaging::find($id);
+        $staging?->update(['status' => 'rejected']);
+
+        ActivityLogger::log(
+            action: 'rejected',
+            module: 'CBT',
+            description: "Rejected staged CBT result #{$id}",
+            subject: $staging
+        );
+
         $this->showReviewModal = false;
         $this->dispatch('notify', [
             'type' => 'danger',

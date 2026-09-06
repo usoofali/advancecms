@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\HasRoleScopes;
+use App\Traits\LogsActivity;
 use Database\Factories\CourseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Course extends Model
 {
     /** @use HasFactory<CourseFactory> */
-    use HasFactory, HasRoleScopes;
+    use HasFactory, HasRoleScopes, LogsActivity;
 
     protected $fillable = [
         'institution_id',
@@ -76,5 +77,15 @@ class Course extends Model
     public function cbtExams(): HasMany
     {
         return $this->hasMany(CbtExam::class);
+    }
+
+    public function getActivityModule(): string
+    {
+        return 'Courses';
+    }
+
+    public function getActivityLogLabel(): string
+    {
+        return "{$this->course_code} - {$this->title}";
     }
 }

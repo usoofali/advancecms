@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Notifications\WelcomeNotification;
+use App\Traits\LogsActivity;
 use Database\Factories\StaffFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,7 +15,7 @@ use Illuminate\Support\Str;
 class Staff extends Model
 {
     /** @use HasFactory<StaffFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected static function booted(): void
     {
@@ -128,5 +129,17 @@ class Staff extends Model
     public function hodDepartments(): HasMany
     {
         return $this->hasMany(Department::class, 'hod_id');
+    }
+
+    public function getActivityModule(): string
+    {
+        return 'Staff';
+    }
+
+    public function getActivityLogLabel(): string
+    {
+        $name = trim("{$this->first_name} {$this->surname}");
+
+        return $name ?: ($this->staff_number ?? "Staff #{$this->id}");
     }
 }

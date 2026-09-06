@@ -60,4 +60,14 @@ class Result extends Model
     {
         return $this->belongsTo(Semester::class);
     }
+
+    public function getActivityModule(): string
+    {
+        return 'Results';
+    }
+
+    public function getActivityLogLabel(): string
+    {
+        return "Result #{$this->id} (Student #{$this->student_id}, Course #{$this->course_id})";
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\HasRoleScopes;
+use App\Traits\LogsActivity;
 use Database\Factories\DepartmentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Department extends Model
 {
     /** @use HasFactory<DepartmentFactory> */
-    use HasFactory, HasRoleScopes;
+    use HasFactory, HasRoleScopes, LogsActivity;
 
     protected $fillable = [
         'institution_id',
@@ -48,5 +49,15 @@ class Department extends Model
     public function gradingSystem(): BelongsTo
     {
         return $this->belongsTo(GradingSystem::class);
+    }
+
+    public function getActivityModule(): string
+    {
+        return 'Departments';
+    }
+
+    public function getActivityLogLabel(): string
+    {
+        return (string) $this->name;
     }
 }

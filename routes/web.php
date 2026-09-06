@@ -159,6 +159,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::livewire('results/portal', 'pages::cms.results.portal')->name('cms.results.portal')->middleware('can:results.view_personal');
     Route::livewire('results/transcripts', 'pages::cms.results.transcript-manager')->name('cms.results.transcripts')->middleware('can:reports.generate');
 
+    // System Activity Logs
+    Route::livewire('activity-logs', 'pages::cms.activity-logs')->name('cms.activity-logs')->middleware('can:activity_logs.view');
+
     // Finance Management
     Route::prefix('invoices')->name('cms.invoices.')->group(function () {
         Route::livewire('/', 'pages::cms.invoices.invoice-index')->name('index')->middleware('can:invoices.view');

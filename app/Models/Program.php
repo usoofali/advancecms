@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Database\Factories\ProgramFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -12,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Program extends Model
 {
     /** @use HasFactory<ProgramFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'institution_id',
@@ -52,5 +53,15 @@ class Program extends Model
         return $this->belongsToMany(Course::class, 'program_courses')
             ->withPivot(['level', 'semester', 'status'])
             ->withTimestamps();
+    }
+
+    public function getActivityModule(): string
+    {
+        return 'Programs';
+    }
+
+    public function getActivityLogLabel(): string
+    {
+        return "{$this->name} ({$this->acronym})";
     }
 }

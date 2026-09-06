@@ -13,6 +13,7 @@ use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Services\ActivityLogger;
 
 new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Component {
     use WithPagination;
@@ -137,13 +138,21 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
         ];
 
         if ($this->editingId) {
-            CbtExam::find($this->editingId)->update($data);
+            $exam = CbtExam::find($this->editingId);
+            $exam->update($data);
             $msg = 'Examination rules updated.';
         } else {
             $data['uuid'] = (string) Str::uuid();
-            CbtExam::create($data);
+            $exam = CbtExam::create($data);
             $msg = 'Examination created successfully.';
         }
+
+        ActivityLogger::log(
+            action: $this->editingId ? 'updated' : 'created',
+            module: 'CBT',
+            description: ($this->editingId ? 'Updated' : 'Created')." CBT Exam: {$data['title']}",
+            subject: $exam
+        );
 
         $this->showModal = false;
         $this->reset(['editingId', 'exam_date', 'course_id', 'academic_session_id', 'semester_id', 'duration_minutes', 'total_questions', 'randomize_questions', 'randomize_options', 'status', 'filter_program_id', 'filter_level']);
@@ -302,7 +311,17 @@ new #[Layout('layouts.app')] #[Title('CBT Examinations')] class extends Componen
         Gate::authorize('cbt_exams.delete');
 
         if ($this->deletingId) {
-            CbtExam::findOrFail($this->deletingId)->delete();
+            $exam = CbtExam::find($this->deletingId);
+            $title = $exam?->title ?? "Exam #{$this->deletingId}";
+            $exam?->delete();
+
+            ActivityLogger::log(
+                action: 'deleted',
+                module: 'CBT',
+                description: "Deleted CBT Exam: {$title}",
+                subjectLabel: $title
+            );
+
             $this->showDeleteModal = false;
             $this->deletingId = null;
 

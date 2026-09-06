@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\LogsActivity;
 use Database\Factories\AcademicSessionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class AcademicSession extends Model
 {
     /** @use HasFactory<AcademicSessionFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'name',
@@ -55,5 +56,15 @@ class AcademicSession extends Model
     public function studentCbtProfiles(): HasMany
     {
         return $this->hasMany(StudentCbtProfile::class);
+    }
+
+    public function getActivityModule(): string
+    {
+        return 'Academic';
+    }
+
+    public function getActivityLogLabel(): string
+    {
+        return "Session {$this->name}";
     }
 }

@@ -6,6 +6,7 @@ use App\Models\AcademicSession;
 use App\Models\Department;
 use App\Models\Staff;
 use App\Models\Student;
+use App\Services\ActivityLogger;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -115,6 +116,12 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
     {
         Gate::authorize('students.export');
 
+        ActivityLogger::log(
+            action: 'exported',
+            module: 'Students',
+            description: 'Exported student directory list to CSV'
+        );
+
         return (new StudentsExport($this->getFilteredQuery()))->download();
     }
 
@@ -145,6 +152,12 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
         $this->importFailures = $importer->failures;
         $this->importFile = null;
 
+        ActivityLogger::log(
+            action: 'imported',
+            module: 'Students',
+            description: "Bulk imported {$this->importedCount} student records from file"
+        );
+
         if ($this->importedCount > 0) {
             $this->dispatch('notify', [
                 'type' => 'success',
@@ -163,7 +176,16 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
 
         $student = Student::find($this->deletingId);
         if ($student) {
+            $name = $student->user?->name ?? $student->registration_number ?? "Student #{$student->id}";
             $student->delete();
+
+            ActivityLogger::log(
+                action: 'deleted',
+                module: 'Students',
+                description: "Deleted student record: {$name}",
+                subjectLabel: $name
+            );
+
             $this->dispatch('notify', [
                 'type' => 'success',
                 'message' => 'Student record deleted successfully.',

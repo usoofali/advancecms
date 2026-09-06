@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Notifications\EnrollmentNotification;
+use App\Traits\LogsActivity;
 use Database\Factories\StudentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -13,7 +14,7 @@ use Illuminate\Support\Facades\Hash;
 class Student extends Model
 {
     /** @use HasFactory<StudentFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     public static bool $suppressEnrollmentNotification = false;
 
@@ -320,5 +321,17 @@ class Student extends Model
     public function studentPlacements(): HasMany
     {
         return $this->hasMany(StudentPlacement::class);
+    }
+
+    public function getActivityModule(): string
+    {
+        return 'Students';
+    }
+
+    public function getActivityLogLabel(): string
+    {
+        $name = trim("{$this->first_name} {$this->surname}");
+
+        return $name ?: ($this->registration_number ?? $this->matric_number ?? "Student #{$this->id}");
     }
 }

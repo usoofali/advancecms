@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use App\Services\ActivityLogger;
 
 new #[Title('System Configuration')] class extends Component {
     use WithFileUploads;
@@ -77,6 +78,12 @@ new #[Title('System Configuration')] class extends Component {
             $this->system_logo = null;
 
             $this->dispatch('notify', message: __('System logo updated successfully.'), variant: 'success');
+
+            ActivityLogger::log(
+                action: 'updated',
+                module: 'Settings',
+                description: 'Updated system branding logo'
+            );
         }
     }
 
@@ -87,6 +94,11 @@ new #[Title('System Configuration')] class extends Component {
         SystemSetting::where('key', 'system_logo')->delete();
         Cache::forget('system_logo');
         $this->current_logo = null;
+        ActivityLogger::log(
+            action: 'deleted',
+            module: 'Settings',
+            description: 'Removed system branding logo'
+        );
         $this->dispatch('notify', message: __('System logo removed.'), variant: 'success');
     }
 

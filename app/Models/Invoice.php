@@ -51,6 +51,10 @@ class Invoice extends Model
         'is_required_for_exams',
         'is_required_for_registration',
         'is_required_for_course_form',
+        'required_percent_for_results',
+        'required_percent_for_exams',
+        'required_percent_for_registration',
+        'required_percent_for_course_form',
         'account_name',
         'account_number',
         'bank_name',
@@ -105,6 +109,10 @@ class Invoice extends Model
             'is_required_for_exams' => 'boolean',
             'is_required_for_registration' => 'boolean',
             'is_required_for_course_form' => 'boolean',
+            'required_percent_for_results' => 'integer',
+            'required_percent_for_exams' => 'integer',
+            'required_percent_for_registration' => 'integer',
+            'required_percent_for_course_form' => 'integer',
         ];
     }
 

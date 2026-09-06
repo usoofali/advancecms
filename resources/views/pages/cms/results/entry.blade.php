@@ -12,6 +12,7 @@ use Livewire\WithFileUploads;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use App\Services\ActivityLogger;
 
 new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
     use WithFileUploads;
@@ -139,6 +140,17 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
             $this->saveSingleResult($studentId, $gradingService);
         }
 
+        $count = count($this->scores);
+        $course = Course::find($this->course_id);
+        $cName = $course?->course_code ?? "Course #{$this->course_id}";
+
+        ActivityLogger::log(
+            action: 'updated',
+            module: 'Results',
+            description: "Saved and graded semester results for {$cName} ({$count} students)",
+            subject: $course
+        );
+
         $this->dispatch('notify', [
             'type' => 'success',
             'message' => 'Results saved & graded successfully!',
@@ -161,6 +173,15 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
             $this->session_id,
             $this->semester_id,
             $this->course_id
+        );
+
+        $course = Course::find($this->course_id);
+
+        ActivityLogger::log(
+            action: 'exported',
+            module: 'Results',
+            description: 'Exported semester result sheet for '.($course?->course_code ?? "Course #{$this->course_id}"),
+            subject: $course
         );
 
         return $export->download();
@@ -214,6 +235,14 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
 
         $this->loadScores();
         $this->reset('importFile');
+
+        $course = Course::find($this->course_id);
+        ActivityLogger::log(
+            action: 'imported',
+            module: 'Results',
+            description: "Bulk imported {$this->importedCount} student results from CSV for ".($course?->course_code ?? "Course #{$this->course_id}"),
+            subject: $course
+        );
 
         if (empty($this->importFailures)) {
             $this->dispatch('modal-close', name: 'import-results');

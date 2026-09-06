@@ -73,6 +73,10 @@ class RbacSeeder extends Seeder
             'cbt_questions.import' => 'Bulk import examination questions from CSV templates into question banks',
             'cbt_questions.export' => 'Export examination questions and options from question banks to CSV files',
 
+            'activity_logs.view' => 'Access institutional audit logs and monitor system activity history',
+            'activity_logs.export' => 'Export activity log audit reports to CSV',
+            'activity_logs.clear' => 'Clear or archive historic activity log entries',
+
             // Granular Specialized Permissions
             'applications.notify' => 'Generate and issue provisional admission notification slips',
             'applications.print_letter' => 'Download and print official candidate admission letters',
@@ -203,6 +207,7 @@ class RbacSeeder extends Seeder
                         'results.export', 'results.import', 'invoices.manage_students',
                         'placements.view', 'placements.organizations', 'placements.types', 'placements.manage', 'placements.supervisors', 'placements.supervise', 'placements.reports', 'placements.templates',
                         'dashboard.view', 'id_cards.request', 'id_cards.manage',
+                        'activity_logs.view', 'activity_logs.export',
                         'institutions.assign_roles', 'departments.assign_roles', 'courses.assign_roles', 'cbt_exams.assign_roles',
                     ]
                 ),
@@ -219,6 +224,7 @@ class RbacSeeder extends Seeder
                         'courses.allocate', 'courses.revoke_allocation', 'courses.export',
                         'results.export', 'invoices.manage_students', 'reports.generate',
                         'placements.view', 'placements.organizations', 'placements.types', 'placements.manage', 'placements.supervisors', 'placements.supervise', 'placements.reports', 'placements.templates',
+                        'activity_logs.view', 'activity_logs.export',
                         'dashboard.view', 'id_cards.request',
                     ]
                 ),
@@ -254,6 +260,7 @@ class RbacSeeder extends Seeder
                         'cbt_data.sync', 'cbt_results.view', 'cbt_results.review', 'cbt_results.approve', 'cbt_results.reject', 'cbt_results.mass_action',
                         'cbt_sync.view', 'cbt_questions.import', 'cbt_questions.export', 'results.export', 'results.import',
                         'placements.reports',
+                        'activity_logs.view', 'activity_logs.export',
                         'dashboard.view', 'id_cards.request',
                     ]
                 ),

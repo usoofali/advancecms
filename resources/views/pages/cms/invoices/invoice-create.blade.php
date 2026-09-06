@@ -31,6 +31,11 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
     public bool $is_required_for_registration = false;
     public bool $is_required_for_course_form = false;
 
+    public int $required_percent_for_results = 100;
+    public int $required_percent_for_exams = 100;
+    public int $required_percent_for_registration = 100;
+    public int $required_percent_for_course_form = 100;
+
     public string $account_name = '';
     public string $account_number = '';
     public string $bank_name = '';
@@ -53,15 +58,19 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
             $this->is_required_for_exams = (bool) $invoice->is_required_for_exams;
             $this->is_required_for_registration = (bool) $invoice->is_required_for_registration;
             $this->is_required_for_course_form = (bool) $invoice->is_required_for_course_form;
+            $this->required_percent_for_results = (int) ($invoice->required_percent_for_results ?? 100);
+            $this->required_percent_for_exams = (int) ($invoice->required_percent_for_exams ?? 100);
+            $this->required_percent_for_registration = (int) ($invoice->required_percent_for_registration ?? 100);
+            $this->required_percent_for_course_form = (int) ($invoice->required_percent_for_course_form ?? 100);
             $this->category = $invoice->category ?? Invoice::CATEGORY_GENERAL;
             $this->semester_id = $invoice->semester_id;
             $this->account_name = $invoice->account_name ?? '';
             $this->account_number = $invoice->account_number ?? '';
             $this->bank_name = $invoice->bank_name ?? '';
-            $this->items = $invoice->items->map(fn ($item) => [
+            $this->items = $invoice->items->count() > 0 ? $invoice->items->map(fn ($item) => [
                 'item_name' => $item->item_name,
                 'amount' => $item->amount,
-            ])->toArray();
+            ])->toArray() : [['item_name' => 'General Fee', 'amount' => $invoice->total_amount ?: 1000]];
         } else {
             $this->academic_session_id = AcademicSession::first()?->id;
             $this->due_date = now()->addMonth()->format('Y-m-d');
@@ -180,6 +189,10 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
             'is_required_for_exams' => 'boolean',
             'is_required_for_registration' => 'boolean',
             'is_required_for_course_form' => 'boolean',
+            'required_percent_for_results' => 'nullable|integer|min:0|max:100',
+            'required_percent_for_exams' => 'nullable|integer|min:0|max:100',
+            'required_percent_for_registration' => 'nullable|integer|min:0|max:100',
+            'required_percent_for_course_form' => 'nullable|integer|min:0|max:100',
             'semester_id' => 'required_if:category,'.Invoice::CATEGORY_EXAM.','.Invoice::CATEGORY_RESULT.'|nullable|exists:semesters,id',
             'account_name' => 'nullable|string|max:255',
             'account_number' => 'nullable|string|max:20',
@@ -232,6 +245,10 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
             'is_required_for_exams' => $this->is_required_for_exams,
             'is_required_for_registration' => $this->is_required_for_registration,
             'is_required_for_course_form' => $this->is_required_for_course_form,
+            'required_percent_for_results' => (int) ($this->required_percent_for_results ?? 100),
+            'required_percent_for_exams' => (int) ($this->required_percent_for_exams ?? 100),
+            'required_percent_for_registration' => (int) ($this->required_percent_for_registration ?? 100),
+            'required_percent_for_course_form' => (int) ($this->required_percent_for_course_form ?? 100),
             'category' => $this->category,
             'semester_id' => $this->semester_id ?: null,
             'account_name' => $this->account_name,
@@ -348,12 +365,135 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
                 </flux:field>
             </div>
 
-            <!-- Restriction Flags -->
+            <!-- Restriction Flags & Allowable Percentages -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-zinc-100 dark:border-zinc-800">
-                <flux:switch wire:model="is_required_for_results" label="{{ __('Required for Result Checking') }}" description="{{ __('Students must pay this invoice before viewing their results.') }}" />
-                <flux:switch wire:model="is_required_for_exams" label="{{ __('Required for Exam Card') }}" description="{{ __('Students must pay this invoice before downloading their exam card.') }}" />
-                <flux:switch wire:model="is_required_for_registration" label="{{ __('Required for Registration') }}" description="{{ __('Students must pay this invoice before registering for courses in this session.') }}" />
-                <flux:switch wire:model="is_required_for_course_form" label="{{ __('Required for Course Form') }}" description="{{ __('Students must pay this invoice before viewing or printing their course form.') }}" />
+                <!-- Result Checking Restriction -->
+                <div class="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 space-y-3">
+                    <flux:switch wire:model.live="is_required_for_results" label="{{ __('Required for Result Checking') }}" description="{{ __('Students must pay this invoice before viewing their results.') }}" />
+                    
+                    @if($is_required_for_results)
+                        <div class="pt-2">
+                            <div
+                                class="vue-percent-slider-app"
+                                data-value="{{ $required_percent_for_results }}"
+                                data-label="Result Checking"
+                                data-description="Minimum payment threshold to unlock result checking."
+                                data-name="required_percent_for_results"
+                            >
+                                <div class="space-y-2 p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                                    <div class="flex justify-between text-xs font-semibold">
+                                        <span>Result Checking Threshold:</span>
+                                        <span class="font-mono text-blue-600 dark:text-blue-400 font-bold">{{ $required_percent_for_results }}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        step="1"
+                                        wire:model.live="required_percent_for_results"
+                                        class="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+
+                <!-- Exam Card Restriction -->
+                <div class="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 space-y-3">
+                    <flux:switch wire:model.live="is_required_for_exams" label="{{ __('Required for Exam Card') }}" description="{{ __('Students must pay this invoice before downloading their exam card.') }}" />
+                    
+                    @if($is_required_for_exams)
+                        <div class="pt-2">
+                            <div
+                                class="vue-percent-slider-app"
+                                data-value="{{ $required_percent_for_exams }}"
+                                data-label="Exam Card"
+                                data-description="Minimum payment threshold to download exam card."
+                                data-name="required_percent_for_exams"
+                            >
+                                <div class="space-y-2 p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                                    <div class="flex justify-between text-xs font-semibold">
+                                        <span>Exam Card Threshold:</span>
+                                        <span class="font-mono text-blue-600 dark:text-blue-400 font-bold">{{ $required_percent_for_exams }}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        step="1"
+                                        wire:model.live="required_percent_for_exams"
+                                        class="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+
+                <!-- Registration Restriction -->
+                <div class="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 space-y-3">
+                    <flux:switch wire:model.live="is_required_for_registration" label="{{ __('Required for Registration') }}" description="{{ __('Students must pay this invoice before registering for courses.') }}" />
+                    
+                    @if($is_required_for_registration)
+                        <div class="pt-2">
+                            <div
+                                class="vue-percent-slider-app"
+                                data-value="{{ $required_percent_for_registration }}"
+                                data-label="Course Registration"
+                                data-description="Minimum payment threshold to allow course registration."
+                                data-name="required_percent_for_registration"
+                            >
+                                <div class="space-y-2 p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                                    <div class="flex justify-between text-xs font-semibold">
+                                        <span>Registration Threshold:</span>
+                                        <span class="font-mono text-blue-600 dark:text-blue-400 font-bold">{{ $required_percent_for_registration }}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        step="1"
+                                        wire:model.live="required_percent_for_registration"
+                                        class="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+
+                <!-- Course Form Restriction -->
+                <div class="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 space-y-3">
+                    <flux:switch wire:model.live="is_required_for_course_form" label="{{ __('Required for Course Form') }}" description="{{ __('Students must pay this invoice before viewing or printing course form.') }}" />
+                    
+                    @if($is_required_for_course_form)
+                        <div class="pt-2">
+                            <div
+                                class="vue-percent-slider-app"
+                                data-value="{{ $required_percent_for_course_form }}"
+                                data-label="Course Form"
+                                data-description="Minimum payment threshold to view or print course form."
+                                data-name="required_percent_for_course_form"
+                            >
+                                <div class="space-y-2 p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                                    <div class="flex justify-between text-xs font-semibold">
+                                        <span>Course Form Threshold:</span>
+                                        <span class="font-mono text-blue-600 dark:text-blue-400 font-bold">{{ $required_percent_for_course_form }}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        step="1"
+                                        wire:model.live="required_percent_for_course_form"
+                                        class="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
             </div>
 
             <!-- Bank Details -->

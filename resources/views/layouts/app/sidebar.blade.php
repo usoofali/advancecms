@@ -25,7 +25,7 @@
                 </flux:sidebar.group>
             @endcanany
 
-            @canany(['institutions.view', 'departments.view', 'programs.view', 'staff.view', 'id_cards.manage', 'grading_systems.view', 'academic_sessions.view', 'system.manage'])
+            @canany(['institutions.view', 'departments.view', 'programs.view', 'staff.view', 'id_cards.manage', 'grading_systems.view', 'academic_sessions.view', 'system.manage', 'activity_logs.view'])
                 <flux:sidebar.group :heading="__('Administration')" class="grid" expandable expanded="false">
                     @can('institutions.view')
                         <flux:sidebar.item icon="building-office-2" icon:class="text-indigo-500 dark:text-indigo-400"
@@ -85,10 +85,10 @@
                         </flux:sidebar.item>
                     @endcan
 
-                    @can('system.manage')
-                        <flux:sidebar.item icon="globe-alt" icon:class="text-rose-500 dark:text-rose-400"
-                            :href="route('settings.website')" :current="request()->routeIs('settings.website')" wire:navigate>
-                            {{ __('Website Settings') }}
+                    @can('activity_logs.view')
+                        <flux:sidebar.item icon="clock" icon:class="text-emerald-500 dark:text-emerald-400"
+                            :href="route('cms.activity-logs')" :current="request()->routeIs('cms.activity-logs')" wire:navigate>
+                            {{ __('Activity Logs') }}
                         </flux:sidebar.item>
                     @endcan
 

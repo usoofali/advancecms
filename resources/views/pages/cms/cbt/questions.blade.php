@@ -15,6 +15,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\WithFileUploads;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use App\Services\ActivityLogger;
 
 new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Component {
     use WithPagination, WithFileUploads;
@@ -161,6 +162,14 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
                     'is_correct' => ($index === (int) $this->correct_index),
                 ]);
             }
+
+            ActivityLogger::log(
+                action: $this->editingId ? 'updated' : 'created',
+                module: 'CBT',
+                description: ($this->editingId ? 'Updated' : 'Created').' CBT question in bank',
+                subject: $question,
+                subjectLabel: Str::limit(strip_tags($this->question_text), 50)
+            );
         });
 
         $this->showModal = false;
@@ -274,6 +283,13 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
         $this->showImportModal = false;
         $this->reset('csvFile');
 
+        ActivityLogger::log(
+            action: 'imported',
+            module: 'CBT',
+            description: "Bulk imported {$importCount} CBT questions from CSV",
+            subject: CbtExam::find($this->selectedExamId)
+        );
+
         $this->dispatch('notify', [
             'type' => 'success',
             'message' => "Successfully imported {$importCount} questions.",
@@ -334,7 +350,7 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ];
 
-        $callback = function () use ($questions) {
+        $callback = function () use ($questions, $exam) {
             $file = fopen('php://output', 'w');
             fputcsv($file, ['Question Text', 'Option 1', 'Option 2', 'Option 3', 'Option 4', 'Correct Index']);
 
@@ -358,6 +374,13 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
                 ]);
             }
             fclose($file);
+
+            ActivityLogger::log(
+                action: 'exported',
+                module: 'CBT',
+                description: "Exported CBT question bank to CSV for exam #{$this->selectedExamId}",
+                subject: $exam
+            );
         };
 
         return response()->stream($callback, 200, $headers);
@@ -475,7 +498,16 @@ new #[Layout('layouts.app')] #[Title('CBT Questions Bank')] class extends Compon
             }
         }
 
+        $question = CbtQuestion::find($id);
+        $qLabel = $question ? Str::limit(strip_tags($question->question_text), 50) : "Question #{$id}";
         CbtQuestion::findOrFail($id)->delete();
+
+        ActivityLogger::log(
+            action: 'deleted',
+            module: 'CBT',
+            description: "Deleted CBT question: {$qLabel}",
+            subjectLabel: $qLabel
+        );
         
         $this->showDeleteModal = false;
         $this->questionToDelete = null;

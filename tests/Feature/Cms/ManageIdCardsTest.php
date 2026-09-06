@@ -1,6 +1,7 @@
 <?php
 
 use App\Livewire\Cms\IdCards\ManageIdCards;
+use App\Models\AcademicSession;
 use App\Models\IdCardRequest;
 use App\Models\Institution;
 use App\Models\User;
@@ -48,8 +49,11 @@ it('renders safely when id card request user has null student or staff profile',
         ->for($institution)
         ->create();
 
+    $session = AcademicSession::factory()->create();
+
     IdCardRequest::create([
         'institution_id' => $institution->id,
+        'academic_session_id' => $session->id,
         'user_id' => $userWithoutProfile->id,
         'type' => 'student',
         'reason' => 'first_issue',

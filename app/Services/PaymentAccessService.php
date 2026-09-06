@@ -101,14 +101,42 @@ class PaymentAccessService
 
         $missingInvoices = collect();
 
-        // 2. If templates exist, student MUST have a PAID student invoice for EACH applicable template
+        // 2. If templates exist, check if student meets the required payment percentage for EACH template
         foreach ($applicableInvoices as $invoice) {
-            $isPaid = StudentInvoice::where('student_id', $student->id)
-                ->where('invoice_id', $invoice->id)
-                ->where('status', 'paid')
-                ->exists();
+            $percentColumn = match ($flagColumn) {
+                'is_required_for_results' => 'required_percent_for_results',
+                'is_required_for_exams' => 'required_percent_for_exams',
+                'is_required_for_registration' => 'required_percent_for_registration',
+                'is_required_for_course_form' => 'required_percent_for_course_form',
+                default => null,
+            };
 
-            if (! $isPaid) {
+            $requiredPercent = ($percentColumn && isset($invoice->{$percentColumn}))
+                ? (int) $invoice->{$percentColumn}
+                : 100;
+
+            $studentInvoice = StudentInvoice::where('student_id', $student->id)
+                ->where('invoice_id', $invoice->id)
+                ->first();
+
+            if (! $studentInvoice) {
+                if ($requiredPercent > 0) {
+                    $missingInvoices->push($invoice);
+                }
+
+                continue;
+            }
+
+            if ($studentInvoice->status === 'paid') {
+                continue;
+            }
+
+            $totalAmount = (float) ($studentInvoice->total_amount > 0 ? $studentInvoice->total_amount : $invoice->total_amount);
+            $amountPaid = (float) ($studentInvoice->amount_paid ?? 0);
+
+            $percentagePaid = $totalAmount > 0 ? ($amountPaid / $totalAmount) * 100.0 : 100.0;
+
+            if ($percentagePaid < ($requiredPercent - 0.001)) {
                 $missingInvoices->push($invoice);
             }
         }

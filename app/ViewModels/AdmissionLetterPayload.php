@@ -2,6 +2,7 @@
 
 namespace App\ViewModels;
 
+use App\Models\AdmissionLetterTemplate;
 use App\Models\Applicant;
 use App\Models\Institution;
 use App\Models\Student;
@@ -37,6 +38,14 @@ use Illuminate\Support\Str;
  *     qr_data: string,
  *     back_url: string,
  *     back_label: string,
+ *     salutation: string,
+ *     opening_text: string,
+ *     body_text: string,
+ *     conditions_text: string,
+ *     closing_text: string,
+ *     signatory_title: string,
+ *     signatory_subtitle: string,
+ *     show_qr_code: bool,
  * }
  */
 final class AdmissionLetterPayload
@@ -51,6 +60,29 @@ final class AdmissionLetterPayload
         return "{$admissionYear}/{$next}";
     }
 
+    public static function replacePlaceholders(?string $text, array $vars): string
+    {
+        if ($text === null || $text === '') {
+            return '';
+        }
+
+        $map = [
+            '{applicant_name}' => $vars['applicant_name'] ?? '',
+            '{student_name}' => $vars['student_name'] ?? $vars['applicant_name'] ?? '',
+            '{program_name}' => $vars['program_name'] ?? '',
+            '{academic_session}' => $vars['academic_session'] ?? '',
+            '{institution_name}' => $vars['institution_name'] ?? '',
+            '{matric_number}' => $vars['matric_number'] ?? '—',
+            '{application_number}' => $vars['application_number'] ?? '—',
+            '{entry_level}' => $vars['entry_level'] ?? '',
+            '{award_type}' => $vars['award_type'] ?? '',
+            '{date}' => $vars['date'] ?? '',
+            '{ref}' => $vars['ref'] ?? '',
+        ];
+
+        return strtr($text, $map);
+    }
+
     /**
      * @return LetterArray
      */
@@ -60,12 +92,30 @@ final class AdmissionLetterPayload
 
         $institution = $applicant->institution;
         $isOffer = (bool) ($applicant->enrolled_at && $student);
-        $letterTitle = $isOffer ? 'OFFER OF PROVISIONAL ADMISSION' : 'NOTIFICATION OF PROVISIONAL ADMISSION';
+        $type = $isOffer ? AdmissionLetterTemplate::TYPE_OFFER : AdmissionLetterTemplate::TYPE_NOTIFICATION;
+        $template = AdmissionLetterTemplate::forInstitution($institution, $type);
+
         $ref = $isOffer && $student
             ? $student->matric_number
             : 'PENDING/ENROLL/'.$applicant->application_number;
 
         $sessionName = $applicant->applicationForm?->academicSession?->name ?? '—';
+
+        $vars = [
+            'applicant_name' => strtoupper($applicant->full_name),
+            'student_name' => strtoupper($applicant->full_name),
+            'program_name' => $applicant->program->name,
+            'academic_session' => $sessionName,
+            'institution_name' => $institution->name,
+            'matric_number' => $student?->matric_number ?? '—',
+            'application_number' => $applicant->application_number,
+            'entry_level' => '100L',
+            'award_type' => 'Certificate',
+            'date' => $applicant->updated_at->format('jS F, Y'),
+            'ref' => $ref,
+        ];
+
+        $letterTitle = self::replacePlaceholders($template->letter_title, $vars);
 
         $qrData = implode("\n", array_filter([
             $letterTitle,
@@ -102,6 +152,8 @@ final class AdmissionLetterPayload
             qrData: $qrData,
             backUrl: $backUrl,
             backLabel: '← '.__('Back to Portal'),
+            template: $template,
+            vars: $vars,
         );
     }
 
@@ -124,7 +176,7 @@ final class AdmissionLetterPayload
     {
         $institution->loadMissing([]);
 
-        $letterTitle = 'NOTIFICATION OF PROVISIONAL ADMISSION';
+        $template = AdmissionLetterTemplate::forInstitution($institution, AdmissionLetterTemplate::TYPE_NOTIFICATION);
         $ref = 'IMPROMPTU/'.now()->format('Ymd').'-'.strtoupper(Str::random(8));
 
         $entryLevel = (int) $details['entry_level'];
@@ -134,6 +186,22 @@ final class AdmissionLetterPayload
         $sessionLabel = (string) $details['academic_session_label'];
         $programName = (string) $details['program_name'];
         $name = (string) $details['addressee_full_name'];
+
+        $vars = [
+            'applicant_name' => strtoupper($name),
+            'student_name' => strtoupper($name),
+            'program_name' => $programName,
+            'academic_session' => $sessionLabel,
+            'institution_name' => $institution->name,
+            'matric_number' => '—',
+            'application_number' => '—',
+            'entry_level' => $entryLevel.'L',
+            'award_type' => $awardLabel,
+            'date' => now()->format('jS F, Y'),
+            'ref' => $ref,
+        ];
+
+        $letterTitle = self::replacePlaceholders($template->letter_title, $vars);
 
         $qrLines = [
             $letterTitle,
@@ -172,6 +240,8 @@ final class AdmissionLetterPayload
             qrData: $qrData,
             backUrl: route('cms.admissions.issue-notification'),
             backLabel: '← '.__('Back to form'),
+            template: $template,
+            vars: $vars,
         );
     }
 
@@ -183,7 +253,8 @@ final class AdmissionLetterPayload
         $student->loadMissing(['institution', 'program']);
 
         $institution = $student->institution;
-        $letterTitle = 'OFFER OF PROVISIONAL ADMISSION';
+        $template = AdmissionLetterTemplate::forInstitution($institution, AdmissionLetterTemplate::TYPE_OFFER);
+
         $ref = $student->matric_number;
         $sessionLabel = self::academicSessionFromAdmissionYear((int) $student->admission_year);
 
@@ -195,6 +266,22 @@ final class AdmissionLetterPayload
         };
 
         $programMetaLine = 'Entry Level: '.(int) $student->entry_level.'L &nbsp;|&nbsp; Mode: Full-time &nbsp;|&nbsp; Award: '.$awardLabel;
+
+        $vars = [
+            'applicant_name' => strtoupper($student->full_name),
+            'student_name' => strtoupper($student->full_name),
+            'program_name' => $student->program->name,
+            'academic_session' => $sessionLabel,
+            'institution_name' => $institution->name,
+            'matric_number' => $student->matric_number,
+            'application_number' => '—',
+            'entry_level' => (int) $student->entry_level.'L',
+            'award_type' => $awardLabel,
+            'date' => now()->format('jS F, Y'),
+            'ref' => $ref,
+        ];
+
+        $letterTitle = self::replacePlaceholders($template->letter_title, $vars);
 
         $qrData = implode("\n", array_filter([
             $letterTitle,
@@ -227,6 +314,8 @@ final class AdmissionLetterPayload
             qrData: $qrData,
             backUrl: route('cms.students.show', $student),
             backLabel: '← '.__('Back to student profile'),
+            template: $template,
+            vars: $vars,
         );
     }
 
@@ -264,6 +353,8 @@ final class AdmissionLetterPayload
         string $qrData,
         string $backUrl,
         string $backLabel,
+        AdmissionLetterTemplate $template,
+        array $vars,
     ): array {
         return [
             'institution_name' => $institution->name,
@@ -291,6 +382,16 @@ final class AdmissionLetterPayload
             'qr_data' => $qrData,
             'back_url' => $backUrl,
             'back_label' => $backLabel,
+            'salutation' => self::replacePlaceholders($template->salutation, $vars),
+            'opening_text' => self::replacePlaceholders($template->opening_text, $vars),
+            'body_text' => self::replacePlaceholders($template->body_text, $vars),
+            'conditions_text' => self::replacePlaceholders($template->conditions_text, $vars),
+            'closing_text' => self::replacePlaceholders($template->closing_text, $vars),
+            'signatory_title' => self::replacePlaceholders($template->signatory_title, $vars),
+            'signatory_subtitle' => self::replacePlaceholders($template->signatory_subtitle, $vars),
+            'show_qr_code' => $template->show_qr_code,
+            'logo_position' => $template->logo_position ?? 'left',
+            'qr_position' => $template->qr_position ?? 'header_right',
         ];
     }
 }

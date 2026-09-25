@@ -73,6 +73,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Admissions (Staff & Admins)
     Route::middleware('can:applications.view')->group(function () {
         Route::livewire('admissions/applications', 'pages::cms.admissions.application-index')->name('cms.admissions.index');
+        Route::livewire('admissions/templates', 'pages::cms.admissions.templates')->name('cms.admissions.templates');
         Route::livewire('admissions/issue-notification', 'pages::cms.admissions.issue-admission-notification')->name('cms.admissions.issue-notification');
         Route::livewire('admissions/applications/{applicant}', 'pages::cms.admissions.application-show')->name('cms.admissions.show');
     });
@@ -208,6 +209,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::prefix('student')->name('student.')->group(function () {
             Route::livewire('/', 'student.placements.index')->name('index')->middleware('can:placements.view_personal');
         });
+    });
+
+    // Academic Projects Module
+    Route::prefix('projects')->name('cms.projects.')->group(function () {
+        // Coordinator / Admin Management
+        Route::livewire('/', 'admin.projects.manage')->name('index')->middleware('can:projects.view');
+        Route::livewire('/sessions', 'admin.projects.sessions')->name('sessions')->middleware('can:projects.manage_sessions');
+        Route::livewire('/reports', 'admin.projects.reports')->name('reports')->middleware('can:projects.reports');
+        Route::livewire('/reports/print', 'pages::cms.projects.print-report')->name('print-report')->middleware('can:projects.reports');
+
+        // Supervisor / Lecturer Workspace
+        Route::livewire('/my-supervisions', 'lecturer.projects.my-supervisions')->name('my-supervisions')->middleware('can:projects.supervise');
+
+        // Student Portal
+        Route::prefix('student')->name('student.')->group(function () {
+            Route::livewire('/', 'student.projects.index')->name('index')->middleware('can:projects.view_personal');
+        });
+
+        // Project Detail Workspace
+        Route::livewire('/{project}', 'pages::cms.projects.show')->name('show')->middleware('auth');
     });
 
     // CBT Examinations Add-on

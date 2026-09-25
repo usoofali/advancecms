@@ -1,14 +1,18 @@
 <?php
+
 require 'vendor/autoload.php';
 $app = require_once 'bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+$kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
 
-use App\Models\User;
 use App\Livewire\Settings\Profile;
+use App\Models\User;
+use Illuminate\Contracts\Console\Kernel;
 use Livewire\Livewire;
 
-$user = User::whereHas('roles', function($q) { $q->where('roles.role_id', 2); })->first();
+$user = User::whereHas('roles', function ($q) {
+    $q->where('roles.role_id', 2);
+})->first();
 Auth::login($user);
 
 // Let's create a dummy component and call updateProfile
@@ -19,4 +23,4 @@ Livewire::test(Profile::class)
     ->call('updateProfile')
     ->assertHasNoErrors();
 
-echo "Staff signature path: " . $user->staff->fresh()->signature_path . "\n";
+echo 'Staff signature path: '.$user->staff->fresh()->signature_path."\n";

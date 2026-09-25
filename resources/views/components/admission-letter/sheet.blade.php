@@ -3,14 +3,19 @@
     'letter' => [],
     /** When set, used as document.title before print so “Save as PDF” defaults to this name. */
     'printFilename' => null,
+    /** Whether to render the bottom action buttons (Print/Save PDF & Back). */
+    'showActions' => true,
 ])
 
 @php
 $l = $letter;
+$logoPos = $l['logo_position'] ?? 'left';
+$qrPos = $l['qr_position'] ?? 'header_right';
+$showQr = (bool) ($l['show_qr_code'] ?? true);
 @endphp
 
 {{-- Screen wrapper (not printed) --}}
-<div class="min-h-screen print:min-h-0 print:h-auto bg-zinc-100 py-8 px-4 print:bg-white print:p-0 max-w-full overflow-x-auto print:overflow-visible">
+<div class="{{ $showActions ? 'min-h-screen py-8 px-4 bg-zinc-100 max-w-full overflow-x-auto' : 'p-0 bg-transparent' }} print:min-h-0 print:h-auto print:bg-white print:p-0 print:overflow-visible">
 
     {{-- A4 sheet --}}
     <div id="letter" class="a4-page mx-auto bg-white text-[#1a1a1a] shadow-xl print:shadow-none
@@ -18,37 +23,119 @@ $l = $letter;
 
         <div class="h-2 w-full" style="background: linear-gradient(to right, #1a3c6b, #2563eb, #1a3c6b);"></div>
 
-        <div class="flex items-center gap-4 px-8 pt-5 pb-4 border-b-2 border-[#1a3c6b]">
-            @if (!empty($l['institution_logo_path']))
-                <img src="{{ asset('storage/' . $l['institution_logo_path']) }}" alt="Logo"
-                    class="h-16 w-16 object-contain flex-shrink-0">
-            @else
-                <div class="h-16 w-16 rounded-full bg-[#1a3c6b] flex items-center justify-center flex-shrink-0">
-                    <span class="text-2xl font-bold text-white">{{ substr($l['institution_name'], 0, 1) }}</span>
-                </div> 
-            @endif
-            <div class="flex-1 text-center">
-                <h1 class="text-[14pt] font-extrabold uppercase tracking-widest text-[#1a3c6b]">
-                    {{ $l['institution_name'] }}
-                </h1>
-                @if($l['institution_meta'])
-                    {!! $l['institution_meta'] !!}
+        @if ($logoPos === 'center')
+            <div class="px-8 pt-5 pb-4 border-b-2 border-[#1a3c6b] text-center relative">
+                @if (!empty($l['institution_logo_path']))
+                    <img src="{{ asset('storage/' . $l['institution_logo_path']) }}" alt="Logo"
+                        class="h-16 w-16 object-contain mx-auto mb-2">
+                @else
+                    <div class="h-16 w-16 rounded-full bg-[#1a3c6b] flex items-center justify-center mx-auto mb-2">
+                        <span class="text-2xl font-bold text-white">{{ substr($l['institution_name'], 0, 1) }}</span>
+                    </div> 
                 @endif
-                <p class="text-[8.5pt] text-zinc-500 mt-0.5">
-                    {{ $l['institution_address'] ?? __('Address Not Set') }}
-                </p>
-                <p class="text-[8.5pt] text-zinc-500">
-                    {{ __('Email') }}: {{ $l['institution_email'] ?? 'info@institution.edu.ng' }}
-                    &nbsp;|&nbsp;
-                    {{ __('Tel') }}: {{ $l['institution_phone'] ?? 'N/A' }}
-                </p>
+                <div>
+                    <h1 class="text-[14pt] font-extrabold uppercase tracking-widest text-[#1a3c6b]">
+                        {{ $l['institution_name'] }}
+                    </h1>
+                    @if($l['institution_meta'])
+                        {!! $l['institution_meta'] !!}
+                    @endif
+                    <p class="text-[8.5pt] text-zinc-500 mt-0.5">
+                        {{ $l['institution_address'] ?? __('Address Not Set') }}
+                    </p>
+                    <p class="text-[8.5pt] text-zinc-500">
+                        {{ __('Email') }}: {{ $l['institution_email'] ?? 'info@institution.edu.ng' }}
+                        &nbsp;|&nbsp;
+                        {{ __('Tel') }}: {{ $l['institution_phone'] ?? 'N/A' }}
+                    </p>
+                </div>
+
+                @if ($showQr && $qrPos === 'header_right')
+                    <div class="absolute right-8 top-5 text-center">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data={{ urlencode($l['qr_data']) }}"
+                            alt="{{ __('Verification QR') }}" class="w-16 h-16 border border-zinc-300 bg-white p-0.5">
+                        <p class="text-[6.5pt] text-zinc-400 mt-0.5 leading-none">{{ __('Scan to verify') }}</p>
+                    </div>
+                @endif
             </div>
-            <div class="flex-shrink-0 text-center">
-                <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data={{ urlencode($l['qr_data']) }}"
-                    alt="{{ __('Verification QR') }}" class="w-16 h-16 border border-zinc-300 bg-white p-0.5">
-                <p class="text-[6.5pt] text-zinc-400 mt-0.5 leading-none">{{ __('Scan to verify') }}</p>
+        @elseif ($logoPos === 'right')
+            <div class="flex items-center justify-between gap-4 px-8 pt-5 pb-4 border-b-2 border-[#1a3c6b]">
+                @if ($showQr && $qrPos === 'header_right')
+                    <div class="flex-shrink-0 text-center">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data={{ urlencode($l['qr_data']) }}"
+                            alt="{{ __('Verification QR') }}" class="w-16 h-16 border border-zinc-300 bg-white p-0.5">
+                        <p class="text-[6.5pt] text-zinc-400 mt-0.5 leading-none">{{ __('Scan to verify') }}</p>
+                    </div>
+                @else
+                    <div class="w-16"></div>
+                @endif
+
+                <div class="flex-1 text-center">
+                    <h1 class="text-[14pt] font-extrabold uppercase tracking-widest text-[#1a3c6b]">
+                        {{ $l['institution_name'] }}
+                    </h1>
+                    @if($l['institution_meta'])
+                        {!! $l['institution_meta'] !!}
+                    @endif
+                    <p class="text-[8.5pt] text-zinc-500 mt-0.5">
+                        {{ $l['institution_address'] ?? __('Address Not Set') }}
+                    </p>
+                    <p class="text-[8.5pt] text-zinc-500">
+                        {{ __('Email') }}: {{ $l['institution_email'] ?? 'info@institution.edu.ng' }}
+                        &nbsp;|&nbsp;
+                        {{ __('Tel') }}: {{ $l['institution_phone'] ?? 'N/A' }}
+                    </p>
+                </div>
+
+                @if (!empty($l['institution_logo_path']))
+                    <img src="{{ asset('storage/' . $l['institution_logo_path']) }}" alt="Logo"
+                        class="h-16 w-16 object-contain flex-shrink-0">
+                @else
+                    <div class="h-16 w-16 rounded-full bg-[#1a3c6b] flex items-center justify-center flex-shrink-0">
+                        <span class="text-2xl font-bold text-white">{{ substr($l['institution_name'], 0, 1) }}</span>
+                    </div> 
+                @endif
             </div>
-        </div>
+        @else
+            {{-- Default: Logo on left --}}
+            <div class="flex items-center gap-4 px-8 pt-5 pb-4 border-b-2 border-[#1a3c6b]">
+                @if (!empty($l['institution_logo_path']))
+                    <img src="{{ asset('storage/' . $l['institution_logo_path']) }}" alt="Logo"
+                        class="h-16 w-16 object-contain flex-shrink-0">
+                @else
+                    <div class="h-16 w-16 rounded-full bg-[#1a3c6b] flex items-center justify-center flex-shrink-0">
+                        <span class="text-2xl font-bold text-white">{{ substr($l['institution_name'], 0, 1) }}</span>
+                    </div> 
+                @endif
+
+                <div class="flex-1 text-center">
+                    <h1 class="text-[14pt] font-extrabold uppercase tracking-widest text-[#1a3c6b]">
+                        {{ $l['institution_name'] }}
+                    </h1>
+                    @if($l['institution_meta'])
+                        {!! $l['institution_meta'] !!}
+                    @endif
+                    <p class="text-[8.5pt] text-zinc-500 mt-0.5">
+                        {{ $l['institution_address'] ?? __('Address Not Set') }}
+                    </p>
+                    <p class="text-[8.5pt] text-zinc-500">
+                        {{ __('Email') }}: {{ $l['institution_email'] ?? 'info@institution.edu.ng' }}
+                        &nbsp;|&nbsp;
+                        {{ __('Tel') }}: {{ $l['institution_phone'] ?? 'N/A' }}
+                    </p>
+                </div>
+
+                @if ($showQr && $qrPos === 'header_right')
+                    <div class="flex-shrink-0 text-center">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data={{ urlencode($l['qr_data']) }}"
+                            alt="{{ __('Verification QR') }}" class="w-16 h-16 border border-zinc-300 bg-white p-0.5">
+                        <p class="text-[6.5pt] text-zinc-400 mt-0.5 leading-none">{{ __('Scan to verify') }}</p>
+                    </div>
+                @else
+                    <div class="w-16"></div>
+                @endif
+            </div>
+        @endif
 
         <div class="text-center py-3 mx-8 border-b border-dashed border-zinc-300">
             <h2
@@ -70,17 +157,15 @@ $l = $letter;
 
         <div class="px-8 pb-4 space-y-3 text-[10.5pt] leading-relaxed text-justify">
 
-            <p class="font-semibold">{{ __('Dear') }} {{ strtoupper($l['addressee_full_name']) }},</p>
+            @if (!empty($l['salutation']))
+                <p class="font-semibold">{!! nl2br(e($l['salutation'])) !!}</p>
+            @endif
 
-            <p>
-                {{ __('I am pleased to inform you that following your application and subsequent review of your credentials, the Management of') }}
-                <strong>{{ $l['institution_name'] }}</strong>
-                {{ __('has offered you') }}
-                <strong>{{ __('Provisional Admission') }}</strong>
-                {{ __('for the') }}
-                <strong>{{ $l['academic_session_label'] }}</strong>
-                {{ __('Academic Session, to pursue a course of study in:') }}
-            </p>
+            @if (!empty($l['opening_text']))
+                <p>
+                    {!! nl2br(e($l['opening_text'])) !!}
+                </p>
+            @endif
 
             <div class="flex items-center gap-3 bg-[#f0f5ff] border-l-4 border-[#1a3c6b] px-4 py-2 my-1">
                 <div class="flex-1">
@@ -97,29 +182,23 @@ $l = $letter;
                 @endif
             </div>
 
-            @if ($l['is_enrolled'] && !empty($l['matric_number']))
+            @if (!empty($l['body_text']))
                 <p>
-                    {{ __('Your designated') }} <strong>{{ __('Matriculation Number') }}</strong>
-                    {{ __('is') }} <strong>{{ $l['matric_number'] }}</strong>.
-                    {{ __('Please quote this number in all your future correspondence with the institution. You are expected to log in to the student portal and complete your course registration promptly.') }}
-                </p>
-            @elseif ($l['show_fee_paragraph'])
-                <p>
-                    {{ __('To formally accept this offer and generate your official') }}
-                    <strong>{{ __('Matriculation Number') }}</strong>,
-                    {{ __('you are required to pay a minimum of') }} <strong>50%</strong>
-                    {{ __('of your total Admission Fees via your Applicant Portal. Your Matriculation Number will be issued upon successful enrollment.') }}
+                    {!! nl2br(e($l['body_text'])) !!}
                 </p>
             @endif
 
-            <p>
-                {{ __('This offer is') }} <strong>{{ __('provisional') }}</strong>
-                {{ __('and subject to verification of your submitted academic credentials. Any discrepancy discovered during the screening exercise will automatically invalidate this admission. You are required to present all original certificates for verification during registration.') }}
-            </p>
+            @if (!empty($l['conditions_text']))
+                <p>
+                    {!! nl2br(e($l['conditions_text'])) !!}
+                </p>
+            @endif
 
-            <p>
-                {{ __('Accept our warm congratulations and best wishes as you commence this new academic journey.') }}
-            </p>
+            @if (!empty($l['closing_text']))
+                <p>
+                    {!! nl2br(e($l['closing_text'])) !!}
+                </p>
+            @endif
         </div>
 
         <div class="mx-8 mb-3 border border-zinc-200 rounded overflow-hidden text-[9pt]">
@@ -148,43 +227,74 @@ $l = $letter;
         </div>
 
         <div class="flex justify-between items-end px-8 pb-5 pt-3">
-            <div class="text-[8.5pt] text-zinc-400 italic max-w-xs">
-                {{ __('This letter is electronically generated and does not require a physical signature. Scan the QR code to verify authenticity.') }}
+            <div class="w-[220px] flex-shrink-0 flex items-end gap-3">
+                @if ($showQr && $qrPos === 'footer_left')
+                    <div class="flex-shrink-0 text-center">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=70x70&data={{ urlencode($l['qr_data']) }}"
+                            alt="{{ __('Verification QR') }}" class="w-14 h-14 border border-zinc-300 bg-white p-0.5">
+                        <p class="text-[6.5pt] text-zinc-400 mt-0.5 leading-none">{{ __('Scan to verify') }}</p>
+                    </div>
+                @endif
+                <div class="text-[8pt] text-zinc-400 italic leading-snug break-words">
+                    {{ __('This letter is electronically generated and does not require a physical signature. Scan the QR code to verify authenticity.') }}
+                </div>
             </div>
-            <div class="text-center">
-                <div class="w-full border-b-2 border-[#1a1a1a] mb-1"></div>
-                <p class="text-[9.5pt] font-bold">{{ __('Registrar') }}</p>
-                <p class="text-[8.5pt] text-zinc-500">{{ $l['institution_name'] }}</p>
+
+            @if ($showQr && $qrPos === 'footer_center')
+                <div class="flex-1 flex justify-center flex-shrink-0">
+                    <div class="text-center">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=70x70&data={{ urlencode($l['qr_data']) }}"
+                            alt="{{ __('Verification QR') }}" class="w-14 h-14 border border-zinc-300 bg-white p-0.5 inline-block">
+                        <p class="text-[6.5pt] text-zinc-400 mt-0.5 leading-none">{{ __('Scan to verify') }}</p>
+                    </div>
+                </div>
+            @endif
+
+            <div class="w-[220px] flex-shrink-0 flex justify-end items-end gap-3">
+                @if ($showQr && $qrPos === 'footer_right')
+                    <div class="flex-shrink-0 text-center">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=70x70&data={{ urlencode($l['qr_data']) }}"
+                            alt="{{ __('Verification QR') }}" class="w-14 h-14 border border-zinc-300 bg-white p-0.5">
+                        <p class="text-[6.5pt] text-zinc-400 mt-0.5 leading-none">{{ __('Scan to verify') }}</p>
+                    </div>
+                @endif
+                <div class="text-center min-w-36">
+                    <div class="w-full border-b-2 border-[#1a1a1a] mb-1"></div>
+                    <p class="text-[9.5pt] font-bold">{{ $l['signatory_title'] ?? __('Registrar') }}</p>
+                    <p class="text-[8.5pt] text-zinc-500">{{ $l['signatory_subtitle'] ?? $l['institution_name'] }}</p>
+                </div>
             </div>
         </div>
 
         <div class="h-2 w-full" style="background: linear-gradient(to right, #1a3c6b, #2563eb, #1a3c6b);"></div>
     </div>
 
-    <div class="print:hidden w-full max-w-[794px] mx-auto mt-6 flex gap-3 justify-center px-2">
-        <button type="button"
-            class="px-6 py-2 bg-[#1a3c6b] text-white font-semibold rounded-lg shadow hover:bg-blue-800 transition-colors"
-            onclick="(function (t) {
-                var p = document.title;
-                if (t !== null && t !== '') {
-                    document.title = t;
-                }
-                var r = function () {
-                    document.title = p;
-                    window.removeEventListener('afterprint', r);
-                };
-                window.addEventListener('afterprint', r);
-                window.print();
-                setTimeout(r, 2500);
-            })({{ \Illuminate\Support\Js::from($printFilename) }});">
-            {{ __('Print / Save PDF') }}
-        </button>
-        <a href="{{ $l['back_url'] }}"
-            class="px-6 py-2 bg-white text-zinc-700 border border-zinc-300 font-medium rounded-lg hover:bg-zinc-50 transition-colors"
-            wire:navigate>
-            {{ $l['back_label'] }}
-        </a>
-    </div>
+    @if ($showActions)
+        <div class="print:hidden w-full max-w-[794px] mx-auto mt-6 flex gap-3 justify-center px-2">
+            <button type="button"
+                class="px-6 py-2 bg-[#1a3c6b] text-white font-semibold rounded-lg shadow hover:bg-blue-800 transition-colors"
+                onclick="(function (t) {
+                    var p = document.title;
+                    if (t !== null && t !== '') {
+                        document.title = t;
+                    }
+                    var r = function () {
+                        document.title = p;
+                        window.removeEventListener('afterprint', r);
+                    };
+                    window.addEventListener('afterprint', r);
+                    window.print();
+                    setTimeout(r, 2500);
+                })({{ \Illuminate\Support\Js::from($printFilename) }});">
+                {{ __('Print / Save PDF') }}
+            </button>
+            <a href="{{ $l['back_url'] }}"
+                class="px-6 py-2 bg-white text-zinc-700 border border-zinc-300 font-medium rounded-lg hover:bg-zinc-50 transition-colors"
+                wire:navigate>
+                {{ $l['back_label'] }}
+            </a>
+        </div>
+    @endif
 </div>
 
 <style>

@@ -1,12 +1,16 @@
 <?php
+
 require 'vendor/autoload.php';
 $app = require_once 'bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+$kernel = $app->make(Kernel::class);
 $kernel->bootstrap();
 
 use App\Models\User;
+use Illuminate\Contracts\Console\Kernel;
 
-$user = User::whereHas('roles', function($q) { $q->where('roles.role_id', 2); })->first();
+$user = User::whereHas('roles', function ($q) {
+    $q->where('roles.role_id', 2);
+})->first();
 
 $data = [
     'phone' => '1234567890',
@@ -21,7 +25,7 @@ $data = [
 try {
     $user->staff->update($data);
     echo "Update successful.\n";
-    echo "Signature path is now: " . $user->staff->fresh()->signature_path . "\n";
-} catch (\Exception $e) {
-    echo "Error: " . $e->getMessage() . "\n";
+    echo 'Signature path is now: '.$user->staff->fresh()->signature_path."\n";
+} catch (Exception $e) {
+    echo 'Error: '.$e->getMessage()."\n";
 }

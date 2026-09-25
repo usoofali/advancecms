@@ -66,7 +66,7 @@ class IdCardPrintController extends Controller
 
             $authorizedSignatureUrl = null;
             if ($institution) {
-                if (!array_key_exists($institution->id, $adminSignatures)) {
+                if (! array_key_exists($institution->id, $adminSignatures)) {
                     $adminStaff = Staff::where('institution_id', $institution->id)
                         ->where('role_id', 2)
                         ->whereNotNull('signature_path')

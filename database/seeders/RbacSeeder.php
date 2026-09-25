@@ -19,7 +19,7 @@ class RbacSeeder extends Seeder
             'roles', 'permissions', 'settings', 'application_forms', 'invoices',
             'payments', 'cbt_exams', 'cbt_questions', 'students', 'registrations',
             'grading_systems', 'academic_sessions', 'ca_tests', 'ca_results', 'ca_attempts', 'ca_questions', 'ca_answers', 'student_coins',
-            'timetables', 'placements', 'placement_supervisors',
+            'timetables', 'placements', 'placement_supervisors', 'projects', 'project_supervisors',
         ];
 
         // Define Permissions with explicit, clear descriptions
@@ -27,6 +27,16 @@ class RbacSeeder extends Seeder
             'dashboard.view' => 'Access main institutional metrics dashboard and overview analytics',
             'id_cards.request' => 'Submit personal request for digital or printed student/staff ID card',
             'id_cards.manage' => 'Manage, approve, and print student and staff institutional ID cards',
+
+            // Projects Granular Permissions
+            'projects.view' => 'Access academic project management dashboard and overview',
+            'projects.view_personal' => 'Access personal academic project workspace and topic submission portal',
+            'projects.manage_sessions' => 'Create and configure project academic sessions and stages',
+            'projects.assign_supervisors' => 'Assign supervisors to eligible student projects',
+            'projects.review_topics' => 'Review, approve, or request modification for student project topics',
+            'projects.supervise' => 'Access assigned supervisee projects, review chapter submissions, and provide feedback',
+            'projects.view_dept' => 'Monitor departmental project progress, student submissions, and supervisor workloads',
+            'projects.reports' => 'Generate and print academic project monitoring and completion reports',
 
             // Specialized Scopes
             'students.view_dept' => 'View and search list of registered students within own department',
@@ -190,7 +200,7 @@ class RbacSeeder extends Seeder
             'Institutional Admin' => [
                 'description' => 'Full administrative control within one institution',
                 'permissions' => array_merge(
-                    $crud(['staff', 'departments', 'programs', 'courses', 'application_forms', 'invoices', 'payments', 'cbt_exams', 'cbt_questions', 'students', 'registrations', 'grading_systems', 'ca_tests', 'placements', 'placement_supervisors']),
+                    $crud(['staff', 'departments', 'programs', 'courses', 'application_forms', 'invoices', 'payments', 'cbt_exams', 'cbt_questions', 'students', 'registrations', 'grading_systems', 'ca_tests', 'placements', 'placement_supervisors', 'projects', 'project_supervisors']),
                     [
                         'students.view_dept', 'courses.view_dept', 'results.view_dept',
                         'courses.view_assigned', 'results.enter', 'results.modify',
@@ -206,11 +216,19 @@ class RbacSeeder extends Seeder
                         'courses.allocate', 'courses.revoke_allocation', 'courses.export', 'courses.import',
                         'results.export', 'results.import', 'invoices.manage_students',
                         'placements.view', 'placements.organizations', 'placements.types', 'placements.manage', 'placements.supervisors', 'placements.supervise', 'placements.reports', 'placements.templates',
+                        'projects.view', 'projects.manage_sessions', 'projects.assign_supervisors', 'projects.review_topics', 'projects.supervise', 'projects.view_dept', 'projects.reports',
                         'dashboard.view', 'id_cards.request', 'id_cards.manage',
                         'activity_logs.view', 'activity_logs.export',
                         'institutions.assign_roles', 'departments.assign_roles', 'courses.assign_roles', 'cbt_exams.assign_roles',
                     ]
                 ),
+            ],
+            'Project Coordinator' => [
+                'description' => 'Manage academic project sessions, topic approvals, and supervisor assignments',
+                'permissions' => [
+                    'projects.view', 'projects.manage_sessions', 'projects.assign_supervisors', 'projects.review_topics',
+                    'projects.supervise', 'projects.view_dept', 'projects.reports', 'dashboard.view', 'id_cards.request',
+                ],
             ],
             'Head of Department (HOD)' => [
                 'description' => 'Manage departmental academic activities',
@@ -224,6 +242,7 @@ class RbacSeeder extends Seeder
                         'courses.allocate', 'courses.revoke_allocation', 'courses.export',
                         'results.export', 'invoices.manage_students', 'reports.generate',
                         'placements.view', 'placements.organizations', 'placements.types', 'placements.manage', 'placements.supervisors', 'placements.supervise', 'placements.reports', 'placements.templates',
+                        'projects.view', 'projects.manage_sessions', 'projects.assign_supervisors', 'projects.review_topics', 'projects.supervise', 'projects.view_dept', 'projects.reports',
                         'activity_logs.view', 'activity_logs.export',
                         'dashboard.view', 'id_cards.request',
                     ]
@@ -233,14 +252,14 @@ class RbacSeeder extends Seeder
                 'description' => 'Academic instruction and result entry',
                 'permissions' => array_merge(
                     $crud(['cbt_questions', 'ca_tests']),
-                    ['cbt_exams.view', 'cbt_questions.import', 'cbt_questions.export', 'courses.view_assigned', 'results.enter', 'results.modify', 'attendance.take', 'attendance.view_history', 'timetables.view_personal', 'placements.supervise', 'dashboard.view', 'id_cards.request']
+                    ['cbt_exams.view', 'cbt_questions.import', 'cbt_questions.export', 'courses.view_assigned', 'results.enter', 'results.modify', 'attendance.take', 'attendance.view_history', 'timetables.view_personal', 'placements.supervise', 'projects.supervise', 'projects.view', 'dashboard.view', 'id_cards.request']
                 ),
             ],
             'Academic Secretary' => [
                 'description' => 'Coordinate academic record keeping',
                 'permissions' => array_merge(
                     $crud(['registrations']),
-                    ['reports.generate', 'attendance.view_history', 'attendance.manage', 'cbt_data.sync', 'cbt_sync.view', 'cbt_sync.manage_tokens', 'cbt_results.view', 'cbt_results.review', 'students.change_status', 'registrations.print_form', 'registrations.print_exam_card', 'placements.reports', 'placements.view', 'dashboard.view', 'id_cards.request']
+                    ['reports.generate', 'attendance.view_history', 'attendance.manage', 'cbt_data.sync', 'cbt_sync.view', 'cbt_sync.manage_tokens', 'cbt_results.view', 'cbt_results.review', 'students.change_status', 'registrations.print_form', 'registrations.print_exam_card', 'placements.reports', 'placements.view', 'projects.reports', 'projects.view', 'dashboard.view', 'id_cards.request']
                 ),
             ],
             'Admission Officer' => [
@@ -279,7 +298,7 @@ class RbacSeeder extends Seeder
                     'applications.print_letter', 'applications.print_receipt',
                     'registrations.print_form', 'registrations.print_exam_card',
                     'invoices.view_personal', 'students.view_lecturers', 'timetables.view_personal',
-                    'placements.view_personal',
+                    'placements.view_personal', 'projects.view_personal',
                     'dashboard.view', 'id_cards.request',
                 ],
             ],

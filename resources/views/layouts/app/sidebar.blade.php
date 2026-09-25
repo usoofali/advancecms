@@ -120,6 +120,12 @@
                             :current="request()->routeIs('cms.admissions.issue-notification')" wire:navigate>
                             {{ __('Admission Notification') }}
                         </flux:sidebar.item>
+
+                        <flux:sidebar.item icon="pencil-square" icon:class="text-purple-500 dark:text-purple-400"
+                            :href="route('cms.admissions.templates')"
+                            :current="request()->routeIs('cms.admissions.templates')" wire:navigate>
+                            {{ __('Letter Templates') }}
+                        </flux:sidebar.item>
                     @endcan
 
                     @can('application_forms.view')
@@ -200,6 +206,14 @@
                             :href="route('cms.placements.student.index')"
                             :current="request()->routeIs('cms.placements.student.index')" wire:navigate>
                             {{ __('My Placements') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('projects.view_personal')
+                        <flux:sidebar.item icon="academic-cap" icon:class="text-purple-500 dark:text-purple-400"
+                            :href="route('cms.projects.student.index')"
+                            :current="request()->routeIs('cms.projects.student.index')" wire:navigate>
+                            {{ __('My Academic Project') }}
                         </flux:sidebar.item>
                     @endcan
 
@@ -325,6 +339,42 @@
                             :href="route('cms.placements.templates')" :current="request()->routeIs('cms.placements.templates')"
                             wire:navigate>
                             {{ __('Letter Templates') }}
+                        </flux:sidebar.item>
+                    @endcan
+                </flux:sidebar.group>
+            @endcanany
+
+            @canany(['projects.view', 'projects.manage_sessions', 'projects.supervise', 'projects.reports', 'projects.view_dept'])
+                <flux:sidebar.group :heading="__('Academic Projects')" class="grid" expandable expanded="false">
+                    @can('projects.view')
+                        <flux:sidebar.item icon="academic-cap" icon:class="text-indigo-500 dark:text-indigo-400"
+                            :href="route('cms.projects.index')" :current="request()->routeIs('cms.projects.index')"
+                            wire:navigate>
+                            {{ __('Project Management') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('projects.manage_sessions')
+                        <flux:sidebar.item icon="calendar-date-range" icon:class="text-amber-500 dark:text-amber-400"
+                            :href="route('cms.projects.sessions')" :current="request()->routeIs('cms.projects.sessions')"
+                            wire:navigate>
+                            {{ __('Project Sessions') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('projects.supervise')
+                        <flux:sidebar.item icon="clipboard-document-check" icon:class="text-emerald-500 dark:text-emerald-400"
+                            :href="route('cms.projects.my-supervisions')" :current="request()->routeIs('cms.projects.my-supervisions')"
+                            wire:navigate>
+                            {{ __('My Supervisions') }}
+                        </flux:sidebar.item>
+                    @endcan
+
+                    @can('projects.reports')
+                        <flux:sidebar.item icon="document-text" icon:class="text-sky-500 dark:text-sky-400"
+                            :href="route('cms.projects.reports')" :current="request()->routeIs('cms.projects.reports')"
+                            wire:navigate>
+                            {{ __('Project Reports') }}
                         </flux:sidebar.item>
                     @endcan
                 </flux:sidebar.group>

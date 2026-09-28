@@ -177,7 +177,7 @@ final class AdmissionLetterPayload
         $institution->loadMissing([]);
 
         $template = AdmissionLetterTemplate::forInstitution($institution, AdmissionLetterTemplate::TYPE_NOTIFICATION);
-        $ref = 'IMPROMPTU/'.now()->format('Ymd').'-'.strtoupper(Str::random(8));
+        $ref = 'ADMISSION/'.now()->format('Ymd').'-'.strtoupper(Str::random(8));
 
         $entryLevel = (int) $details['entry_level'];
         $awardLabel = self::awardLabelFromType((string) $details['award_type']);

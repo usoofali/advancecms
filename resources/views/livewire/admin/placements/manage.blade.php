@@ -682,7 +682,6 @@ new #[Layout('layouts.app')] class extends Component {
                 : collect(),
             'organizations' => Organization::where('active_status', true)->get(),
             'types' => PlacementType::query()
-                ->when($instId, fn ($q) => $q->where('institution_id', $instId))
                 ->where('is_active', true)
                 ->get(),
             'templates' => DocumentTemplate::where('active', true)->get(),

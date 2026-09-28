@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\DocumentTemplate;
+use App\Models\Institution;
 use App\Models\Organization;
 use App\Models\PlacementType;
 use App\Models\Student;
@@ -115,4 +116,15 @@ it('allows admin to generate group cover letter for an organization', function (
         ->test('admin.placements.manage')
         ->call('generateGroupCoverLetterForOrganization', $org->id)
         ->assertRedirect();
+});
+
+it('renders placement management page without query errors for institutional admins', function () {
+    $institution = Institution::factory()->create();
+    $admin = User::factory()->create(['institution_id' => $institution->id]);
+    PlacementType::create(['name' => 'Industrial Training (IT)', 'is_active' => true]);
+
+    Livewire::actingAs($admin)
+        ->test('admin.placements.manage')
+        ->assertStatus(200)
+        ->assertViewHas('types');
 });

@@ -166,7 +166,7 @@ class Apply extends Component
     {
         return view('livewire.pages.admissions.apply', [
             'institutions' => Institution::all(),
-            'forms' => ApplicationForm::with(['academicSession', 'institution'])
+            'forms' => ApplicationForm::with(['academicSession', 'institution', 'invoice.items'])
                 ->where('is_active', true)
                 ->get()
                 ->filter(fn ($form) => $form->institution?->isAdmissionActive()),

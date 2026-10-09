@@ -14,6 +14,7 @@ class ApplicationForm extends Model
         'name',
         'amount',
         'academic_session_id',
+        'invoice_id',
         'is_active',
         'category',
     ];
@@ -21,6 +22,11 @@ class ApplicationForm extends Model
     public function institution(): BelongsTo
     {
         return $this->belongsTo(Institution::class);
+    }
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
     }
 
     public function program(): BelongsTo

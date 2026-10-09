@@ -20,32 +20,46 @@ class AdmissionService
         DB::transaction(function () use ($applicant) {
             $applicant->update(['admission_status' => 'admitted']);
 
-            // Find a prioritized "Admission Fee" invoice template
-            $invoice = Invoice::where('institution_id', $applicant->institution_id)
-                ->where('academic_session_id', $applicant->applicationForm->academic_session_id)
-                ->where('status', 'published')
-                ->where('category', Invoice::CATEGORY_ADMISSION)
-                ->where(function ($q) use ($applicant) {
-                    $q->where(function ($pq) use ($applicant) {
-                        $pq->where('target_type', 'program')
-                            ->where('program_id', $applicant->program_id);
-                    })->orWhere(function ($dq) use ($applicant) {
-                        $dq->where('target_type', 'dept')
-                            ->where('department_id', $applicant->program->department_id);
-                    })->orWhere(function ($lq) {
-                        $lq->where('target_type', 'level')
-                            ->where('level', 100);
-                    });
-                })
-                ->orderByRaw("CASE 
-                    WHEN target_type = 'program' THEN 1 
-                    WHEN target_type = 'dept' THEN 2 
-                    WHEN target_type = 'level' THEN 3 
-                    ELSE 4 END")
-                ->first();
+            // Prioritize the invoice directly linked to the application form
+            $invoice = null;
+            if ($applicant->applicationForm?->invoice_id) {
+                $formInvoice = $applicant->applicationForm->invoice;
+                if ($formInvoice && $formInvoice->status === 'published') {
+                    $invoice = $formInvoice;
+                }
+            }
+
+            // Fallback to finding an invoice template matching the applicant's session and program
+            if (! $invoice) {
+                $invoice = Invoice::where('institution_id', $applicant->institution_id)
+                    ->where('academic_session_id', $applicant->applicationForm->academic_session_id)
+                    ->where('status', 'published')
+                    ->where(function ($q) {
+                        $q->where('category', Invoice::CATEGORY_REGISTRATION)
+                            ->orWhere('category', Invoice::CATEGORY_ADMISSION);
+                    })
+                    ->where(function ($q) use ($applicant) {
+                        $q->where(function ($pq) use ($applicant) {
+                            $pq->where('target_type', 'program')
+                                ->where('program_id', $applicant->program_id);
+                        })->orWhere(function ($dq) use ($applicant) {
+                            $dq->where('target_type', 'dept')
+                                ->where('department_id', $applicant->program->department_id);
+                        })->orWhere(function ($lq) {
+                            $lq->where('target_type', 'level')
+                                ->where('level', 100);
+                        });
+                    })
+                    ->orderByRaw("CASE 
+                        WHEN target_type = 'program' THEN 1 
+                        WHEN target_type = 'dept' THEN 2 
+                        WHEN target_type = 'level' THEN 3 
+                        ELSE 4 END")
+                    ->first();
+            }
 
             if (! $invoice) {
-                throw new \Exception("No admission invoice template found for the applicant's program. Please create and publish an Admission Invoice template before admitting applicants.");
+                throw new \Exception("No registration fee invoice template found for the applicant's program. Please link or publish an Invoice template before admitting applicants.");
             }
 
             StudentInvoice::updateOrCreate(

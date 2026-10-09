@@ -86,6 +86,12 @@
                                     </div>
                                     <div class="pt-2">
                                         <flux:text weight="bold" class="text-2xl text-zinc-900 dark:text-white">₦{{ number_format($form->amount, 2) }}</flux:text>
+                                        @if($form->invoice)
+                                            <div class="mt-1 flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                                <flux:icon.receipt-percent class="size-3.5 text-blue-500" />
+                                                <span>{{ __('Reg. Fee:') }} <strong>₦{{ number_format($form->invoice->total_amount, 2) }}</strong></span>
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
                                 <div class="pt-6 mt-auto">

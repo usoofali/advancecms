@@ -24,7 +24,7 @@ $showQr = (bool) ($l['show_qr_code'] ?? true);
         <div class="h-2 w-full" style="background: linear-gradient(to right, #1a3c6b, #2563eb, #1a3c6b);"></div>
 
         @if ($logoPos === 'center')
-            <div class="px-8 pt-5 pb-4 border-b-2 border-[#1a3c6b] text-center relative">
+            <div class="px-4 sm:px-8 pt-5 pb-4 border-b-2 border-[#1a3c6b] text-center relative print:px-8">
                 @if (!empty($l['institution_logo_path']))
                     <img src="{{ asset('storage/' . $l['institution_logo_path']) }}" alt="Logo"
                         class="h-16 w-16 object-contain mx-auto mb-2">
@@ -34,7 +34,7 @@ $showQr = (bool) ($l['show_qr_code'] ?? true);
                     </div> 
                 @endif
                 <div>
-                    <h1 class="text-[14pt] font-extrabold uppercase tracking-widest text-[#1a3c6b]">
+                    <h1 class="text-[12pt] sm:text-[14pt] print:text-[14pt] font-extrabold uppercase tracking-widest text-[#1a3c6b]">
                         {{ $l['institution_name'] }}
                     </h1>
                     @if($l['institution_meta'])
@@ -51,27 +51,27 @@ $showQr = (bool) ($l['show_qr_code'] ?? true);
                 </div>
 
                 @if ($showQr && $qrPos === 'header_right')
-                    <div class="absolute right-8 top-5 text-center">
+                    <div class="mt-2 sm:mt-0 sm:absolute right-4 sm:right-8 top-5 text-center flex flex-col items-center sm:block print:absolute print:right-8 print:top-5">
                         <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data={{ urlencode($l['qr_data']) }}"
-                            alt="{{ __('Verification QR') }}" class="w-16 h-16 border border-zinc-300 bg-white p-0.5">
+                            alt="{{ __('Verification QR') }}" class="w-14 h-14 sm:w-16 sm:h-16 border border-zinc-300 bg-white p-0.5">
                         <p class="text-[6.5pt] text-zinc-400 mt-0.5 leading-none">{{ __('Scan to verify') }}</p>
                     </div>
                 @endif
             </div>
         @elseif ($logoPos === 'right')
-            <div class="flex items-center justify-between gap-4 px-8 pt-5 pb-4 border-b-2 border-[#1a3c6b]">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 px-4 sm:px-8 pt-5 pb-4 border-b-2 border-[#1a3c6b] print:flex-row print:px-8">
                 @if ($showQr && $qrPos === 'header_right')
-                    <div class="flex-shrink-0 text-center">
+                    <div class="flex-shrink-0 text-center order-3 sm:order-1 print:order-1">
                         <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data={{ urlencode($l['qr_data']) }}"
-                            alt="{{ __('Verification QR') }}" class="w-16 h-16 border border-zinc-300 bg-white p-0.5">
+                            alt="{{ __('Verification QR') }}" class="w-14 h-14 sm:w-16 sm:h-16 border border-zinc-300 bg-white p-0.5">
                         <p class="text-[6.5pt] text-zinc-400 mt-0.5 leading-none">{{ __('Scan to verify') }}</p>
                     </div>
                 @else
-                    <div class="w-16"></div>
+                    <div class="hidden sm:block w-16 print:block"></div>
                 @endif
 
-                <div class="flex-1 text-center">
-                    <h1 class="text-[14pt] font-extrabold uppercase tracking-widest text-[#1a3c6b]">
+                <div class="flex-1 text-center order-2">
+                    <h1 class="text-[12pt] sm:text-[14pt] print:text-[14pt] font-extrabold uppercase tracking-widest text-[#1a3c6b]">
                         {{ $l['institution_name'] }}
                     </h1>
                     @if($l['institution_meta'])
@@ -89,16 +89,16 @@ $showQr = (bool) ($l['show_qr_code'] ?? true);
 
                 @if (!empty($l['institution_logo_path']))
                     <img src="{{ asset('storage/' . $l['institution_logo_path']) }}" alt="Logo"
-                        class="h-16 w-16 object-contain flex-shrink-0">
+                        class="h-16 w-16 object-contain flex-shrink-0 order-1 sm:order-3 print:order-3">
                 @else
-                    <div class="h-16 w-16 rounded-full bg-[#1a3c6b] flex items-center justify-center flex-shrink-0">
+                    <div class="h-16 w-16 rounded-full bg-[#1a3c6b] flex items-center justify-center flex-shrink-0 order-1 sm:order-3 print:order-3">
                         <span class="text-2xl font-bold text-white">{{ substr($l['institution_name'], 0, 1) }}</span>
                     </div> 
                 @endif
             </div>
         @else
             {{-- Default: Logo on left --}}
-            <div class="flex items-center gap-4 px-8 pt-5 pb-4 border-b-2 border-[#1a3c6b]">
+            <div class="flex flex-col sm:flex-row items-center gap-4 px-4 sm:px-8 pt-5 pb-4 border-b-2 border-[#1a3c6b] print:flex-row print:px-8">
                 @if (!empty($l['institution_logo_path']))
                     <img src="{{ asset('storage/' . $l['institution_logo_path']) }}" alt="Logo"
                         class="h-16 w-16 object-contain flex-shrink-0">
@@ -109,7 +109,7 @@ $showQr = (bool) ($l['show_qr_code'] ?? true);
                 @endif
 
                 <div class="flex-1 text-center">
-                    <h1 class="text-[14pt] font-extrabold uppercase tracking-widest text-[#1a3c6b]">
+                    <h1 class="text-[12pt] sm:text-[14pt] print:text-[14pt] font-extrabold uppercase tracking-widest text-[#1a3c6b]">
                         {{ $l['institution_name'] }}
                     </h1>
                     @if($l['institution_meta'])
@@ -128,23 +128,23 @@ $showQr = (bool) ($l['show_qr_code'] ?? true);
                 @if ($showQr && $qrPos === 'header_right')
                     <div class="flex-shrink-0 text-center">
                         <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data={{ urlencode($l['qr_data']) }}"
-                            alt="{{ __('Verification QR') }}" class="w-16 h-16 border border-zinc-300 bg-white p-0.5">
+                            alt="{{ __('Verification QR') }}" class="w-14 h-14 sm:w-16 sm:h-16 border border-zinc-300 bg-white p-0.5">
                         <p class="text-[6.5pt] text-zinc-400 mt-0.5 leading-none">{{ __('Scan to verify') }}</p>
                     </div>
                 @else
-                    <div class="w-16"></div>
+                    <div class="hidden sm:block w-16 print:block"></div>
                 @endif
             </div>
         @endif
 
-        <div class="text-center py-3 mx-8 border-b border-dashed border-zinc-300">
+        <div class="text-center py-3 mx-4 sm:mx-8 border-b border-dashed border-zinc-300 print:mx-8">
             <h2
                 class="text-[11.5pt] font-extrabold uppercase tracking-widest text-[#1a3c6b] underline underline-offset-2">
                 {{ $l['letter_title'] }}
             </h2>
         </div>
 
-        <div class="flex justify-between items-start px-8 pt-3 pb-2 text-[9pt]">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center px-4 sm:px-8 pt-3 pb-2 text-[9pt] gap-1 sm:gap-0 print:flex-row print:px-8">
             <div>
                 <span class="font-bold text-zinc-500">{{ __('Ref No') }}:</span>
                 <span class="ml-1 font-mono font-semibold text-[#1a3c6b]">{{ $l['ref'] }}</span>
@@ -155,7 +155,7 @@ $showQr = (bool) ($l['show_qr_code'] ?? true);
             </div>
         </div>
 
-        <div class="px-8 pb-4 space-y-3 text-[10.5pt] leading-relaxed text-justify">
+        <div class="px-4 sm:px-8 pb-4 space-y-3 text-[10pt] sm:text-[10.5pt] leading-relaxed text-left sm:text-justify print:text-[10.5pt] print:text-justify print:px-8">
 
             @if (!empty($l['salutation']))
                 <p class="font-semibold">{!! nl2br(e($l['salutation'])) !!}</p>
@@ -167,17 +167,17 @@ $showQr = (bool) ($l['show_qr_code'] ?? true);
                 </p>
             @endif
 
-            <div class="flex items-center gap-3 bg-[#f0f5ff] border-l-4 border-[#1a3c6b] px-4 py-2 my-1">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 bg-[#f0f5ff] border-l-4 border-[#1a3c6b] px-4 py-2 my-1 print:flex-row">
                 <div class="flex-1">
-                    <p class="text-[11pt] font-extrabold text-[#1a3c6b] uppercase">{{ $l['program_name'] }}</p>
+                    <p class="text-[10pt] sm:text-[11pt] print:text-[11pt] font-extrabold text-[#1a3c6b] uppercase">{{ $l['program_name'] }}</p>
                     <p class="text-[8.5pt] text-zinc-500">
                         {!! $l['program_meta_line'] !!}
                     </p>
                 </div>
                 @if ($l['is_enrolled'] && !empty($l['matric_number']))
-                    <div class="text-right flex-shrink-0">
+                    <div class="text-left sm:text-right flex-shrink-0 print:text-right">
                         <p class="text-[8pt] text-zinc-500 font-bold">{{ __('Matric No.') }}</p>
-                        <p class="text-[11pt] font-extrabold text-[#1a3c6b] font-mono">{{ $l['matric_number'] }}</p>
+                        <p class="text-[10pt] sm:text-[11pt] print:text-[11pt] font-extrabold text-[#1a3c6b] font-mono">{{ $l['matric_number'] }}</p>
                     </div>
                 @endif
             </div>
@@ -201,14 +201,14 @@ $showQr = (bool) ($l['show_qr_code'] ?? true);
             @endif
         </div>
 
-        <div class="mx-8 mb-3 border border-zinc-200 rounded overflow-hidden text-[9pt]">
-            <table class="w-full">
+        <div class="mx-4 sm:mx-8 mb-3 border border-zinc-200 rounded overflow-x-auto text-[9pt] print:mx-8 print:overflow-visible">
+            <table class="w-full min-w-[480px] sm:min-w-0 print:min-w-full">
                 <tbody>
                     <tr class="bg-[#f0f5ff]">
-                        <th class="px-3 py-1.5 text-left font-semibold text-zinc-600 w-36">{{ $l['details_name_label'] }}
+                        <th class="px-3 py-1.5 text-left font-semibold text-zinc-600 w-32 sm:w-36 print:w-36">{{ $l['details_name_label'] }}
                         </th>
                         <td class="px-3 py-1.5 font-bold text-[#1a3c6b]">{{ $l['details_name_value'] }}</td>
-                        <th class="px-3 py-1.5 text-left font-semibold text-zinc-600 w-28">{{ __('Application No.') }}
+                        <th class="px-3 py-1.5 text-left font-semibold text-zinc-600 w-24 sm:w-28 print:w-28">{{ __('Application No.') }}
                         </th>
                         <td class="px-3 py-1.5 font-mono font-bold">{{ $l['application_number'] ?? '—' }}</td>
                     </tr>
@@ -226,8 +226,8 @@ $showQr = (bool) ($l['show_qr_code'] ?? true);
             </table>
         </div>
 
-        <div class="flex justify-between items-end px-8 pb-5 pt-3">
-            <div class="w-[220px] flex-shrink-0 flex items-end gap-3">
+        <div class="flex flex-col sm:flex-row justify-between items-center sm:items-end gap-4 sm:gap-0 px-4 sm:px-8 pb-5 pt-3 print:flex-row print:items-end print:px-8 print:gap-0">
+            <div class="w-full sm:w-[220px] print:w-[220px] flex-shrink-0 flex items-center sm:items-end gap-3 print:items-end">
                 @if ($showQr && $qrPos === 'footer_left')
                     <div class="flex-shrink-0 text-center">
                         <img src="https://api.qrserver.com/v1/create-qr-code/?size=70x70&data={{ urlencode($l['qr_data']) }}"
@@ -250,7 +250,7 @@ $showQr = (bool) ($l['show_qr_code'] ?? true);
                 </div>
             @endif
 
-            <div class="w-[220px] flex-shrink-0 flex justify-end items-end gap-3">
+            <div class="w-full sm:w-[220px] print:w-[220px] flex-shrink-0 flex justify-center sm:justify-end items-end gap-3 print:justify-end">
                 @if ($showQr && $qrPos === 'footer_right')
                     <div class="flex-shrink-0 text-center">
                         <img src="https://api.qrserver.com/v1/create-qr-code/?size=70x70&data={{ urlencode($l['qr_data']) }}"
@@ -270,9 +270,9 @@ $showQr = (bool) ($l['show_qr_code'] ?? true);
     </div>
 
     @if ($showActions)
-        <div class="print:hidden w-full max-w-[794px] mx-auto mt-6 flex gap-3 justify-center px-2">
+        <div class="print:hidden w-full max-w-[794px] mx-auto mt-6 flex flex-col sm:flex-row gap-3 justify-center items-stretch sm:items-center px-2">
             <button type="button"
-                class="px-6 py-2 bg-[#1a3c6b] text-white font-semibold rounded-lg shadow hover:bg-blue-800 transition-colors"
+                class="px-6 py-2 bg-[#1a3c6b] text-white font-semibold rounded-lg shadow hover:bg-blue-800 transition-colors w-full sm:w-auto text-center"
                 onclick="(function (t) {
                     var p = document.title;
                     if (t !== null && t !== '') {
@@ -289,7 +289,7 @@ $showQr = (bool) ($l['show_qr_code'] ?? true);
                 {{ __('Print / Save PDF') }}
             </button>
             <a href="{{ $l['back_url'] }}"
-                class="px-6 py-2 bg-white text-zinc-700 border border-zinc-300 font-medium rounded-lg hover:bg-zinc-50 transition-colors"
+                class="px-6 py-2 bg-white text-zinc-700 border border-zinc-300 font-medium rounded-lg hover:bg-zinc-50 transition-colors w-full sm:w-auto text-center"
                 wire:navigate>
                 {{ $l['back_label'] }}
             </a>

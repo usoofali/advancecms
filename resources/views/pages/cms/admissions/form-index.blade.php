@@ -126,7 +126,7 @@ new #[Layout('layouts.app')] #[Title('Manage Application Forms')] class extends 
         }
 
         return [
-            'forms' => $query->with(['academicSession', 'institution', 'program'])
+            'forms' => $query->with(['academicSession', 'institution', 'program', 'invoice.items'])
                 ->latest()
                 ->paginate(10),
             'institutions' => Auth::user()->hasRole('Super Admin') ? Institution::all() : [],
@@ -240,6 +240,7 @@ new #[Layout('layouts.app')] #[Title('Manage Application Forms')] class extends 
                     <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Program') }}</th>
                     <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Category') }}</th>
                     <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Academic Session') }}</th>
+                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Linked Invoice') }}</th>
                     <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Amount') }}</th>
                     <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Status') }}</th>
                     <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-right">{{ __('Actions') }}</th>
@@ -268,6 +269,16 @@ new #[Layout('layouts.app')] #[Title('Manage Application Forms')] class extends 
                             </flux:badge>
                         </td>
                         <td class="px-4 py-4 text-sm text-zinc-500">{{ $form->academicSession->name }}</td>
+                        <td class="px-4 py-4 text-sm">
+                            @if ($form->invoice)
+                                <div class="flex flex-col">
+                                    <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ $form->invoice->title }}</span>
+                                    <span class="text-xs text-zinc-500">₦{{ number_format($form->invoice->total_amount, 2) }}</span>
+                                </div>
+                            @else
+                                <flux:badge color="danger" size="sm" variant="outline">{{ __('Not linked') }}</flux:badge>
+                            @endif
+                        </td>
                         <td class="px-4 py-4 text-sm text-zinc-900 dark:text-zinc-100 font-medium">₦{{ number_format($form->amount, 2) }}</td>
                         <td class="px-4 py-4">
                              <flux:button variant="ghost" size="sm" wire:click="toggleStatus({{ $form->id }})">

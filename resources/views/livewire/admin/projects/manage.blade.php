@@ -175,7 +175,9 @@ new #[Layout('layouts.app')] class extends Component {
     public function openAssignSupervisor(array $projectIds): void
     {
         $this->selectedProjectIds = $projectIds;
-        $this->assign_supervisor_id = null;
+        $this->assign_supervisor_id = count($projectIds) === 1 
+            ? StudentProject::find($projectIds[0])?->supervisor_id 
+            : null;
         $this->showSupervisorModal = true;
     }
 
@@ -188,13 +190,21 @@ new #[Layout('layouts.app')] class extends Component {
         $staff = Staff::find($this->assign_supervisor_id);
 
         StudentProject::whereIn('id', $this->selectedProjectIds)->each(function ($project) use ($staff) {
+            $isReassignment = $project->supervisor_id && $project->supervisor_id !== $staff->id;
+            $oldName = $project->supervisor ? "{$project->supervisor->first_name} {$project->supervisor->last_name}" : null;
+
             $project->update(['supervisor_id' => $staff->id]);
-            $project->logActivity('Supervisor Assigned', "Assigned to supervisor {$staff->first_name} {$staff->last_name}");
+
+            if ($isReassignment) {
+                $project->logActivity('Supervisor Reassigned', "Reassigned from {$oldName} to supervisor {$staff->first_name} {$staff->last_name}");
+            } else {
+                $project->logActivity('Supervisor Assigned', "Assigned to supervisor {$staff->first_name} {$staff->last_name}");
+            }
         });
 
         $this->showSupervisorModal = false;
         $this->selectedProjectIds = [];
-        Flux::toast('Supervisor assigned successfully.', variant: 'success');
+        Flux::toast('Supervisor updated successfully.', variant: 'success');
     }
 
     public function with(): array
@@ -427,9 +437,15 @@ new #[Layout('layouts.app')] class extends Component {
 
                             <flux:table.cell>
                                 @if($proj->supervisor)
-                                    <span class="text-xs font-medium text-gray-800 dark:text-gray-200">
-                                        {{ $proj->supervisor->first_name }} {{ $proj->supervisor->last_name }}
-                                    </span>
+                                    <div class="flex items-center justify-between gap-2">
+                                        <span class="text-xs font-medium text-gray-800 dark:text-gray-200">
+                                            {{ $proj->supervisor->first_name }} {{ $proj->supervisor->last_name }}
+                                        </span>
+                                        <button wire:click="openAssignSupervisor([{{ $proj->id }}])" title="Change / Reassign Supervisor" class="text-xs text-indigo-600 dark:text-indigo-400 font-medium hover:underline flex items-center gap-0.5 shrink-0">
+                                            <flux:icon.pencil-square class="w-3.5 h-3.5" />
+                                            <span>Change</span>
+                                        </button>
+                                    </div>
                                 @else
                                     <button wire:click="openAssignSupervisor([{{ $proj->id }}])" class="text-xs text-amber-600 dark:text-amber-400 font-medium hover:underline flex items-center gap-1">
                                         <flux:icon.user-plus class="w-3.5 h-3.5" /> Assign
@@ -654,16 +670,18 @@ new #[Layout('layouts.app')] class extends Component {
         @endif
     </flux:modal>
 
-    <!-- Assign Supervisor Modal -->
+    <!-- Assign / Reassign Supervisor Modal -->
     <flux:modal wire:model="showSupervisorModal" class="w-full max-w-full sm:max-w-md">
         <div class="space-y-6">
             <div>
-                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Assign Project Supervisor</h3>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">
+                    {{ (count($selectedProjectIds) === 1 && StudentProject::find($selectedProjectIds[0] ?? 0)?->supervisor_id) ? 'Change / Reassign Supervisor' : 'Assign Project Supervisor' }}
+                </h3>
                 <p class="text-xs text-gray-500">Select a staff member to supervise the selected student project(s).</p>
             </div>
 
             <div class="space-y-4">
-                <flux:select wire:model="assign_supervisor_id" label="Supervisor Staff Member">
+                <flux:select wire:model="assign_supervisor_id" label="Supervisor Staff Member" class="!text-gray-900 dark:!text-white font-semibold">
                     <option value="">Select Lecturer / Staff</option>
                     @foreach($staffMembers as $stf)
                         <option value="{{ $stf->id }}">{{ $stf->first_name }} {{ $stf->last_name }} ({{ $stf->department?->name ?? 'Staff' }})</option>
@@ -673,7 +691,9 @@ new #[Layout('layouts.app')] class extends Component {
 
             <div class="flex justify-end gap-3 pt-4 border-t">
                 <flux:button wire:click="$set('showSupervisorModal', false)" variant="subtle">Cancel</flux:button>
-                <flux:button wire:click="assignSupervisor" variant="primary">Assign Supervisor</flux:button>
+                <flux:button wire:click="assignSupervisor" variant="primary">
+                    {{ (count($selectedProjectIds) === 1 && StudentProject::find($selectedProjectIds[0] ?? 0)?->supervisor_id) ? 'Update Supervisor' : 'Assign Supervisor' }}
+                </flux:button>
             </div>
         </div>
     </flux:modal>

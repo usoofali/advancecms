@@ -238,6 +238,56 @@ it('allows supervisor assignment and chapter review with progress calculation', 
 
     $project->refresh();
     expect($project->supervisor_id)->toBe($this->staff->id);
+});
+
+it('allows reassigning and changing an already assigned project supervisor', function () {
+    $student = Student::create([
+        'institution_id' => $this->institution->id,
+        'department_id' => $this->department->id,
+        'program_id' => $this->program2Yr->id,
+        'first_name' => 'Reassign',
+        'last_name' => 'Student',
+        'email' => 'reassign.student@example.com',
+        'admission_year' => 2025,
+        'entry_level' => 100,
+    ]);
+
+    $newStaff = Staff::create([
+        'institution_id' => $this->institution->id,
+        'department_id' => $this->department->id,
+        'staff_number' => 'STF9999',
+        'first_name' => 'New',
+        'last_name' => 'Supervisor',
+        'email' => 'new.supervisor@example.com',
+    ]);
+
+    $project = StudentProject::create([
+        'institution_id' => $this->institution->id,
+        'project_session_id' => $this->projectSession->id,
+        'student_id' => $student->id,
+        'department_id' => $this->department->id,
+        'program_id' => $this->program2Yr->id,
+        'current_stage_id' => $this->stage1->id,
+        'supervisor_id' => $this->staff->id,
+        'overall_status' => 'Topic Approved',
+    ]);
+
+    // Reassign supervisor via admin manage portal
+    Livewire::actingAs($this->adminUser)
+        ->test('admin.projects.manage')
+        ->call('openAssignSupervisor', [$project->id])
+        ->assertSet('assign_supervisor_id', $this->staff->id)
+        ->set('assign_supervisor_id', $newStaff->id)
+        ->call('assignSupervisor');
+
+    $project->refresh();
+    expect($project->supervisor_id)->toBe($newStaff->id);
+
+    $this->assertDatabaseHas('project_activities', [
+        'student_project_id' => $project->id,
+        'action' => 'Supervisor Reassigned',
+    ]);
+});
 
     // Create stage submission
     $submission = ProjectSubmission::create([

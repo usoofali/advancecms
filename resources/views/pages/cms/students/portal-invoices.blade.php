@@ -5,6 +5,8 @@ use App\Models\Payment;
 use App\Models\StudentInvoice;
 use App\Services\StudentInvoiceService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -86,6 +88,16 @@ new #[Layout('layouts.app')] #[Title('My Invoices')] class extends Component {
 
     public function selectInvoice(StudentInvoice $invoice)
     {
+        $pendingPayment = $invoice->payments()->where('status', 'pending')->first();
+        if ($pendingPayment) {
+            $this->dispatch('notify', [
+                'type' => 'warning',
+                'message' => 'A pending payment of ₦' . number_format($pendingPayment->amount_paid, 2) . ' already exists for this invoice. You should either wait for verification, edit it, or delete the pending payment.',
+            ]);
+
+            return;
+        }
+
         $this->editingPaymentId = null;
         $this->selectedInvoice = $invoice;
         $this->paymentAmount = $invoice->balance;
@@ -148,18 +160,34 @@ new #[Layout('layouts.app')] #[Title('My Invoices')] class extends Component {
     {
         $maxAmount = $this->selectedInvoice ? $this->selectedInvoice->balance : 0;
 
+        $reference = trim($this->paymentReference);
+
         $this->validate([
             'paymentAmount' => ['required', 'numeric', 'min:1', 'max:' . $maxAmount],
             'paymentReference' => 'nullable|string|max:255',
             'paymentMethod' => 'required|string',
         ]);
 
+        if (! $this->editingPaymentId && $this->selectedInvoice->payments()->where('status', 'pending')->exists()) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'A pending payment already exists for this invoice. Please either pay, edit, or delete the pending payment.',
+            ]);
+            $this->js('$flux.modal("record-payment").close()');
+
+            return;
+        }
+
+        if ($reference === '') {
+            $reference = 'MAN-' . strtoupper(Str::random(10));
+        }
+
         $data = [
             'institution_id' => $this->selectedInvoice->institution_id,
             'amount_paid' => $this->paymentAmount,
             'payment_method' => $this->paymentMethod,
             'payment_type' => 'manual',
-            'reference' => $this->paymentReference,
+            'reference' => $reference,
             'status' => 'pending',
         ];
 
@@ -204,6 +232,16 @@ new #[Layout('layouts.app')] #[Title('My Invoices')] class extends Component {
 
     public function selectInvoicePaymentAmount(StudentInvoice $invoice)
     {
+        $pendingPayment = $invoice->payments()->where('status', 'pending')->where('payment_type', 'manual')->first();
+        if ($pendingPayment) {
+            $this->dispatch('notify', [
+                'type' => 'warning',
+                'message' => 'A pending manual payment of ₦' . number_format($pendingPayment->amount_paid, 2) . ' already exists for this invoice. Please wait for verification or delete the pending payment before paying online.',
+            ]);
+
+            return;
+        }
+
         $this->selectedInvoiceId = $invoice->id;
         $this->payingAmount = $invoice->balance;
         $this->js('$flux.modal("online-payment-amount").show()');
@@ -215,6 +253,16 @@ new #[Layout('layouts.app')] #[Title('My Invoices')] class extends Component {
 
         if (!$invoice)
             return;
+
+        if ($invoice->payments()->where('status', 'pending')->where('payment_type', 'manual')->exists()) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => 'A pending manual payment exists for this invoice. Please delete it before paying online.',
+            ]);
+            $this->js('$flux.modal("online-payment-amount").close()');
+
+            return;
+        }
 
         // 1. Basic validation
         if ($invoice->balance <= 0) {
@@ -420,15 +468,35 @@ new #[Layout('layouts.app')] #[Title('My Invoices')] class extends Component {
                                                 href="{{ route('cms.invoices.print', $studentInvoice->id) }}" target="_blank">
                                                 {{ __('Print') }}
                                             </flux:button>
-                                            <flux:button variant="primary" size="sm"
-                                                wire:click="selectInvoicePaymentAmount({{ $studentInvoice->id }})"
-                                                icon="credit-card">
-                                                {{ __('Pay Online') }}
-                                            </flux:button>
-                                            <flux:button size="sm" wire:click="selectInvoice({{ $studentInvoice->id }})"
-                                                icon="document-plus">
-                                                {{ __('Manual') }}
-                                            </flux:button>
+                                            @php
+                                                $pendingPayment = $studentInvoice->payments->firstWhere('status', 'pending');
+                                            @endphp
+                                            @if($pendingPayment)
+                                                <div class="inline-flex items-center gap-1.5 p-1 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-lg">
+                                                    <flux:badge color="amber" size="sm" class="font-medium">
+                                                        <flux:icon.clock class="size-3.5 inline mr-1" />
+                                                        Pending (₦{{ number_format($pendingPayment->amount_paid, 2) }})
+                                                    </flux:badge>
+                                                    <flux:button variant="subtle" size="xs" icon="pencil"
+                                                        wire:click="editPayment({{ $pendingPayment->id }})" title="Edit Pending Payment">
+                                                        Edit
+                                                    </flux:button>
+                                                    <flux:button variant="danger" size="xs" icon="trash"
+                                                        wire:click="confirmDeletePayment({{ $pendingPayment->id }})" title="Delete Pending Payment">
+                                                        Delete
+                                                    </flux:button>
+                                                </div>
+                                            @else
+                                                <flux:button variant="primary" size="sm"
+                                                    wire:click="selectInvoicePaymentAmount({{ $studentInvoice->id }})"
+                                                    icon="credit-card">
+                                                    {{ __('Pay Online') }}
+                                                </flux:button>
+                                                <flux:button size="sm" wire:click="selectInvoice({{ $studentInvoice->id }})"
+                                                    icon="document-plus">
+                                                    {{ __('Manual') }}
+                                                </flux:button>
+                                            @endif
                                         @elseif($studentInvoice->status === 'paid')
                                             <flux:button variant="subtle" size="sm" icon="printer"
                                                 href="{{ route('cms.invoices.print', $studentInvoice->id) }}" target="_blank">

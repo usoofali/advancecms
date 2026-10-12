@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Str;
 
 class Payment extends Model
 {
@@ -24,6 +25,19 @@ class Payment extends Model
     protected $casts = [
         'metadata' => 'array',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (Payment $payment) {
+            if (empty(trim((string) $payment->reference))) {
+                do {
+                    $ref = 'PAY-'.strtoupper(Str::random(10));
+                } while (static::where('reference', $ref)->exists());
+
+                $payment->reference = $ref;
+            }
+        });
+    }
 
     public function institution(): BelongsTo
     {

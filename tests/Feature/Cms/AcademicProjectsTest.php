@@ -238,6 +238,30 @@ it('allows supervisor assignment and chapter review with progress calculation', 
 
     $project->refresh();
     expect($project->supervisor_id)->toBe($this->staff->id);
+
+    // Create stage submission
+    $submission = ProjectSubmission::create([
+        'student_project_id' => $project->id,
+        'stage_id' => $this->stage1->id,
+        'version_number' => 1,
+        'file_path' => 'project_submissions/test.pdf',
+        'file_original_name' => 'test.pdf',
+        'status' => 'Submitted',
+    ]);
+
+    // Supervisor reviews and approves stage 1
+    Livewire::actingAs($this->supervisorUser)
+        ->test('lecturer.projects.my-supervisions')
+        ->call('openReview', $submission->id)
+        ->set('review_status', 'Approved')
+        ->set('supervisor_feedback', 'Well articulated proposal.')
+        ->call('submitReview');
+
+    $submission->refresh();
+    $project->refresh();
+
+    expect($submission->status)->toBe('Approved')
+        ->and($project->progress_percentage)->toBe(50); // 1 out of 2 stages approved = 50%
 });
 
 it('allows reassigning and changing an already assigned project supervisor', function () {
@@ -259,6 +283,7 @@ it('allows reassigning and changing an already assigned project supervisor', fun
         'first_name' => 'New',
         'last_name' => 'Supervisor',
         'email' => 'new.supervisor@example.com',
+        'designation' => 'Lecturer',
     ]);
 
     $project = StudentProject::create([
@@ -287,31 +312,6 @@ it('allows reassigning and changing an already assigned project supervisor', fun
         'student_project_id' => $project->id,
         'action' => 'Supervisor Reassigned',
     ]);
-});
-
-    // Create stage submission
-    $submission = ProjectSubmission::create([
-        'student_project_id' => $project->id,
-        'stage_id' => $this->stage1->id,
-        'version_number' => 1,
-        'file_path' => 'project_submissions/test.pdf',
-        'file_original_name' => 'test.pdf',
-        'status' => 'Submitted',
-    ]);
-
-    // Supervisor reviews and approves stage 1
-    Livewire::actingAs($this->supervisorUser)
-        ->test('lecturer.projects.my-supervisions')
-        ->call('openReview', $submission->id)
-        ->set('review_status', 'Approved')
-        ->set('supervisor_feedback', 'Well articulated proposal.')
-        ->call('submitReview');
-
-    $submission->refresh();
-    $project->refresh();
-
-    expect($submission->status)->toBe('Approved')
-        ->and($project->progress_percentage)->toBe(50); // 1 out of 2 stages approved = 50%
 });
 
 it('supports in-project communication chat messages and unread tracking', function () {

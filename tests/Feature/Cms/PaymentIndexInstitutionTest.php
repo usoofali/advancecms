@@ -178,3 +178,97 @@ it('can search payments by reference, student name, student matric number', func
         ->assertDontSee('REF-SEARCH-ALPHA', false)
         ->assertSee('REF-SEARCH-BETA', false);
 });
+
+it('auto-generates unique reference when payment is created with empty or null reference', function (): void {
+    $institution = Institution::factory()->create();
+    $paymentA = createPendingPaymentForInstitution($institution, '');
+    $paymentB = createPendingPaymentForInstitution($institution, '');
+
+    expect($paymentA->reference)->not->toBeEmpty()
+        ->and($paymentB->reference)->not->toBeEmpty()
+        ->and($paymentA->reference)->not->toBe($paymentB->reference);
+});
+
+it('allows student to submit manual payment without reference in portal-invoices', function (): void {
+    $institution = Institution::factory()->create();
+    $department = Department::factory()->create(['institution_id' => $institution->id]);
+    $program = Program::factory()->create([
+        'institution_id' => $institution->id,
+        'department_id' => $department->id,
+    ]);
+    $academicSession = AcademicSession::factory()->create([
+        'status' => 'active',
+    ]);
+
+    $student = Student::factory()->create([
+        'institution_id' => $institution->id,
+        'program_id' => $program->id,
+    ]);
+
+    $user = User::where('email', $student->email)->first() ?? User::factory()->withRole('Student')->create([
+        'institution_id' => $institution->id,
+        'email' => $student->email,
+    ]);
+    if (! $user->hasRole('Student')) {
+        $user->assignRole('Student');
+    }
+
+    $invoice = Invoice::factory()->create([
+        'institution_id' => $institution->id,
+        'department_id' => $department->id,
+        'program_id' => $program->id,
+        'academic_session_id' => $academicSession->id,
+    ]);
+
+    $studentInvoice = StudentInvoice::create([
+        'institution_id' => $institution->id,
+        'student_id' => $student->id,
+        'invoice_id' => $invoice->id,
+        'total_amount' => 50000,
+        'amount_paid' => 0,
+        'balance' => 50000,
+        'status' => 'unpaid',
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::cms.students.portal-invoices')
+        ->call('selectInvoice', $studentInvoice->id)
+        ->set('paymentAmount', 25000)
+        ->set('paymentMethod', 'bank_transfer')
+        ->set('paymentReference', '')
+        ->call('submitPayment')
+        ->assertHasNoErrors();
+
+    $payment = Payment::where('student_invoice_id', $studentInvoice->id)->first();
+    expect($payment)->not->toBeNull()
+        ->and($payment->amount_paid)->toEqual(25000)
+        ->and($payment->reference)->toStartWith('MAN-');
+
+    // Attempting to create another payment while pending exists should be prevented
+    Livewire::test('pages::cms.students.portal-invoices')
+        ->call('selectInvoice', $studentInvoice->id)
+        ->assertDispatched('notify', fn ($name, $params) => ($params[0]['type'] ?? $params['type'] ?? null) === 'warning');
+
+    expect(Payment::where('student_invoice_id', $studentInvoice->id)->count())->toBe(1);
+
+    // Deleting pending payment allows recording a new payment
+    Livewire::test('pages::cms.students.portal-invoices')
+        ->call('confirmDeletePayment', $payment->id)
+        ->call('deletePayment')
+        ->assertDispatched('notify', fn ($name, $params) => ($params[0]['type'] ?? $params['type'] ?? null) === 'success');
+
+    expect(Payment::where('student_invoice_id', $studentInvoice->id)->count())->toBe(0);
+
+    // Now student can select invoice and record payment again
+    Livewire::test('pages::cms.students.portal-invoices')
+        ->call('selectInvoice', $studentInvoice->id)
+        ->set('paymentAmount', 50000)
+        ->set('paymentMethod', 'cash')
+        ->set('paymentReference', 'CASH-REC-001')
+        ->call('submitPayment')
+        ->assertHasNoErrors();
+
+    expect(Payment::where('student_invoice_id', $studentInvoice->id)->count())->toBe(1)
+        ->and(Payment::where('student_invoice_id', $studentInvoice->id)->first()->reference)->toBe('CASH-REC-001');
+});

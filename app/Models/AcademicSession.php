@@ -18,6 +18,8 @@ class AcademicSession extends Model
         'start_date',
         'end_date',
         'status',
+        'has_batches',
+        'batches',
     ];
 
     protected function casts(): array
@@ -25,7 +27,23 @@ class AcademicSession extends Model
         return [
             'start_date' => 'date',
             'end_date' => 'date',
+            'has_batches' => 'boolean',
+            'batches' => 'array',
         ];
+    }
+
+    /**
+     * Get the list of batches enabled for this session.
+     *
+     * @return array<int, string>
+     */
+    public function getBatchesList(): array
+    {
+        if (! $this->has_batches) {
+            return [];
+        }
+
+        return ! empty($this->batches) ? $this->batches : ['A', 'B'];
     }
 
     public function scopeActive($query)

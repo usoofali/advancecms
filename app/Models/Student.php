@@ -25,20 +25,33 @@ class Student extends Model
                 $student->email = strtolower(trim($student->email));
             }
 
+            if ($student->batch) {
+                $student->batch = strtoupper(trim($student->batch));
+            }
+
             if (! $student->matric_number) {
                 $program = Program::find($student->program_id);
                 $institution = Institution::find($student->institution_id);
                 $instAcronym = $institution ? ($institution->acronym ?? 'CMS') : 'CMS';
                 $progAcronym = $program ? ($program->acronym ?? 'STD') : 'STD';
                 $year = $student->admission_year;
+                $batch = $student->batch ?: null;
 
                 $count = static::where('institution_id', $student->institution_id)
                     ->where('program_id', $student->program_id)
                     ->where('admission_year', $year)
+                    ->when($batch && $batch !== 'A',
+                        fn ($q) => $q->where('batch', $batch),
+                        fn ($q) => $q->where(fn ($sq) => $sq->whereNull('batch')->orWhere('batch', 'A'))
+                    )
                     ->count() + 1;
 
                 do {
-                    $matric = strtoupper(sprintf('%s/%s/%s/%03d', $instAcronym, $progAcronym, $year, $count));
+                    if ($batch && $batch !== 'A') {
+                        $matric = strtoupper(sprintf('%s/%s/%s/%03d/%s', $instAcronym, $progAcronym, $year, $count, $batch));
+                    } else {
+                        $matric = strtoupper(sprintf('%s/%s/%s/%03d', $instAcronym, $progAcronym, $year, $count));
+                    }
                     $count++;
                 } while (static::where('matric_number', $matric)->exists());
 
@@ -51,6 +64,9 @@ class Student extends Model
         static::updating(function ($student) {
             if ($student->email) {
                 $student->email = strtolower(trim($student->email));
+            }
+            if ($student->batch) {
+                $student->batch = strtoupper(trim($student->batch));
             }
         });
 
@@ -130,6 +146,7 @@ class Student extends Model
         'subject_chemistry',
         'subject_physics',
         'admission_year',
+        'batch',
         'entry_level',
         'status',
         'photo_path',

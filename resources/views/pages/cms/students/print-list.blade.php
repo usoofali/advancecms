@@ -19,6 +19,8 @@ new #[Layout('layouts.guest')] #[Title('Print Student List')] class extends Comp
 
     public $level;
 
+    public $batch;
+
     public $status;
 
     public string $search = '';
@@ -31,6 +33,7 @@ new #[Layout('layouts.guest')] #[Title('Print Student List')] class extends Comp
         $this->department_id = request('department_id');
         $this->program_id = request('program_id');
         $this->level = request('level');
+        $this->batch = request('batch');
         $this->status = request('status');
         $this->search = request('search', '');
 
@@ -68,6 +71,13 @@ new #[Layout('layouts.guest')] #[Title('Print Student List')] class extends Comp
 
                 return $q->where('entry_level', $this->level);
             })
+            ->when($this->batch, function ($q) {
+                if ($this->batch === 'A') {
+                    $q->where(fn ($sq) => $sq->where('batch', 'A')->orWhereNull('batch'));
+                } else {
+                    $q->where('batch', $this->batch);
+                }
+            })
             ->when($this->status, fn ($q) => $q->where('status', $this->status))
             ->when($this->search, function ($q) {
                 $q->where(function ($sq) {
@@ -94,6 +104,9 @@ new #[Layout('layouts.guest')] #[Title('Print Student List')] class extends Comp
         }
         if ($this->level) {
             $parts[] = $this->level === 'alumni' ? 'Alumni (>300 Level)' : 'Level '.$this->level;
+        }
+        if ($this->batch) {
+            $parts[] = 'Batch '.$this->batch;
         }
         if ($this->status) {
             $parts[] = ucfirst($this->status);
@@ -127,6 +140,7 @@ new #[Layout('layouts.guest')] #[Title('Print Student List')] class extends Comp
                 <th class="border border-gray-300 px-3 py-2 text-left">Full Name</th>
                 <th class="border border-gray-300 px-3 py-2 text-left">Program</th>
                 <th class="border border-gray-300 px-3 py-2 text-left">Level</th>
+                <th class="border border-gray-300 px-3 py-2 text-left">Batch</th>
                 <th class="border border-gray-300 px-3 py-2 text-left">Status</th>
             </tr>
         </thead>
@@ -142,6 +156,7 @@ new #[Layout('layouts.guest')] #[Title('Print Student List')] class extends Comp
                         @php $activeSession = \App\Models\AcademicSession::where('status', 'active')->first(); @endphp
                         {{ $activeSession ? $student->currentLevel($activeSession) : $student->entry_level }}L
                     </td>
+                    <td class="border border-gray-300 px-3 py-2 uppercase font-medium">{{ $student->batch ? 'Batch ' . $student->batch : '-' }}</td>
                     <td class="border border-gray-300 px-3 py-2 uppercase">{{ $student->status }}</td>
                 </tr>
             @endforeach

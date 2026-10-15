@@ -27,6 +27,8 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
 
     public $filterLevel = '';
 
+    public $filterBatch = '';
+
     public $filterStatus = '';
 
     public int|string|null $deletingId = null;
@@ -103,6 +105,11 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
     }
 
     public function updatedFilterLevel(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatedFilterBatch(): void
     {
         $this->resetPage();
     }
@@ -209,8 +216,9 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
             ->when($this->filterProgram, fn($q) => $q->where('program_id', $this->filterProgram))
             ->whereHas('program', function ($pq) use ($activeSession) {
                 if ($activeSession) {
-                    $pq->whereRaw("students.entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS SIGNED) - CAST(students.admission_year AS SIGNED)) * 100 <= programs.duration_years * 100", [
-                        $activeSession->name,
+                    $startYear = (int) explode('/', $activeSession->name)[0];
+                    $pq->whereRaw("students.entry_level + (CAST(? AS SIGNED) - CAST(students.admission_year AS SIGNED)) * 100 <= programs.duration_years * 100", [
+                        $startYear,
                     ]);
                 } else {
                     $pq->whereRaw("students.entry_level <= programs.duration_years * 100");
@@ -218,13 +226,22 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
             })
             ->when($this->filterLevel, function ($q) use ($activeSession) {
                 if ($activeSession) {
-                    return $q->whereRaw("entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS SIGNED) - CAST(admission_year AS SIGNED)) * 100 = ?", [
-                        $activeSession->name,
+                    $startYear = (int) explode('/', $activeSession->name)[0];
+
+                    return $q->whereRaw("entry_level + (CAST(? AS SIGNED) - CAST(admission_year AS SIGNED)) * 100 = ?", [
+                        $startYear,
                         $this->filterLevel,
                     ]);
                 }
 
                 return $q->where('entry_level', $this->filterLevel);
+            })
+            ->when($this->filterBatch, function ($q) {
+                if ($this->filterBatch === 'A') {
+                    $q->where(fn ($sq) => $sq->where('batch', 'A')->orWhereNull('batch'));
+                } else {
+                    $q->where('batch', $this->filterBatch);
+                }
             })
             ->when($this->filterStatus, fn($q) => $q->where('status', $this->filterStatus))
             ->when($this->search, function ($q) {
@@ -262,6 +279,8 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
                         $activeFilters[] = \App\Models\Program::find($filterProgram)?->name;
                     if ($filterLevel)
                         $activeFilters[] = "Level " . $filterLevel;
+                    if ($filterBatch)
+                        $activeFilters[] = "Batch " . $filterBatch;
                     if ($filterStatus)
                         $activeFilters[] = ucfirst($filterStatus);
                     $filterText = !empty($activeFilters) ? implode(' / ', $activeFilters) : __('All student records');
@@ -275,6 +294,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
                 'department_id' => $filterDepartment,
                 'program_id' => $filterProgram,
                 'level' => $filterLevel,
+                'batch' => $filterBatch,
                 'status' => $filterStatus,
                 'search' => $search
             ])">
@@ -292,7 +312,7 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
     </div>
 
     <div
-        class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 @if(auth()->user()->hasRole('Super Admin')) xl:grid-cols-6 @elseif($isHod) xl:grid-cols-4 @else xl:grid-cols-5 @endif gap-4">
+        class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 @if(auth()->user()->hasRole('Super Admin')) xl:grid-cols-7 @elseif($isHod) xl:grid-cols-5 @else xl:grid-cols-6 @endif gap-4">
         <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass"
             :placeholder="__('Search students...')" />
 
@@ -334,6 +354,16 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
             <flux:select.option value="">{{ __('All Levels') }}</flux:select.option>
             @foreach([100, 200, 300] as $lvl)
                 <flux:select.option :value="$lvl">{{ $lvl }}</flux:select.option>
+            @endforeach
+        </flux:select>
+
+        @php
+            $batchOptions = $activeSession?->has_batches ? $activeSession->getBatchesList() : ['A', 'B', 'C'];
+        @endphp
+        <flux:select wire:model.live="filterBatch" :placeholder="__('All Batches')">
+            <flux:select.option value="">{{ __('All Batches') }}</flux:select.option>
+            @foreach($batchOptions as $b)
+                <flux:select.option :value="$b">{{ __('Batch ') . $b . ($b === 'A' ? ' (' . __('Default') . ')' : '') }}</flux:select.option>
             @endforeach
         </flux:select>
 
@@ -394,7 +424,12 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
                         </div>
                     </flux:table.cell>
                     <flux:table.cell class="text-zinc-600 dark:text-zinc-400 font-mono">
-                        {{ $activeSession ? $student->currentLevel($activeSession) : $student->entry_level }}L
+                        <div>{{ $activeSession ? $student->currentLevel($activeSession) : $student->entry_level }}L</div>
+                        @if ($student->batch)
+                            <flux:badge size="xs" color="sky" class="mt-0.5">
+                                {{ __('Batch ') . $student->batch }}
+                            </flux:badge>
+                        @endif
                     </flux:table.cell>
                     <flux:table.cell>
                         <flux:badge :color="match($student->status) {

@@ -37,6 +37,8 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component {
 
     public int|string $session_id = '';
 
+    public string $batch = '';
+
     public int $entry_level = 100;
 
     public string $status = 'active';
@@ -47,6 +49,8 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component {
 
     public string $successMatricNumber = '';
 
+    public string $successBatch = '';
+
     public function updatedInstitutionId(): void
     {
         $this->department_id = '';
@@ -56,6 +60,21 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component {
     public function updatedDepartmentId(): void
     {
         $this->program_id = '';
+    }
+
+    public function updatedSessionId(): void
+    {
+        if ($this->session_id) {
+            $session = \App\Models\AcademicSession::find($this->session_id);
+            if ($session && $session->has_batches) {
+                $batches = $session->getBatchesList();
+                $this->batch = $batches[0] ?? 'A';
+            } else {
+                $this->batch = '';
+            }
+        } else {
+            $this->batch = '';
+        }
     }
 
     public function mount(): void
@@ -97,6 +116,15 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component {
         $validated['admission_year'] = (int) explode('/', $session->name)[0];
         unset($validated['session_id']);
 
+        if ($session && $session->has_batches) {
+            $this->validate([
+                'batch' => ['required', 'string', 'max:10'],
+            ]);
+            $validated['batch'] = $this->batch;
+        } else {
+            $validated['batch'] = null;
+        }
+
         $validated['date_of_birth'] = $validated['date_of_birth'] ?: null;
         $validated['email'] = $validated['email'] ?: null;
         $validated['phone'] = $validated['phone'] ?: null;
@@ -109,6 +137,7 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component {
 
         $this->successStudentName = $student->first_name . ' ' . $student->last_name;
         $this->successMatricNumber = $student->matric_number;
+        $this->successBatch = $student->batch ?? '';
 
         $this->js('$flux.modal("success-modal").show()');
     }
@@ -179,13 +208,27 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component {
                     @endif
                 </flux:select>
 
-                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    <flux:select wire:model="session_id" :label="__('Admission Session')" required>
+                @php
+                    $selectedSession = $session_id ? \App\Models\AcademicSession::find($session_id) : null;
+                    $sessionBatches = $selectedSession?->has_batches ? $selectedSession->getBatchesList() : [];
+                @endphp
+
+                <div class="grid grid-cols-1 gap-6 {{ !empty($sessionBatches) ? 'sm:grid-cols-3' : 'sm:grid-cols-2' }}">
+                    <flux:select wire:model.live="session_id" :label="__('Admission Session')" required>
                         <flux:select.option value="">{{ __('Select session...') }}</flux:select.option>
                         @foreach (\App\Models\AcademicSession::orderByDesc('name')->get() as $session)
                             <flux:select.option :value="$session->id">{{ $session->name }}</flux:select.option>
                         @endforeach
                     </flux:select>
+
+                    @if (!empty($sessionBatches))
+                        <flux:select wire:model="batch" :label="__('Admission Batch')" required>
+                            @foreach ($sessionBatches as $b)
+                                <flux:select.option :value="$b">{{ __('Batch ') . $b . ($b === 'A' ? ' (' . __('Default') . ')' : '') }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                    @endif
+
                     <flux:select wire:model="entry_level" :label="__('Entry Level')">
                         <flux:select.option value="100">100</flux:select.option>
                         <flux:select.option value="200">200</flux:select.option>
@@ -267,6 +310,14 @@ new #[Layout('layouts.app')] #[Title('Add Student')] class extends Component {
                     <span
                         class="text-sm font-semibold text-zinc-900 dark:text-zinc-100 block mt-0.5">{{ $successStudentName }}</span>
                 </div>
+                @if ($successBatch)
+                    <div class="border-t border-zinc-200 dark:border-zinc-700/60 pt-2 mt-2 break-words">
+                        <span
+                            class="text-xs text-zinc-500 font-medium uppercase tracking-wider block">{{ __('Admission Batch') }}</span>
+                        <span
+                            class="text-sm font-semibold text-zinc-900 dark:text-zinc-100 block mt-0.5">{{ __('Batch ') . $successBatch }}</span>
+                    </div>
+                @endif
                 <div class="border-t border-zinc-200 dark:border-zinc-700/60 pt-2 mt-2 break-words">
                     <span
                         class="text-xs text-zinc-500 font-medium uppercase tracking-wider block">{{ __('Matriculation Number') }}</span>

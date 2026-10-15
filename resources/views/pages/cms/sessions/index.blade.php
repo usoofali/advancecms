@@ -12,8 +12,13 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
     public string $start_date = '';
     public string $end_date = '';
     public bool $should_be_active = true;
+    public bool $has_batches = false;
+    public string $batches_count = '2';
     public int|string|null $deletingId = null;
     public int|string|null $togglingId = null;
+    public int|string|null $editingBatchesId = null;
+    public bool $edit_has_batches = false;
+    public string $edit_batches_count = '2';
 
     public function mount(): void
     {
@@ -47,6 +52,8 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
             ],
             'start_date'       => ['nullable', 'date'],
             'end_date'         => ['nullable', 'date', 'after_or_equal:start_date'],
+            'has_batches'      => ['boolean'],
+            'batches_count'    => ['nullable', 'in:2,3,4'],
         ]);
 
         // Only one session can be active at a time
@@ -54,22 +61,83 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
             AcademicSession::where('status', 'active')->update(['status' => 'closed']);
         }
 
+        $batches = null;
+        if ($this->has_batches) {
+            $count = max(2, min(5, (int) $this->batches_count));
+            $letters = ['A', 'B', 'C', 'D', 'E'];
+            $batches = array_slice($letters, 0, $count);
+        }
+
         $session = AcademicSession::create([
-            'name'       => $this->new_session_name,
-            'start_date' => $this->start_date ?: null,
-            'end_date'   => $this->end_date ?: null,
-            'status'     => 'active',
+            'name'        => $this->new_session_name,
+            'start_date'  => $this->start_date ?: null,
+            'end_date'    => $this->end_date ?: null,
+            'status'      => 'active',
+            'has_batches' => $this->has_batches,
+            'batches'     => $batches,
         ]);
 
         // Auto-create semesters for the session
         Semester::create(['academic_session_id' => $session->id, 'name' => 'first']);
         Semester::create(['academic_session_id' => $session->id, 'name' => 'second']);
 
-        $this->reset(['new_session_name', 'start_date', 'end_date']);
+        $this->reset(['new_session_name', 'start_date', 'end_date', 'has_batches', 'batches_count']);
         $this->dispatch('notify', [
             'type' => 'success',
             'message' => 'Academic session and semesters created successfully.',
         ]);
+    }
+
+    public function openEditBatches(int $sessionId): void
+    {
+        Gate::authorize('academic_sessions.edit');
+
+        if (auth()->user()->institution_id) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $session = AcademicSession::find($sessionId);
+        if ($session) {
+            $this->editingBatchesId = $session->id;
+            $this->edit_has_batches = (bool) $session->has_batches;
+            $this->edit_batches_count = (string) (is_array($session->batches) ? count($session->batches) : 2);
+        }
+    }
+
+    public function saveBatches(): void
+    {
+        Gate::authorize('academic_sessions.edit');
+
+        if (auth()->user()->institution_id) {
+            abort(403, 'Unauthorized.');
+        }
+
+        if (! $this->editingBatchesId) {
+            return;
+        }
+
+        $session = AcademicSession::find($this->editingBatchesId);
+        if ($session) {
+            $batches = null;
+            if ($this->edit_has_batches) {
+                $count = max(2, min(5, (int) $this->edit_batches_count));
+                $letters = ['A', 'B', 'C', 'D', 'E'];
+                $batches = array_slice($letters, 0, $count);
+            }
+
+            $session->update([
+                'has_batches' => $this->edit_has_batches,
+                'batches' => $batches,
+            ]);
+
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'message' => 'Session batches updated successfully.',
+            ]);
+        }
+
+        $this->editingBatchesId = null;
+        $this->js('$flux.modal("edit-session-batches").close()');
     }
 
     public function confirmToggleStatus(): void
@@ -176,6 +244,18 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
                             <flux:input wire:model="start_date" :label="__('Start Date')" type="date" />
                             <flux:input wire:model="end_date" :label="__('End Date')" type="date" />
                         </div>
+
+                        <div class="space-y-3 rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 bg-zinc-50 dark:bg-zinc-800/40">
+                            <flux:checkbox wire:model.live="has_batches" :label="__('Enable Multiple Batches')" :description="__('Allow admissions in Batch A, Batch B, etc.')" />
+
+                            @if ($has_batches)
+                                <flux:select wire:model="batches_count" :label="__('Number of Batches')">
+                                    <flux:select.option value="2">{{ __('2 Batches (Batch A & B)') }}</flux:select.option>
+                                    <flux:select.option value="3">{{ __('3 Batches (Batch A, B & C)') }}</flux:select.option>
+                                    <flux:select.option value="4">{{ __('4 Batches (Batch A, B, C & D)') }}</flux:select.option>
+                                </flux:select>
+                            @endif
+                        </div>
  
                         <flux:button type="submit" variant="primary" class="w-full">
                             {{ __('Create Session & Semesters') }}
@@ -205,7 +285,12 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
                             @forelse ($sessions as $session)
                                 <flux:table.row :wire:key="$session->id">
                                     <flux:table.cell class="font-medium text-zinc-900 dark:text-zinc-100">
-                                        {{ $session->name }}
+                                        <div>{{ $session->name }}</div>
+                                        @if ($session->has_batches)
+                                            <flux:badge color="sky" size="sm" class="mt-1">
+                                                {{ __('Batches: ') . implode(', ', $session->getBatchesList()) }}
+                                            </flux:badge>
+                                        @endif
                                     </flux:table.cell>
                                     <flux:table.cell class="text-sm text-zinc-600 dark:text-zinc-400">
                                         @if ($session->start_date)
@@ -225,6 +310,8 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
                                         <flux:table.cell align="right">
                                             <div class="flex items-center justify-end gap-2">
                                                 @can('academic_sessions.edit')
+                                                <flux:button size="sm" variant="ghost" icon="squares-2x2" title="{{ __('Configure Batches') }}"
+                                                    x-on:click="$wire.openEditBatches({{ $session->id }}); $flux.modal('edit-session-batches').show()" />
                                                 <flux:button size="sm" variant="ghost" :icon="$session->status === 'active' ? 'lock-closed' : 'lock-open'" 
                                                     x-on:click="$wire.togglingId = {{ $session->id }}; $flux.modal('toggle-session-status').show()" />
                                                 @endcan
@@ -252,7 +339,14 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
                     @forelse ($sessions as $session)
                         <flux:card class="p-4" wire:key="mobile-{{ $session->id }}">
                             <div class="flex items-center justify-between mb-3">
-                                <flux:heading size="md">{{ $session->name }}</flux:heading>
+                                <div>
+                                    <flux:heading size="md">{{ $session->name }}</flux:heading>
+                                    @if ($session->has_batches)
+                                        <flux:badge color="sky" size="sm" class="mt-1">
+                                            {{ __('Batches: ') . implode(', ', $session->getBatchesList()) }}
+                                        </flux:badge>
+                                    @endif
+                                </div>
                                 <flux:badge :color="$session->status === 'active' ? 'green' : 'zinc'" size="sm">
                                     {{ ucfirst($session->status) }}
                                 </flux:badge>
@@ -272,6 +366,10 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
                                 @if (!auth()->user()->institution_id)
                                     <div class="flex items-center justify-end gap-3 pt-3 border-t border-zinc-100 dark:border-zinc-700">
                                         @can('academic_sessions.edit')
+                                        <flux:button size="sm" variant="ghost" icon="squares-2x2" 
+                                            x-on:click="$wire.openEditBatches({{ $session->id }}); $flux.modal('edit-session-batches').show()">
+                                            {{ __('Batches') }}
+                                        </flux:button>
                                         <flux:button size="sm" variant="ghost" :icon="$session->status === 'active' ? 'lock-closed' : 'lock-open'" 
                                             x-on:click="$wire.togglingId = {{ $session->id }}; $flux.modal('toggle-session-status').show()">
                                             {{ $session->status === 'active' ? __('Close') : __('Activate') }}
@@ -328,6 +426,37 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
                         <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
                     </flux:modal.close>
                     <flux:button type="submit" variant="primary">{{ __('Confirm Change') }}</flux:button>
+                </div>
+            </form>
+        </flux:modal>
+
+        <flux:modal name="edit-session-batches" variant="filled" class="min-w-[22rem]">
+            <form wire:submit="saveBatches" class="space-y-6">
+                <div>
+                    <flux:heading size="lg">{{ __('Configure Session Batches') }}</flux:heading>
+                    <flux:subheading>
+                        {{ __('Enable or disable student admission batches (e.g. Batch A, Batch B) for this academic session.') }}
+                    </flux:subheading>
+                </div>
+
+                <div class="space-y-4">
+                    <flux:checkbox wire:model.live="edit_has_batches" :label="__('Enable Multiple Batches')" :description="__('Allow admissions in Batch A, Batch B, etc.')" />
+
+                    @if ($edit_has_batches)
+                        <flux:select wire:model="edit_batches_count" :label="__('Number of Batches')">
+                            <flux:select.option value="2">{{ __('2 Batches (Batch A & B)') }}</flux:select.option>
+                            <flux:select.option value="3">{{ __('3 Batches (Batch A, B & C)') }}</flux:select.option>
+                            <flux:select.option value="4">{{ __('4 Batches (Batch A, B, C & D)') }}</flux:select.option>
+                        </flux:select>
+                    @endif
+                </div>
+
+                <div class="flex gap-2">
+                    <flux:spacer />
+                    <flux:modal.close>
+                        <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                    </flux:modal.close>
+                    <flux:button type="submit" variant="primary">{{ __('Save Changes') }}</flux:button>
                 </div>
             </form>
         </flux:modal>

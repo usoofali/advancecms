@@ -116,6 +116,7 @@ class StudentsImport
                             'email' => trim($row['email']),
                             'phone' => ! empty($row['phone']) ? trim($row['phone']) : null,
                             'admission_year' => (int) $row['admission_year'],
+                            'batch' => ! empty($row['batch']) ? strtoupper(trim($row['batch'])) : null,
                             'entry_level' => (int) $row['entry_level'],
                             'status' => ! empty($row['status']) ? strtolower(trim($row['status'])) : 'active',
                         ]);

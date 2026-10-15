@@ -35,6 +35,7 @@ class StudentsExport
                 'program' => $s->program?->name,
                 'program_acronym' => $s->program?->acronym,
                 'admission_year' => $s->admission_year,
+                'batch' => $s->batch,
                 'entry_level' => $s->entry_level,
                 'status' => $s->status,
             ])->all();
@@ -44,7 +45,7 @@ class StudentsExport
     {
         return [
             'matric_number', 'first_name', 'last_name', 'gender', 'date_of_birth',
-            'email', 'phone', 'program', 'program_acronym', 'admission_year', 'entry_level', 'status',
+            'email', 'phone', 'program', 'program_acronym', 'admission_year', 'batch', 'entry_level', 'status',
         ];
     }
 

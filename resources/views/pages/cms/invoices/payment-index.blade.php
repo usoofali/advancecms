@@ -4,6 +4,9 @@ use App\Mail\PaymentApproved;
 use App\Mail\PaymentRejected;
 use App\Models\Payment;
 use App\Models\Receipt;
+use App\Services\ActivityLogger;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
@@ -25,6 +28,8 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
     public ?int $approvingPaymentId = null;
 
     public ?int $rejectingPaymentId = null;
+
+    public ?int $cancellingPaymentId = null;
 
     public function mount(): void
     {
@@ -68,7 +73,7 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
                         });
                 });
             })
-            ->with(['studentInvoice.student', 'studentInvoice.invoice', 'receipt'])
+            ->with(['studentInvoice.student', 'studentInvoice.applicant', 'studentInvoice.invoice', 'receipt'])
             ->latest()
             ->paginate(20);
     }
@@ -135,7 +140,7 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
         $payment->load(['studentInvoice.student', 'studentInvoice.invoice', 'receipt']);
 
         // Send Email Notification
-        if ($payment->studentInvoice->student->email) {
+        if ($payment->studentInvoice?->student?->email) {
             Mail::to($payment->studentInvoice->student->email)->send(new PaymentApproved($payment));
         }
 
@@ -173,7 +178,7 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
         $payment->load(['studentInvoice.student', 'studentInvoice.invoice']);
 
         // Send Email Notification
-        if ($payment->studentInvoice->student->email) {
+        if ($payment->studentInvoice?->student?->email) {
             Mail::to($payment->studentInvoice->student->email)->send(new PaymentRejected($payment));
         }
 
@@ -183,6 +188,81 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
         $this->dispatch('notify', [
             'type' => 'success',
             'message' => 'Payment rejected.',
+        ]);
+    }
+
+    public function confirmCancel($id): void
+    {
+        $this->cancellingPaymentId = $id;
+        $this->js('$flux.modal("confirm-cancellation").show()');
+    }
+
+    public function cancelPayment(): void
+    {
+        Gate::authorize('payments.verify');
+
+        $payment = $this->paymentQueryForCurrentUser()
+            ->whereKey($this->cancellingPaymentId)
+            ->where('status', 'success')
+            ->first();
+
+        if (! $payment) {
+            return;
+        }
+
+        DB::transaction(function () use ($payment) {
+            $payment->update(['status' => 'pending']);
+
+            if ($payment->receipt) {
+                $payment->receipt->delete();
+            }
+
+            $studentInvoice = $payment->studentInvoice;
+            if ($studentInvoice) {
+                $successfulPaymentsTotal = (float) $studentInvoice->payments()
+                    ->where('status', 'success')
+                    ->sum('amount_paid');
+
+                $newBalance = max(0, (float) $studentInvoice->total_amount - $successfulPaymentsTotal);
+
+                if ($successfulPaymentsTotal >= (float) $studentInvoice->total_amount && (float) $studentInvoice->total_amount > 0) {
+                    $invoiceStatus = 'paid';
+                } elseif ($successfulPaymentsTotal > 0) {
+                    $invoiceStatus = 'partial';
+                } else {
+                    $invoiceStatus = 'pending';
+                }
+
+                $studentInvoice->update([
+                    'amount_paid' => $successfulPaymentsTotal,
+                    'balance' => $newBalance,
+                    'status' => $invoiceStatus,
+                ]);
+            }
+
+            ActivityLogger::log(
+                action: 'cancelled',
+                module: 'Payments',
+                description: "Cancelled payment {$payment->reference} and reverted status from success to pending",
+                subject: $payment,
+                subjectLabel: $payment->reference,
+                properties: [
+                    'payment_id' => $payment->id,
+                    'reference' => $payment->reference,
+                    'amount' => $payment->amount_paid,
+                    'student_invoice_id' => $payment->student_invoice_id,
+                    'previous_status' => 'success',
+                    'new_status' => 'pending',
+                ]
+            );
+        });
+
+        $this->cancellingPaymentId = null;
+        $this->js('$flux.modal("confirm-cancellation").close()');
+
+        $this->dispatch('notify', [
+            'type' => 'success',
+            'message' => 'Payment cancelled and reverted to pending successfully.',
         ]);
     }
 };
@@ -248,10 +328,10 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
                         <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
                             <td class="py-4 px-4">
                                 <flux:text weight="medium" class="text-zinc-900 dark:text-white">
-                                    {{ $payment->studentInvoice?->student?->full_name }}
+                                    {{ $payment->studentInvoice?->student?->full_name ?? $payment->studentInvoice?->applicant?->full_name }}
                                 </flux:text>
                                 <flux:text size="sm" class="text-zinc-500">
-                                    {{ $payment->studentInvoice?->student?->matric_number }}
+                                    {{ $payment->studentInvoice?->student?->matric_number ?? $payment->studentInvoice?->applicant?->application_number }}
                                 </flux:text>
                             </td>
                             <td class="py-4 px-4">
@@ -281,11 +361,17 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
                                                 class="text-red-600 hover:text-red-700">Reject</flux:button>
                                         @endcan
                                     </div>
-                                @elseif($payment->status === 'success' && $payment->receipt)
-                                    <div class="flex items-center justify-end">
-                                        <flux:button variant="ghost" size="sm" icon="printer"
-                                            href="{{ route('cms.invoices.receipt.print', $payment->receipt->receipt_number) }}"
-                                            target="_blank" class="text-blue-600 hover:text-blue-700">Print Receipt</flux:button>
+                                @elseif($payment->status === 'success')
+                                    <div class="flex items-center justify-end gap-2">
+                                        @if($payment->receipt)
+                                            <flux:button variant="ghost" size="sm" icon="printer"
+                                                href="{{ route('cms.invoices.receipt.print', $payment->receipt->receipt_number) }}"
+                                                target="_blank" class="text-blue-600 hover:text-blue-700">Print Receipt</flux:button>
+                                        @endif
+                                        @can('payments.verify')
+                                            <flux:button variant="subtle" size="sm" wire:click="confirmCancel({{ $payment->id }})"
+                                                class="text-amber-600 hover:text-amber-700">Cancel</flux:button>
+                                        @endcan
                                     </div>
                                 @endif
                             </td>
@@ -336,6 +422,23 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
                     <flux:button variant="ghost">Cancel</flux:button>
                 </flux:modal.close>
                 <flux:button variant="danger" wire:click="reject">Confirm Rejection</flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    <!-- Cancellation Confirmation Modal -->
+    <flux:modal name="confirm-cancellation" class="min-w-[400px]">
+        <div class="space-y-6">
+            <div>
+                <flux:heading size="lg">Cancel Payment?</flux:heading>
+                <flux:subheading>Are you sure you want to cancel this payment? It will be reverted from success to pending, the student's invoice will be updated, and this action will be recorded in the activity log.</flux:subheading>
+            </div>
+
+            <div class="flex items-center justify-end gap-3">
+                <flux:modal.close>
+                    <flux:button variant="ghost">Close</flux:button>
+                </flux:modal.close>
+                <flux:button variant="danger" wire:click="cancelPayment">Confirm Cancellation</flux:button>
             </div>
         </div>
     </flux:modal>

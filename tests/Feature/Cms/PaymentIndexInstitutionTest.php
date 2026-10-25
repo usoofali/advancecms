@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\AcademicSession;
+use App\Models\ActivityLog;
 use App\Models\Department;
 use App\Models\Institution;
 use App\Models\Invoice;
@@ -271,4 +272,152 @@ it('allows student to submit manual payment without reference in portal-invoices
 
     expect(Payment::where('student_invoice_id', $studentInvoice->id)->count())->toBe(1)
         ->and(Payment::where('student_invoice_id', $studentInvoice->id)->first()->reference)->toBe('CASH-REC-001');
+});
+
+it('cancels a successful payment reverting it to pending, removes receipt, updates student invoice status to pending when no other payments exist, and records activity log', function (): void {
+    $institution = Institution::factory()->create();
+    $payment = createPendingPaymentForInstitution($institution, 'REF-CANCEL-001');
+
+    $studentInvoice = $payment->studentInvoice;
+    $studentInvoice->update([
+        'total_amount' => 5000,
+        'amount_paid' => 5000,
+        'balance' => 0,
+        'status' => 'paid',
+    ]);
+
+    $payment->update([
+        'amount_paid' => 5000,
+        'status' => 'success',
+    ]);
+
+    $receipt = Receipt::create([
+        'institution_id' => $institution->id,
+        'payment_id' => $payment->id,
+        'receipt_number' => 'REC-CANCEL-001',
+        'issued_at' => now(),
+    ]);
+
+    $accountant = User::factory()->withRole('Accountant')->create([
+        'institution_id' => $institution->id,
+    ]);
+
+    $this->actingAs($accountant);
+
+    // Cancel the payment
+    Livewire::test('pages::cms.invoices.payment-index')
+        ->set('statusFilter', 'all')
+        ->assertSee('Cancel', false)
+        ->set('cancellingPaymentId', $payment->id)
+        ->call('cancelPayment')
+        ->assertDispatched('notify', fn ($name, $params) => ($params[0]['type'] ?? $params['type'] ?? null) === 'success');
+
+    // 1. Payment status reverted to pending
+    expect($payment->fresh()->status)->toBe('pending');
+
+    // 2. Receipt deleted
+    expect(Receipt::find($receipt->id))->toBeNull();
+
+    // 3. Student invoice status reverted to pending and balance restored
+    $freshInvoice = $studentInvoice->fresh();
+    expect($freshInvoice->status)->toBe('pending')
+        ->and((float) $freshInvoice->amount_paid)->toBe(0.0)
+        ->and((float) $freshInvoice->balance)->toBe(5000.0);
+
+    // 4. Activity log recorded
+    $log = ActivityLog::where('subject_type', Payment::class)
+        ->where('subject_id', $payment->id)
+        ->where('action', 'cancelled')
+        ->first();
+
+    expect($log)->not->toBeNull()
+        ->and($log->module)->toBe('Payments')
+        ->and($log->user_id)->toBe($accountant->id)
+        ->and($log->properties['previous_status'])->toBe('success')
+        ->and($log->properties['new_status'])->toBe('pending');
+});
+
+it('updates student invoice status to partial when another successful payment remains after cancellation', function (): void {
+    $institution = Institution::factory()->create();
+    $paymentA = createPendingPaymentForInstitution($institution, 'REF-MULTI-A');
+
+    $studentInvoice = $paymentA->studentInvoice;
+    $studentInvoice->update([
+        'total_amount' => 50000,
+        'amount_paid' => 50000,
+        'balance' => 0,
+        'status' => 'paid',
+    ]);
+
+    $paymentA->update([
+        'amount_paid' => 30000,
+        'status' => 'success',
+    ]);
+
+    $paymentB = Payment::create([
+        'institution_id' => $institution->id,
+        'student_invoice_id' => $studentInvoice->id,
+        'amount_paid' => 20000,
+        'reference' => 'REF-MULTI-B',
+        'status' => 'success',
+    ]);
+
+    Receipt::create([
+        'institution_id' => $institution->id,
+        'payment_id' => $paymentB->id,
+        'receipt_number' => 'REC-MULTI-B',
+        'issued_at' => now(),
+    ]);
+
+    $accountant = User::factory()->withRole('Accountant')->create([
+        'institution_id' => $institution->id,
+    ]);
+
+    $this->actingAs($accountant);
+
+    // Cancel Payment B
+    Livewire::test('pages::cms.invoices.payment-index')
+        ->set('statusFilter', 'all')
+        ->set('cancellingPaymentId', $paymentB->id)
+        ->call('cancelPayment')
+        ->assertDispatched('notify', fn ($name, $params) => ($params[0]['type'] ?? $params['type'] ?? null) === 'success');
+
+    expect($paymentB->fresh()->status)->toBe('pending');
+
+    // Student invoice should now be partial because paymentA (30,000) is still successful
+    $freshInvoice = $studentInvoice->fresh();
+    expect($freshInvoice->status)->toBe('partial')
+        ->and((float) $freshInvoice->amount_paid)->toBe(30000.0)
+        ->and((float) $freshInvoice->balance)->toBe(20000.0);
+});
+
+it('does not allow user without permission or from another institution to cancel a payment', function (): void {
+    $institutionA = Institution::factory()->create();
+    $institutionB = Institution::factory()->create();
+
+    $payment = createPendingPaymentForInstitution($institutionA, 'REF-AUTH-CANCEL');
+    $payment->update(['status' => 'success']);
+
+    // 1. User from different institution cannot cancel
+    $accountantB = User::factory()->withRole('Accountant')->create([
+        'institution_id' => $institutionB->id,
+    ]);
+
+    $this->actingAs($accountantB);
+
+    Livewire::test('pages::cms.invoices.payment-index')
+        ->set('cancellingPaymentId', $payment->id)
+        ->call('cancelPayment');
+
+    expect($payment->fresh()->status)->toBe('success');
+
+    // 2. User without payments permissions cannot access payment index
+    $studentUser = User::factory()->withRole('Student')->create([
+        'institution_id' => $institutionA->id,
+    ]);
+
+    $this->actingAs($studentUser);
+
+    $this->get(route('cms.invoices.payments'))
+        ->assertForbidden();
 });

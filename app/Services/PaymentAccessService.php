@@ -68,6 +68,34 @@ class PaymentAccessService
     }
 
     /**
+     * Get missing required invoices for accessing student placements (session-scoped).
+     * Returns an empty collection if access is granted.
+     */
+    public function getMissingInvoicesForPlacements(Student $student, AcademicSession $session): Collection
+    {
+        return $this->getMissingRequiredInvoices(
+            $student,
+            $session,
+            null,
+            'is_required_for_placements'
+        );
+    }
+
+    /**
+     * Get missing required invoices for accessing final year projects (session-scoped).
+     * Returns an empty collection if access is granted.
+     */
+    public function getMissingInvoicesForProjects(Student $student, AcademicSession $session): Collection
+    {
+        return $this->getMissingRequiredInvoices(
+            $student,
+            $session,
+            null,
+            'is_required_for_projects'
+        );
+    }
+
+    /**
      * Generic logic to retrieve missing required invoices based on a boolean flag.
      * When $semester is null, the query is session-scoped only (no semester filtering).
      */
@@ -108,6 +136,8 @@ class PaymentAccessService
                 'is_required_for_exams' => 'required_percent_for_exams',
                 'is_required_for_registration' => 'required_percent_for_registration',
                 'is_required_for_course_form' => 'required_percent_for_course_form',
+                'is_required_for_placements' => 'required_percent_for_placements',
+                'is_required_for_projects' => 'required_percent_for_projects',
                 default => null,
             };
 
@@ -134,7 +164,7 @@ class PaymentAccessService
             $totalAmount = (float) ($studentInvoice->total_amount > 0 ? $studentInvoice->total_amount : $invoice->total_amount);
             $amountPaid = (float) ($studentInvoice->amount_paid ?? 0);
 
-            $percentagePaid = $totalAmount > 0 ? ($amountPaid / $totalAmount) * 100.0 : 100.0;
+            $percentagePaid = $totalAmount > 0 ? ($amountPaid / $totalAmount) * 100.0 : 0.0;
 
             if ($percentagePaid < ($requiredPercent - 0.001)) {
                 $missingInvoices->push($invoice);

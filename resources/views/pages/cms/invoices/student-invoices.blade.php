@@ -495,8 +495,6 @@ new #[Layout('layouts.app')] #[Title('Manage Student Invoices')] class extends C
                     <flux:select.option value="200">200 Level</flux:select.option>
                     <flux:select.option value="300">300 Level</flux:select.option>
                     <flux:select.option value="400">400 Level</flux:select.option>
-                    <flux:select.option value="500">500 Level</flux:select.option>
-                    <flux:select.option value="600">600 Level</flux:select.option>
                 </flux:select>
                 <flux:error name="generationLevelTarget" />
             </flux:field>

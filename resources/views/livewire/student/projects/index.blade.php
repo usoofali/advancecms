@@ -1,15 +1,17 @@
 <?php
 
+use App\Models\ProjectMessage;
+use App\Models\ProjectSession;
+use App\Models\ProjectSubmission;
+use App\Models\ProjectTopic;
+use App\Models\Student;
+use App\Models\StudentProject;
+use App\Services\PaymentAccessService;
+use App\Services\StudentInvoiceService;
+use Flux\Flux;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
-use App\Models\Student;
-use App\Models\ProjectSession;
-use App\Models\StudentProject;
-use App\Models\ProjectTopic;
-use App\Models\ProjectSubmission;
-use App\Models\ProjectMessage;
-use Flux\Flux;
 
 new #[Layout('layouts.app')] class extends Component {
     use WithFileUploads;
@@ -32,6 +34,28 @@ new #[Layout('layouts.app')] class extends Component {
     // Chat Message Form
     public string $chat_message = '';
     public $chat_attachment = null;
+
+    protected function checkPaymentAccess(): bool
+    {
+        $user = auth()->user();
+        $student = Student::where('email', $user->email)->first();
+        if (! $student) {
+            return false;
+        }
+
+        $activeSession = ProjectSession::with('academicSession')
+            ->where('institution_id', $user->institution_id)
+            ->where('status', 'Active')
+            ->first();
+
+        if (! $activeSession?->academicSession) {
+            return true;
+        }
+
+        $missingTemplates = app(PaymentAccessService::class)->getMissingInvoicesForProjects($student, $activeSession->academicSession);
+
+        return $missingTemplates->isEmpty();
+    }
 
     public function mount(): void
     {
@@ -64,6 +88,11 @@ new #[Layout('layouts.app')] class extends Component {
 
     public function registerSelf(): void
     {
+        if (! $this->checkPaymentAccess()) {
+            Flux::toast('Project fee payment required before registering for academic project session.', variant: 'danger');
+            return;
+        }
+
         $user = auth()->user();
         $student = Student::where('email', $user->email)->first();
         if (! $student) {
@@ -90,6 +119,11 @@ new #[Layout('layouts.app')] class extends Component {
 
     public function submitTopics(): void
     {
+        if (! $this->checkPaymentAccess()) {
+            Flux::toast('Project fee payment required before submitting project topics.', variant: 'danger');
+            return;
+        }
+
         $this->validate([
             'topic_1' => 'required|string|max:255',
             'desc_1' => 'nullable|string',
@@ -143,6 +177,11 @@ new #[Layout('layouts.app')] class extends Component {
 
     public function uploadChapterSubmission(): void
     {
+        if (! $this->checkPaymentAccess()) {
+            Flux::toast('Project fee payment required before uploading chapter submissions.', variant: 'danger');
+            return;
+        }
+
         $this->validate([
             'selected_stage_id' => 'required|exists:project_session_stages,id',
             'submission_file' => 'required|file|mimes:pdf,doc,docx,zip,rar|max:15360',
@@ -184,6 +223,11 @@ new #[Layout('layouts.app')] class extends Component {
 
     public function sendMessage(): void
     {
+        if (! $this->checkPaymentAccess()) {
+            Flux::toast('Project fee payment required before sending supervisor messages.', variant: 'danger');
+            return;
+        }
+
         $this->validate([
             'chat_message' => 'required|string',
             'chat_attachment' => 'nullable|file|max:10240',
@@ -230,7 +274,7 @@ new #[Layout('layouts.app')] class extends Component {
             ->first();
     }
 
-    public function with(): array
+    public function with(PaymentAccessService $accessService, StudentInvoiceService $invoiceService): array
     {
         $user = auth()->user();
         $student = Student::with(['program', 'department'])->where('email', $user->email)->first();
@@ -244,7 +288,24 @@ new #[Layout('layouts.app')] class extends Component {
             ? StudentProject::checkEligibility($student, $activeSession->academicSession)
             : ['eligible' => false, 'reason' => 'No active project session or student record found.'];
 
-        $project = $this->getStudentProject();
+        $canAccess = true;
+        $missingInvoices = collect();
+
+        if ($student && $activeSession?->academicSession) {
+            $missingTemplates = $accessService->getMissingInvoicesForProjects($student, $activeSession->academicSession);
+            $canAccess = $missingTemplates->isEmpty();
+
+            if (! $canAccess) {
+                foreach ($missingTemplates as $template) {
+                    $inv = $invoiceService->materializeInvoice($student, $template);
+                    if ($inv) {
+                        $missingInvoices->push($inv);
+                    }
+                }
+            }
+        }
+
+        $project = ($canAccess) ? $this->getStudentProject() : null;
 
         if (! $this->selected_stage_id && $project?->current_stage_id) {
             $this->selected_stage_id = $project->current_stage_id;
@@ -252,7 +313,7 @@ new #[Layout('layouts.app')] class extends Component {
 
         $unreadCount = $project ? $project->unreadMessagesCountForUser(auth()->id()) : 0;
 
-        return compact('student', 'activeSession', 'eligibility', 'project', 'unreadCount');
+        return compact('student', 'activeSession', 'eligibility', 'project', 'unreadCount', 'canAccess', 'missingInvoices');
     }
 };
 ?>
@@ -289,6 +350,47 @@ new #[Layout('layouts.app')] class extends Component {
                 </div>
             </div>
         </div>
+    @elseif(! $canAccess)
+        {{-- Payment Required UI (Mirrors Exam Card Pattern) --}}
+        <flux:card class="border-red-200 bg-red-50/30 dark:bg-red-950/10 dark:border-red-900/50">
+            <div class="text-center py-10 px-6">
+                <div class="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <flux:icon.credit-card class="size-8 text-red-600 dark:text-red-400" />
+                </div>
+
+                <flux:heading size="xl" class="mb-2">{{ __('Project Fee Payment Required') }}</flux:heading>
+                <flux:subheading class="max-w-md mx-auto mb-8">
+                    {{ __('To register for academic project sessions, submit topic proposals, and upload chapter submissions, you must first complete the required project fee payment.') }}
+                </flux:subheading>
+
+                <div class="flex flex-col items-center gap-4">
+                    @if (isset($missingInvoices) && $missingInvoices->isNotEmpty())
+                        <div class="space-y-4 w-full max-w-sm mx-auto text-left">
+                            @foreach ($missingInvoices as $inv)
+                                <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm flex items-center justify-between">
+                                    <div>
+                                        <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                            {{ $inv->invoice->title }}
+                                        </div>
+                                        <div class="text-xs text-zinc-500 font-mono tracking-wider mt-1">
+                                            ₦{{ number_format($inv->balance, 2) }}
+                                        </div>
+                                    </div>
+                                    <flux:button href="{{ route('cms.students.portal-invoices', $inv->id) }}" variant="primary"
+                                        size="sm" icon="credit-card" class="shrink-0">
+                                        {{ __('Pay') }}
+                                    </flux:button>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+
+                <p class="mt-8 text-xs text-red-600 dark:text-red-400 font-medium">
+                    {{ __('Note: Payments are processed instantly. Your project workspace will be unlocked immediately after successful transaction.') }}
+                </p>
+            </div>
+        </flux:card>
     @elseif(!$project)
         <!-- Registration Action Card -->
         <div class="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 sm:p-8 text-center">

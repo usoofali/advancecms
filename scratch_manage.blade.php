@@ -1002,8 +1002,6 @@ new #[Layout('layouts.app')] class extends Component
                         <option value="200">200 Level</option>
                         <option value="300">300 Level</option>
                         <option value="400">400 Level</option>
-                        <option value="500">500 Level</option>
-                        <option value="600">600 Level</option>
                     </flux:select>
 
                     <flux:select wire:model="batch_placement_type_id" label="Placement Type" required>

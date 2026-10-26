@@ -27,6 +27,8 @@ class Invoice extends Model
 
     public const CATEGORY_PROJECT = 'project';
 
+    public const CATEGORY_PLACEMENT = 'placement';
+
     public const CATEGORY_REFRESHMENT = 'refreshment';
 
     public const CATEGORY_NATIONAL = 'national';
@@ -51,10 +53,14 @@ class Invoice extends Model
         'is_required_for_exams',
         'is_required_for_registration',
         'is_required_for_course_form',
+        'is_required_for_placements',
+        'is_required_for_projects',
         'required_percent_for_results',
         'required_percent_for_exams',
         'required_percent_for_registration',
         'required_percent_for_course_form',
+        'required_percent_for_placements',
+        'required_percent_for_projects',
         'account_name',
         'account_number',
         'bank_name',
@@ -109,10 +115,14 @@ class Invoice extends Model
             'is_required_for_exams' => 'boolean',
             'is_required_for_registration' => 'boolean',
             'is_required_for_course_form' => 'boolean',
+            'is_required_for_placements' => 'boolean',
+            'is_required_for_projects' => 'boolean',
             'required_percent_for_results' => 'integer',
             'required_percent_for_exams' => 'integer',
             'required_percent_for_registration' => 'integer',
             'required_percent_for_course_form' => 'integer',
+            'required_percent_for_placements' => 'integer',
+            'required_percent_for_projects' => 'integer',
         ];
     }
 

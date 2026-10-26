@@ -1,13 +1,17 @@
 <?php
 
+use App\Models\AcademicSession;
+use App\Models\DocumentTemplate;
+use App\Models\Organization;
+use App\Models\PlacementDocument;
+use App\Models\StudentPlacement;
+use App\Services\DocumentGenerationService;
+use App\Services\PaymentAccessService;
+use App\Services\StudentInvoiceService;
+use Flux\Flux;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
-use App\Models\StudentPlacement;
-use App\Models\PlacementDocument;
-use App\Models\Organization;
-use App\Models\DocumentTemplate;
-use App\Services\DocumentGenerationService;
 
 new #[Layout('layouts.app')] class extends Component {
     use WithFileUploads;
@@ -27,8 +31,30 @@ new #[Layout('layouts.app')] class extends Component {
     public $custom_city = '';
     public $custom_state = '';
 
+    protected function checkPaymentAccess(): bool
+    {
+        $student = auth()->user()?->student;
+        if (! $student) {
+            return false;
+        }
+
+        $session = AcademicSession::where('status', 'active')->first() ?? AcademicSession::latest()->first();
+        if (! $session) {
+            return true;
+        }
+
+        $missingTemplates = app(PaymentAccessService::class)->getMissingInvoicesForPlacements($student, $session);
+
+        return $missingTemplates->isEmpty();
+    }
+
     public function openSelectModal($placementId)
     {
+        if (! $this->checkPaymentAccess()) {
+            Flux::toast('Placement fee payment required before choosing place of posting.', variant: 'danger');
+            return;
+        }
+
         $student = auth()->user()?->student;
         if (! $student) return;
 
@@ -49,6 +75,11 @@ new #[Layout('layouts.app')] class extends Component {
 
     public function savePlaceSelection()
     {
+        if (! $this->checkPaymentAccess()) {
+            Flux::toast('Placement fee payment required before submitting place selection.', variant: 'danger');
+            return;
+        }
+
         $student = auth()->user()?->student;
         if (! $student || ! $this->placementToSelect || $this->placementToSelect->student_id !== $student->id) {
             Flux::toast('Unauthorized action.', variant: 'danger');
@@ -98,6 +129,11 @@ new #[Layout('layouts.app')] class extends Component {
 
     public function downloadDocument($placementId, $purpose, DocumentGenerationService $generator)
     {
+        if (! $this->checkPaymentAccess()) {
+            Flux::toast('Placement fee payment required before downloading placement documents.', variant: 'danger');
+            return;
+        }
+
         $student = auth()->user()?->student;
         if (! $student) return;
 
@@ -134,6 +170,11 @@ new #[Layout('layouts.app')] class extends Component {
 
     public function openUploadModal($placementId)
     {
+        if (! $this->checkPaymentAccess()) {
+            Flux::toast('Placement fee payment required before uploading documents.', variant: 'danger');
+            return;
+        }
+
         $student = auth()->user()?->student;
         if (! $student) return;
 
@@ -150,6 +191,11 @@ new #[Layout('layouts.app')] class extends Component {
 
     public function uploadDocument()
     {
+        if (! $this->checkPaymentAccess()) {
+            Flux::toast('Placement fee payment required before uploading documents.', variant: 'danger');
+            return;
+        }
+
         $student = auth()->user()?->student;
         if (! $student || ! $this->placementToUpload || $this->placementToUpload->student_id !== $student->id) {
             Flux::toast('Unauthorized action.', variant: 'danger');
@@ -184,16 +230,37 @@ new #[Layout('layouts.app')] class extends Component {
         $this->uploadModal = false;
     }
 
-    public function with(): array
+    public function with(PaymentAccessService $accessService, StudentInvoiceService $invoiceService): array
     {
         $student = auth()->user()?->student;
-        
+        $canAccess = true;
+        $missingInvoices = collect();
+
+        if ($student) {
+            $session = AcademicSession::where('status', 'active')->first() ?? AcademicSession::latest()->first();
+            if ($session) {
+                $missingTemplates = $accessService->getMissingInvoicesForPlacements($student, $session);
+                $canAccess = $missingTemplates->isEmpty();
+
+                if (! $canAccess) {
+                    foreach ($missingTemplates as $template) {
+                        $inv = $invoiceService->materializeInvoice($student, $template);
+                        if ($inv) {
+                            $missingInvoices->push($inv);
+                        }
+                    }
+                }
+            }
+        }
+
         return [
-            'placements' => $student ? StudentPlacement::with(['organization', 'placementType', 'generatedDocuments', 'placementDocuments'])
+            'canAccess' => $canAccess,
+            'missingInvoices' => $missingInvoices,
+            'placements' => ($student && $canAccess) ? StudentPlacement::with(['organization', 'placementType', 'generatedDocuments', 'placementDocuments'])
                 ->where('student_id', $student->id)
                 ->orderBy('created_at', 'desc')
                 ->get() : collect(),
-            'organizations' => Organization::orderBy('name')->get()
+            'organizations' => Organization::orderBy('name')->get(),
         ];
     }
 };
@@ -205,7 +272,48 @@ new #[Layout('layouts.app')] class extends Component {
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">View your industrial training and clinical postings, choose your place of posting, download letters, and upload acceptance forms.</p>
     </div>
 
-    @if($placements->isEmpty())
+    @if(! $canAccess)
+        {{-- Payment Required UI (Mirrors Exam Card Pattern) --}}
+        <flux:card class="border-red-200 bg-red-50/30 dark:bg-red-950/10 dark:border-red-900/50">
+            <div class="text-center py-10 px-6">
+                <div class="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <flux:icon.credit-card class="size-8 text-red-600 dark:text-red-400" />
+                </div>
+
+                <flux:heading size="xl" class="mb-2">{{ __('Placement / SIWES Fee Payment Required') }}</flux:heading>
+                <flux:subheading class="max-w-md mx-auto mb-8">
+                    {{ __('To choose your place of posting, download placement letters, and upload acceptance documents, you must first complete the required fee payment.') }}
+                </flux:subheading>
+
+                <div class="flex flex-col items-center gap-4">
+                    @if (isset($missingInvoices) && $missingInvoices->isNotEmpty())
+                        <div class="space-y-4 w-full max-w-sm mx-auto text-left">
+                            @foreach ($missingInvoices as $inv)
+                                <div class="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm flex items-center justify-between">
+                                    <div>
+                                        <div class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                                            {{ $inv->invoice->title }}
+                                        </div>
+                                        <div class="text-xs text-zinc-500 font-mono tracking-wider mt-1">
+                                            ₦{{ number_format($inv->balance, 2) }}
+                                        </div>
+                                    </div>
+                                    <flux:button href="{{ route('cms.students.portal-invoices', $inv->id) }}" variant="primary"
+                                        size="sm" icon="credit-card" class="shrink-0">
+                                        {{ __('Pay') }}
+                                    </flux:button>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+
+                <p class="mt-8 text-xs text-red-600 dark:text-red-400 font-medium">
+                    {{ __('Note: Payments are processed instantly. Your placement portal will be unlocked immediately after successful transaction.') }}
+                </p>
+            </div>
+        </flux:card>
+    @elseif($placements->isEmpty())
         <flux:card class="text-center py-12">
             <flux:icon.document-text class="w-12 h-12 mx-auto text-gray-400 mb-4" />
             <h3 class="text-lg font-medium text-gray-900 dark:text-white">No Placements Yet</h3>

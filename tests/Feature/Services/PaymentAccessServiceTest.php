@@ -135,3 +135,79 @@ test('it correctly evaluates allowable payment percentage threshold for access r
     expect($missingResults)->toHaveCount(1);
     expect($missingResults->first()->id)->toBe($invoiceResults->id);
 });
+
+test('it correctly evaluates payment threshold for placements and projects access', function () {
+    $institution = Institution::factory()->create();
+    $session = AcademicSession::factory()->create(['name' => '2025/2026']);
+
+    $department = Department::factory()->create(['institution_id' => $institution->id]);
+    $program = Program::factory()->create(['department_id' => $department->id, 'institution_id' => $institution->id]);
+
+    $student = Student::factory()->create([
+        'institution_id' => $institution->id,
+        'program_id' => $program->id,
+        'admission_year' => 2025,
+        'entry_level' => 100,
+    ]);
+
+    // 1. Placement Invoice: requires 60% payment
+    $invoicePlacement = Invoice::factory()->create([
+        'institution_id' => $institution->id,
+        'academic_session_id' => $session->id,
+        'target_type' => 'dept',
+        'department_id' => $department->id,
+        'is_required_for_placements' => true,
+        'required_percent_for_placements' => 60,
+        'status' => 'published',
+    ]);
+
+    // 2. Project Invoice: requires 50% payment
+    $invoiceProject = Invoice::factory()->create([
+        'institution_id' => $institution->id,
+        'academic_session_id' => $session->id,
+        'target_type' => 'dept',
+        'department_id' => $department->id,
+        'is_required_for_projects' => true,
+        'required_percent_for_projects' => 50,
+        'status' => 'published',
+    ]);
+
+    $service = app(PaymentAccessService::class);
+
+    // No student invoices recorded yet: both should be missing
+    expect($service->getMissingInvoicesForPlacements($student, $session))->toHaveCount(1)
+        ->and($service->getMissingInvoicesForProjects($student, $session))->toHaveCount(1);
+
+    // Student pays 50% on placement invoice (50% < 60% required) -> still missing
+    $studentInvPlacement = StudentInvoice::create([
+        'institution_id' => $institution->id,
+        'student_id' => $student->id,
+        'invoice_id' => $invoicePlacement->id,
+        'total_amount' => 10000,
+        'amount_paid' => 5000,
+        'balance' => 5000,
+        'status' => 'partial',
+    ]);
+
+    expect($service->getMissingInvoicesForPlacements($student, $session))->toHaveCount(1);
+
+    // Student tops up placement payment to 60% (6,000 / 10,000) -> now access granted
+    $studentInvPlacement->update([
+        'amount_paid' => 6000,
+        'balance' => 4000,
+    ]);
+    expect($service->getMissingInvoicesForPlacements($student, $session))->toBeEmpty();
+
+    // Student pays 50% on project invoice (50% meets 50% required) -> access granted
+    StudentInvoice::create([
+        'institution_id' => $institution->id,
+        'student_id' => $student->id,
+        'invoice_id' => $invoiceProject->id,
+        'total_amount' => 20000,
+        'amount_paid' => 10000,
+        'balance' => 10000,
+        'status' => 'partial',
+    ]);
+
+    expect($service->getMissingInvoicesForProjects($student, $session))->toBeEmpty();
+});

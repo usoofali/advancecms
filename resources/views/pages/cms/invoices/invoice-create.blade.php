@@ -30,11 +30,15 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
     public bool $is_required_for_exams = false;
     public bool $is_required_for_registration = false;
     public bool $is_required_for_course_form = false;
+    public bool $is_required_for_placements = false;
+    public bool $is_required_for_projects = false;
 
     public int $required_percent_for_results = 100;
     public int $required_percent_for_exams = 100;
     public int $required_percent_for_registration = 100;
     public int $required_percent_for_course_form = 100;
+    public int $required_percent_for_placements = 100;
+    public int $required_percent_for_projects = 100;
 
     public string $account_name = '';
     public string $account_number = '';
@@ -58,10 +62,14 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
             $this->is_required_for_exams = (bool) $invoice->is_required_for_exams;
             $this->is_required_for_registration = (bool) $invoice->is_required_for_registration;
             $this->is_required_for_course_form = (bool) $invoice->is_required_for_course_form;
+            $this->is_required_for_placements = (bool) $invoice->is_required_for_placements;
+            $this->is_required_for_projects = (bool) $invoice->is_required_for_projects;
             $this->required_percent_for_results = (int) ($invoice->required_percent_for_results ?? 100);
             $this->required_percent_for_exams = (int) ($invoice->required_percent_for_exams ?? 100);
             $this->required_percent_for_registration = (int) ($invoice->required_percent_for_registration ?? 100);
             $this->required_percent_for_course_form = (int) ($invoice->required_percent_for_course_form ?? 100);
+            $this->required_percent_for_placements = (int) ($invoice->required_percent_for_placements ?? 100);
+            $this->required_percent_for_projects = (int) ($invoice->required_percent_for_projects ?? 100);
             $this->category = $invoice->category ?? Invoice::CATEGORY_GENERAL;
             $this->semester_id = $invoice->semester_id;
             $this->account_name = $invoice->account_name ?? '';
@@ -184,6 +192,7 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
                     fn ($q) => $q->where('department_id', $this->department_id)
                 ),
             ],
+            'level' => ['nullable', Rule::in(['', '100', '200', '300', '400'])],
             'category' => 'required|string',
             'is_required_for_results' => 'boolean',
             'is_required_for_exams' => 'boolean',
@@ -223,7 +232,7 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
                 ->where(function ($q) {
                     $q->where('department_id', $this->department_id)
                         ->where('program_id', $this->program_id)
-                        ->where('level', $this->level);
+                        ->where('level', $this->level ?: null);
                 });
 
             if ($conflictQuery->exists()) {
@@ -245,10 +254,14 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
             'is_required_for_exams' => $this->is_required_for_exams,
             'is_required_for_registration' => $this->is_required_for_registration,
             'is_required_for_course_form' => $this->is_required_for_course_form,
+            'is_required_for_placements' => $this->is_required_for_placements,
+            'is_required_for_projects' => $this->is_required_for_projects,
             'required_percent_for_results' => (int) ($this->required_percent_for_results ?? 100),
             'required_percent_for_exams' => (int) ($this->required_percent_for_exams ?? 100),
             'required_percent_for_registration' => (int) ($this->required_percent_for_registration ?? 100),
             'required_percent_for_course_form' => (int) ($this->required_percent_for_course_form ?? 100),
+            'required_percent_for_placements' => (int) ($this->required_percent_for_placements ?? 100),
+            'required_percent_for_projects' => (int) ($this->required_percent_for_projects ?? 100),
             'category' => $this->category,
             'semester_id' => $this->semester_id ?: null,
             'account_name' => $this->account_name,
@@ -343,6 +356,7 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
                         <flux:select.option value="{{ Invoice::CATEGORY_INDEXING }}">Indexing Fee</flux:select.option>
                         <flux:select.option value="{{ Invoice::CATEGORY_PRACTICAL }}">Practical Fee</flux:select.option>
                         <flux:select.option value="{{ Invoice::CATEGORY_PROJECT }}">Project Fee</flux:select.option>
+                        <flux:select.option value="{{ Invoice::CATEGORY_PLACEMENT }}">Placement / SIWES Fee</flux:select.option>
                         <flux:select.option value="{{ Invoice::CATEGORY_REFRESHMENT }}">Refreshment Fee</flux:select.option>
                         <flux:select.option value="{{ Invoice::CATEGORY_NATIONAL }}">National Fee</flux:select.option>
                         <flux:select.option value="{{ Invoice::CATEGORY_INDUCTION }}">Induction Fee</flux:select.option>
@@ -494,6 +508,70 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
                         </div>
                     @endif
                 </div>
+
+                <!-- Placements Restriction -->
+                <div class="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 space-y-3">
+                    <flux:switch wire:model.live="is_required_for_placements" label="{{ __('Required for Placements') }}" description="{{ __('Students must pay this invoice before choosing place of posting, downloading letters, or uploading acceptance.') }}" />
+                    
+                    @if($is_required_for_placements)
+                        <div class="pt-2">
+                            <div
+                                class="vue-percent-slider-app"
+                                data-value="{{ $required_percent_for_placements }}"
+                                data-label="Placements"
+                                data-description="Minimum payment threshold to access placement services."
+                                data-name="required_percent_for_placements"
+                            >
+                                <div class="space-y-2 p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                                    <div class="flex justify-between text-xs font-semibold">
+                                        <span>Placement Threshold:</span>
+                                        <span class="font-mono text-blue-600 dark:text-blue-400 font-bold">{{ $required_percent_for_placements }}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        step="1"
+                                        wire:model.live="required_percent_for_placements"
+                                        class="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+
+                <!-- Projects Restriction -->
+                <div class="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 space-y-3">
+                    <flux:switch wire:model.live="is_required_for_projects" label="{{ __('Required for Projects') }}" description="{{ __('Students must pay this invoice before registering for project sessions, submitting topics, or uploading chapters.') }}" />
+                    
+                    @if($is_required_for_projects)
+                        <div class="pt-2">
+                            <div
+                                class="vue-percent-slider-app"
+                                data-value="{{ $required_percent_for_projects }}"
+                                data-label="Projects"
+                                data-description="Minimum payment threshold to access final year project workspace."
+                                data-name="required_percent_for_projects"
+                            >
+                                <div class="space-y-2 p-3 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                                    <div class="flex justify-between text-xs font-semibold">
+                                        <span>Project Threshold:</span>
+                                        <span class="font-mono text-blue-600 dark:text-blue-400 font-bold">{{ $required_percent_for_projects }}%</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="0"
+                                        max="100"
+                                        step="1"
+                                        wire:model.live="required_percent_for_projects"
+                                        class="w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                </div>
             </div>
 
             <!-- Bank Details -->
@@ -552,7 +630,13 @@ new #[Layout('layouts.app')] #[Title('Manage Invoice')] class extends Component
 
                 <flux:field>
                     <flux:label>Level (Optional)</flux:label>
-                    <flux:input wire:model="level" placeholder="e.g. 100 or leave for All" />
+                    <flux:select wire:model="level" :placeholder="__('All Levels')">
+                        <flux:select.option value="">All Levels</flux:select.option>
+                        <flux:select.option value="100">100 Level</flux:select.option>
+                        <flux:select.option value="200">200 Level</flux:select.option>
+                        <flux:select.option value="300">300 Level</flux:select.option>
+                        <flux:select.option value="400">400 Level</flux:select.option>
+                    </flux:select>
                     <flux:error name="level" />
                 </flux:field>
             </div>

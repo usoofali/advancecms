@@ -224,6 +224,80 @@ class StudentProject extends Model
         ];
     }
 
+    /**
+     * Approves a specific topic option and rejects the others.
+     */
+    public function approveTopic(int|ProjectTopic $topic, ?string $feedback = null, ?int $userId = null): void
+    {
+        $topicModel = $topic instanceof ProjectTopic ? $topic : ProjectTopic::findOrFail($topic);
+
+        $topicModel->update([
+            'status' => 'Approved',
+            'feedback' => $feedback,
+            'reviewed_at' => now(),
+            'reviewed_by' => $userId ?? auth()->id(),
+        ]);
+
+        $this->topics()
+            ->where('id', '!=', $topicModel->id)
+            ->update(['status' => 'Rejected']);
+
+        $this->update([
+            'approved_topic_id' => $topicModel->id,
+            'overall_status' => 'Topic Approved',
+        ]);
+
+        $this->logActivity('Topic Approved', "Topic '{$topicModel->topic_title}' was approved.", $userId ?? auth()->id());
+    }
+
+    /**
+     * Revokes the approved topic and resets all proposed topics back to Submitted status for re-evaluation.
+     */
+    public function revokeTopicApproval(?string $feedback = null, ?int $userId = null): void
+    {
+        $oldTopic = $this->approvedTopic;
+        $title = $oldTopic ? $oldTopic->topic_title : 'topic';
+
+        // Reset all topics for this project back to Submitted
+        $this->topics()->update([
+            'status' => 'Submitted',
+            'feedback' => $feedback,
+            'reviewed_at' => now(),
+            'reviewed_by' => $userId ?? auth()->id(),
+        ]);
+
+        $this->update([
+            'approved_topic_id' => null,
+            'overall_status' => 'Topic Pending',
+        ]);
+
+        $logMsg = $feedback
+            ? "Approval for topic '{$title}' was revoked. Feedback: {$feedback}"
+            : "Approval for topic '{$title}' was revoked and reset for review.";
+
+        $this->logActivity('Topic Approval Revoked', $logMsg, $userId ?? auth()->id());
+    }
+
+    /**
+     * Requests modification from the student for all proposed topics.
+     */
+    public function requestTopicModification(?string $feedback = null, ?int $userId = null): void
+    {
+        $this->topics()->update([
+            'status' => 'Modification Requested',
+            'feedback' => $feedback,
+            'reviewed_at' => now(),
+            'reviewed_by' => $userId ?? auth()->id(),
+        ]);
+
+        $this->update([
+            'approved_topic_id' => null,
+            'overall_status' => 'Corrections Required',
+        ]);
+
+        $this->logActivity('Topic Modification Requested', "Requested topic modification. Feedback: {$feedback}", $userId ?? auth()->id());
+    }
+
     public function logActivity(string $action, ?string $details = null, ?int $userId = null): void
     {
         $this->activities()->create([

@@ -29,8 +29,9 @@ new #[Layout('layouts.app')] class extends Component {
     public bool $showTopicReviewModal = false;
     public ?int $reviewingProjectId = null;
     public ?int $selectedTopicIdToApprove = null;
-    public string $topic_action = 'Approved'; // 'Approved', 'Modification Requested'
+    public string $topic_action = 'Approved'; // 'Approved', 'Modification Requested', 'Revoked'
     public ?string $topic_feedback = null;
+    public string $topic_filter = 'all'; // 'all', 'pending', 'approved'
 
     public bool $showSupervisorModal = false;
     public array $selectedProjectIds = [];
@@ -55,6 +56,11 @@ new #[Layout('layouts.app')] class extends Component {
     {
         $this->program_id = null;
         $this->resetPage();
+    }
+
+    public function updatedTopicFilter(): void
+    {
+        $this->resetPage('topicsPage');
     }
 
     public function registerStudent(Student $student): void
@@ -111,13 +117,15 @@ new #[Layout('layouts.app')] class extends Component {
         $this->processProjectTopicsReview();
     }
 
-    public function openProjectTopicsReview(StudentProject $project): void
+    public function openProjectTopicsReview(int|StudentProject $project): void
     {
-        $this->reviewingProjectId = $project->id;
-        $firstSubmitted = $project->topics()->where('status', 'Submitted')->first() ?? $project->topics()->first();
-        $this->selectedTopicIdToApprove = $firstSubmitted?->id;
+        $projectModel = $project instanceof StudentProject ? $project : StudentProject::findOrFail($project);
+        $this->reviewingProjectId = $projectModel->id;
+        $this->selectedTopicIdToApprove = $projectModel->approved_topic_id
+            ?? $projectModel->topics()->where('status', 'Submitted')->first()?->id
+            ?? $projectModel->topics()->first()?->id;
         $this->topic_action = 'Approved';
-        $this->topic_feedback = '';
+        $this->topic_feedback = $projectModel->approvedTopic?->feedback ?? '';
         $this->showTopicReviewModal = true;
     }
 
@@ -133,43 +141,24 @@ new #[Layout('layouts.app')] class extends Component {
                 return;
             }
 
-            $approvedTopic = ProjectTopic::find($this->selectedTopicIdToApprove);
-            if ($approvedTopic) {
-                $approvedTopic->update([
-                    'status' => 'Approved',
-                    'feedback' => $this->topic_feedback,
-                    'reviewed_at' => now(),
-                    'reviewed_by' => auth()->id(),
-                ]);
-
-                ProjectTopic::where('student_project_id', $project->id)
-                    ->where('id', '!=', $approvedTopic->id)
-                    ->update(['status' => 'Rejected']);
-
-                $project->update([
-                    'approved_topic_id' => $approvedTopic->id,
-                    'overall_status' => 'Topic Approved',
-                ]);
-
-                $project->logActivity('Topic Approved', "Topic '{$approvedTopic->topic_title}' was approved by coordinator.");
-                Flux::toast('Selected topic approved successfully.', variant: 'success');
-            }
+            $project->approveTopic($this->selectedTopicIdToApprove, $this->topic_feedback);
+            Flux::toast('Selected topic approved successfully.', variant: 'success');
+        } elseif ($this->topic_action === 'Revoked') {
+            $project->revokeTopicApproval($this->topic_feedback);
+            Flux::toast('Topic approval revoked successfully. Project reset for topic review.', variant: 'success');
         } else {
-            ProjectTopic::where('student_project_id', $project->id)
-                ->where('status', 'Submitted')
-                ->update([
-                    'status' => 'Modification Requested',
-                    'feedback' => $this->topic_feedback,
-                    'reviewed_at' => now(),
-                    'reviewed_by' => auth()->id(),
-                ]);
-
-            $project->update(['overall_status' => 'Corrections Required']);
-            $project->logActivity('Topic Modification Requested', "Requested topic modification. Feedback: {$this->topic_feedback}");
+            $project->requestTopicModification($this->topic_feedback);
             Flux::toast('Topic modification requested from student.', variant: 'success');
         }
 
         $this->showTopicReviewModal = false;
+    }
+
+    public function revokeTopicApproval(int $projectId): void
+    {
+        $project = StudentProject::with('topics')->findOrFail($projectId);
+        $project->revokeTopicApproval();
+        Flux::toast('Topic approval revoked successfully.', variant: 'success');
     }
 
     public function openAssignSupervisor(array $projectIds): void
@@ -261,12 +250,14 @@ new #[Layout('layouts.app')] class extends Component {
                 ->paginate(15, ['*'], 'eligiblePage');
         }
 
-        // Pending Topics Query (Grouped by Student Project)
+        // Project Topics Query (Grouped by Student Project)
         $pendingProjectTopics = [];
         if ($this->activeTab === 'topics' && $session) {
-            $pendingProjectTopics = StudentProject::with(['student', 'program', 'topics'])
+            $pendingProjectTopics = StudentProject::with(['student', 'program', 'topics', 'approvedTopic'])
                 ->where('project_session_id', $session->id)
-                ->whereHas('topics', fn($q) => $q->where('status', 'Submitted'))
+                ->when($this->topic_filter === 'pending', fn($q) => $q->whereNull('approved_topic_id')->whereHas('topics', fn($t) => $t->where('status', 'Submitted')))
+                ->when($this->topic_filter === 'approved', fn($q) => $q->whereNotNull('approved_topic_id'))
+                ->when($this->topic_filter === 'all', fn($q) => $q->has('topics'))
                 ->when($this->department_id, fn($q) => $q->where('department_id', $this->department_id))
                 ->when($this->program_id, fn($q) => $q->where('program_id', $this->program_id))
                 ->when($this->search, function ($q) {
@@ -433,6 +424,14 @@ new #[Layout('layouts.app')] class extends Component {
                                 <div class="max-w-xs text-xs truncate font-medium text-gray-900 dark:text-gray-200">
                                     {{ $proj->approvedTopic?->topic_title ?: 'Awaiting Approval' }}
                                 </div>
+                                @if($proj->topics->isNotEmpty())
+                                    <div class="mt-1">
+                                        <button wire:click="openProjectTopicsReview({{ $proj->id }})" class="text-[11px] text-indigo-600 dark:text-indigo-400 font-medium hover:underline flex items-center gap-0.5">
+                                            <flux:icon.pencil-square class="w-3 h-3" />
+                                            <span>{{ $proj->approved_topic_id ? 'Change / Revoke' : 'Review Topics' }}</span>
+                                        </button>
+                                    </div>
+                                @endif
                             </flux:table.cell>
 
                             <flux:table.cell>
@@ -568,14 +567,24 @@ new #[Layout('layouts.app')] class extends Component {
     <!-- Tab 3: Topic Review Portal (Grouped by Student Project) -->
     @if($activeTab === 'topics')
         <div class="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-gray-800 p-4 sm:p-6 overflow-x-auto min-w-full">
-            <h3 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-1">Pending Student Project Topics Review</h3>
-            <p class="text-xs text-gray-500 mb-6">Review proposed project topic choices grouped by student project.</p>
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                    <h3 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white mb-1">Student Project Topics Review</h3>
+                    <p class="text-xs text-gray-500">Review submitted proposed topics, approve official selections, or change/revoke existing approvals.</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button wire:click="$set('topic_filter', 'all')" class="px-3 py-1.5 text-xs font-semibold rounded-lg border transition {{ $topic_filter === 'all' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50' }}">All ({{ $session ? \App\Models\StudentProject::where('project_session_id', $session->id)->has('topics')->count() : 0 }})</button>
+                    <button wire:click="$set('topic_filter', 'pending')" class="px-3 py-1.5 text-xs font-semibold rounded-lg border transition {{ $topic_filter === 'pending' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50' }}">Pending Review</button>
+                    <button wire:click="$set('topic_filter', 'approved')" class="px-3 py-1.5 text-xs font-semibold rounded-lg border transition {{ $topic_filter === 'approved' ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white dark:bg-zinc-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50' }}">Approved</button>
+                </div>
+            </div>
 
             <flux:table :paginate="$pendingProjectTopics" class="[&_td:first-child]:!ps-6 [&_td:last-child]:!pe-6 [&_th:first-child]:!ps-6 [&_th:last-child]:!pe-6 [&_td]:!px-6 [&_th]:!px-6 [&_td]:!py-4 [&_th]:!py-3.5">
                 <flux:table.columns>
                     <flux:table.column>Student</flux:table.column>
                     <flux:table.column>Program</flux:table.column>
                     <flux:table.column>Submitted Topic Choices</flux:table.column>
+                    <flux:table.column>Status</flux:table.column>
                     <flux:table.column>Action</flux:table.column>
                 </flux:table.columns>
 
@@ -596,24 +605,46 @@ new #[Layout('layouts.app')] class extends Component {
                             <flux:table.cell class="px-5 py-3.5">
                                 <div class="space-y-1.5 max-w-md">
                                     @foreach($projTopicRow->topics as $tpc)
-                                        <div class="text-xs flex items-center gap-2">
-                                            <span class="font-bold text-indigo-600 dark:text-indigo-400 shrink-0">Opt {{ $tpc->topic_order }}:</span>
-                                            <span class="truncate text-gray-800 dark:text-gray-200 font-medium">{{ $tpc->topic_title }}</span>
+                                        <div class="text-xs flex items-center justify-between gap-2">
+                                            <div class="flex items-center gap-1.5 truncate">
+                                                <span class="font-bold text-indigo-600 dark:text-indigo-400 shrink-0">Opt {{ $tpc->topic_order }}:</span>
+                                                <span class="truncate text-gray-800 dark:text-gray-200 font-medium">{{ $tpc->topic_title }}</span>
+                                            </div>
+                                            <flux:badge :variant="$tpc->status === 'Approved' ? 'success' : ($tpc->status === 'Rejected' ? 'danger' : 'warning')" size="sm" class="shrink-0">
+                                                {{ $tpc->status }}
+                                            </flux:badge>
                                         </div>
                                     @endforeach
                                 </div>
                             </flux:table.cell>
 
                             <flux:table.cell class="px-5 py-3.5">
-                                <flux:button wire:click="openProjectTopicsReview({{ $projTopicRow->id }})" variant="primary" size="sm" icon="pencil-square">
-                                    Review Topics
-                                </flux:button>
+                                <flux:badge :variant="$projTopicRow->approved_topic_id ? 'success' : 'warning'">
+                                    {{ $projTopicRow->approved_topic_id ? 'Topic Approved' : 'Pending Review' }}
+                                </flux:badge>
+                            </flux:table.cell>
+
+                            <flux:table.cell class="px-5 py-3.5">
+                                <div class="flex items-center gap-2">
+                                    @if($projTopicRow->approved_topic_id)
+                                        <flux:button wire:click="openProjectTopicsReview({{ $projTopicRow->id }})" variant="subtle" size="sm" icon="pencil-square">
+                                            Change Topic
+                                        </flux:button>
+                                        <flux:button wire:click="revokeTopicApproval({{ $projTopicRow->id }})" wire:confirm="Are you sure you want to revoke approval for this topic?" variant="danger" size="sm" icon="arrow-path" title="Revoke Approval">
+                                            Revoke
+                                        </flux:button>
+                                    @else
+                                        <flux:button wire:click="openProjectTopicsReview({{ $projTopicRow->id }})" variant="primary" size="sm" icon="pencil-square">
+                                            Review Topics
+                                        </flux:button>
+                                    @endif
+                                </div>
                             </flux:table.cell>
                         </flux:table.row>
                     @empty
                         <flux:table.row>
-                            <flux:table.cell colspan="4" class="text-center py-8 text-gray-500">
-                                No pending student topics awaiting review.
+                            <flux:table.cell colspan="5" class="text-center py-8 text-gray-500">
+                                No student topics matching the selected filter.
                             </flux:table.cell>
                         </flux:table.row>
                     @endforelse
@@ -625,7 +656,7 @@ new #[Layout('layouts.app')] class extends Component {
     <!-- Topic Review Modal -->
     <flux:modal wire:model="showTopicReviewModal" class="w-full max-w-full sm:max-w-xl">
         @php
-            $reviewProject = $reviewingProjectId ? App\Models\StudentProject::with(['student', 'program', 'topics'])->find($reviewingProjectId) : null;
+            $reviewProject = $reviewingProjectId ? App\Models\StudentProject::with(['student', 'program', 'topics', 'approvedTopic'])->find($reviewingProjectId) : null;
         @endphp
 
         @if($reviewProject)
@@ -635,6 +666,15 @@ new #[Layout('layouts.app')] class extends Component {
                     <p class="text-xs text-gray-500">Matric: {{ $reviewProject->student->matric_number }} | Program: {{ $reviewProject->program->acronym ?? $reviewProject->program->name }}</p>
                 </div>
 
+                @if($reviewProject->approvedTopic)
+                    <div class="p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs text-emerald-900 dark:text-emerald-200 flex items-center justify-between">
+                        <div>
+                            <span class="font-bold">Currently Approved:</span> Option {{ $reviewProject->approvedTopic->topic_order }} — {{ $reviewProject->approvedTopic->topic_title }}
+                        </div>
+                        <flux:badge variant="success" size="sm">Approved</flux:badge>
+                    </div>
+                @endif
+
                 <div class="space-y-4">
                     <label class="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">Proposed Topics Submitted:</label>
 
@@ -642,9 +682,12 @@ new #[Layout('layouts.app')] class extends Component {
                         @foreach($reviewProject->topics as $tpc)
                             <label class="p-3 rounded-lg border flex items-start gap-3 cursor-pointer transition {{ $selectedTopicIdToApprove == $tpc->id ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30' : 'border-gray-200 dark:border-gray-800' }}">
                                 <input type="radio" wire:model="selectedTopicIdToApprove" value="{{ $tpc->id }}" name="topic_option" class="mt-1 text-indigo-600">
-                                <div>
-                                    <div class="flex items-center gap-2">
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between gap-2">
                                         <span class="font-bold text-sm text-gray-900 dark:text-white">Option {{ $tpc->topic_order }}: {{ $tpc->topic_title }}</span>
+                                        <flux:badge :variant="$tpc->status === 'Approved' ? 'success' : ($tpc->status === 'Rejected' ? 'danger' : 'warning')" size="sm">
+                                            {{ $tpc->status }}
+                                        </flux:badge>
                                     </div>
                                     @if($tpc->description)
                                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $tpc->description }}</p>
@@ -655,16 +698,28 @@ new #[Layout('layouts.app')] class extends Component {
                     </div>
 
                     <flux:select wire:model="topic_action" label="Coordinator Decision">
-                        <option value="Approved">Approve Selected Option as Official Topic</option>
+                        <option value="Approved">{{ $reviewProject->approved_topic_id ? 'Approve Selected Option (Change Approval)' : 'Approve Selected Option as Official Topic' }}</option>
                         <option value="Modification Requested">Request Topic Modification from Student</option>
+                        @if($reviewProject->approved_topic_id)
+                            <option value="Revoked">Revoke Topic Approval (Reset to Pending)</option>
+                        @endif
                     </flux:select>
 
                     <flux:textarea wire:model="topic_feedback" label="Remarks / Feedback Comments" rows="3" placeholder="Enter comments or instructions for student..." />
                 </div>
 
-                <div class="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-                    <flux:button wire:click="$set('showTopicReviewModal', false)" variant="subtle">Cancel</flux:button>
-                    <flux:button wire:click="processProjectTopicsReview" variant="primary">Submit Decision</flux:button>
+                <div class="flex items-center justify-between gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+                    <div>
+                        @if($reviewProject->approved_topic_id)
+                            <flux:button wire:click="revokeTopicApproval({{ $reviewProject->id }})" wire:confirm="Are you sure you want to revoke approval for this topic?" variant="danger" size="sm" icon="arrow-path">
+                                Revoke Approval
+                            </flux:button>
+                        @endif
+                    </div>
+                    <div class="flex gap-2">
+                        <flux:button wire:click="$set('showTopicReviewModal', false)" variant="subtle">Cancel</flux:button>
+                        <flux:button wire:click="processProjectTopicsReview" variant="primary">Submit Decision</flux:button>
+                    </div>
                 </div>
             </div>
         @endif

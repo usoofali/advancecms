@@ -554,6 +554,7 @@ new #[Title('Issue admission notification')] #[Layout('layouts.app')] class exte
                     <flux:select wire:model="awardType" label="{{ __('Award type') }}">
                         <flux:select.option value="certificate">{{ __('Certificate') }}</flux:select.option>
                         <flux:select.option value="diploma">{{ __('Diploma') }}</flux:select.option>
+                        <flux:select.option value="hnd">{{ __('HND') }}</flux:select.option>
                         <flux:select.option value="degree">{{ __('Degree') }}</flux:select.option>
                     </flux:select>
                 </div>

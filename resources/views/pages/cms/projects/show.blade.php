@@ -24,6 +24,11 @@ new #[Layout('layouts.app')] class extends Component {
     public bool $showSupervisorModal = false;
     public ?int $assign_supervisor_id = null;
 
+    public bool $showTopicReviewModal = false;
+    public ?int $selectedTopicIdToApprove = null;
+    public string $topic_action = 'Approved';
+    public ?string $topic_feedback = null;
+
     public function mount(StudentProject $project): void
     {
         $user = auth()->user();
@@ -64,6 +69,69 @@ new #[Layout('layouts.app')] class extends Component {
 
         $this->showSupervisorModal = false;
         Flux::toast('Supervisor updated successfully.', variant: 'success');
+    }
+
+    public function openTopicReviewModal(): void
+    {
+        $project = StudentProject::with(['topics', 'approvedTopic'])->findOrFail($this->projectId);
+        $this->selectedTopicIdToApprove = $project->approved_topic_id
+            ?? $project->topics()->where('status', 'Submitted')->first()?->id
+            ?? $project->topics()->first()?->id;
+        $this->topic_action = 'Approved';
+        $this->topic_feedback = $project->approvedTopic?->feedback ?? '';
+        $this->showTopicReviewModal = true;
+    }
+
+    public function processTopicReview(): void
+    {
+        $user = auth()->user();
+        if (! $user->can('projects.view') && ! $user->can('projects.review_topics')) {
+            abort(403, 'Unauthorized to review or change topics.');
+        }
+
+        $project = StudentProject::with('topics')->findOrFail($this->projectId);
+
+        if ($this->topic_action === 'Approved') {
+            if (! $this->selectedTopicIdToApprove) {
+                Flux::toast('Please select a topic option to approve.', variant: 'warning');
+                return;
+            }
+
+            $project->approveTopic($this->selectedTopicIdToApprove, $this->topic_feedback);
+            Flux::toast('Selected topic approved successfully.', variant: 'success');
+        } elseif ($this->topic_action === 'Revoked') {
+            $project->revokeTopicApproval($this->topic_feedback);
+            Flux::toast('Topic approval revoked successfully. Reset to topic review.', variant: 'success');
+        } else {
+            $project->requestTopicModification($this->topic_feedback);
+            Flux::toast('Topic modification requested from student.', variant: 'success');
+        }
+
+        $this->showTopicReviewModal = false;
+    }
+
+    public function approveSpecificTopic(int $topicId): void
+    {
+        $user = auth()->user();
+        if (! $user->can('projects.view') && ! $user->can('projects.review_topics')) {
+            abort(403, 'Unauthorized to approve topics.');
+        }
+
+        $project = StudentProject::with('topics')->findOrFail($this->projectId);
+        $project->approveTopic($topicId);
+        Flux::toast('Selected topic approved successfully.', variant: 'success');
+    }
+
+    public function revokeTopicApproval(): void
+    {
+        $user = auth()->user();
+        if (! $user->can('projects.view') && ! $user->can('projects.review_topics')) {
+            abort(403, 'Unauthorized to revoke topic approval.');
+        }
+
+        $project = StudentProject::with('topics')->findOrFail($this->projectId);
+        $project->revokeTopicApproval();
+        Flux::toast('Topic approval revoked successfully.', variant: 'success');
     }
 
     public function updatedActiveTab(string $tab): void
@@ -156,11 +224,25 @@ new #[Layout('layouts.app')] class extends Component {
             </div>
         </div>
 
-        <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-            <span class="text-xs text-gray-500 font-medium">Approved Official Topic:</span>
-            <p class="font-semibold text-gray-900 dark:text-white text-sm sm:text-base mt-0.5">
-                {{ $project->approvedTopic?->topic_title ?: 'Topic Pending Approval' }}
-            </p>
+        <div class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+                <span class="text-xs text-gray-500 font-medium">Approved Official Topic:</span>
+                <p class="font-semibold text-gray-900 dark:text-white text-sm sm:text-base mt-0.5">
+                    {{ $project->approvedTopic?->topic_title ?: 'Topic Pending Approval' }}
+                </p>
+            </div>
+            @if(auth()->user()->can('projects.view') || auth()->user()->can('projects.review_topics'))
+                <div class="flex items-center gap-2">
+                    <flux:button wire:click="openTopicReviewModal" variant="subtle" size="xs" icon="pencil-square">
+                        {{ $project->approved_topic_id ? 'Change Topic' : 'Review Topics' }}
+                    </flux:button>
+                    @if($project->approved_topic_id)
+                        <flux:button wire:click="revokeTopicApproval" wire:confirm="Are you sure you want to revoke approval for this topic?" variant="danger" size="xs" icon="arrow-path">
+                            Revoke Approval
+                        </flux:button>
+                    @endif
+                </div>
+            @endif
         </div>
 
         <!-- Progress Pipeline -->
@@ -264,6 +346,20 @@ new #[Layout('layouts.app')] class extends Component {
                             <span class="font-semibold">Review Feedback:</span> {{ $tpc->feedback }}
                         </div>
                     @endif
+
+                    @if(auth()->user()->can('projects.view') || auth()->user()->can('projects.review_topics'))
+                        <div class="mt-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex items-center justify-end gap-2">
+                            @if($tpc->status !== 'Approved')
+                                <flux:button wire:click="approveSpecificTopic({{ $tpc->id }})" variant="primary" size="xs" icon="check">
+                                    Approve This Option
+                                </flux:button>
+                            @else
+                                <flux:button wire:click="revokeTopicApproval" wire:confirm="Are you sure you want to revoke approval for this topic?" variant="danger" size="xs" icon="arrow-path">
+                                    Revoke Approval
+                                </flux:button>
+                            @endif
+                        </div>
+                    @endif
                 </div>
             @empty
                 <div class="col-span-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-gray-800 rounded-xl p-8 sm:p-12 text-center text-gray-500 text-sm">
@@ -348,6 +444,72 @@ new #[Layout('layouts.app')] class extends Component {
             <div class="flex justify-end gap-3 pt-4 border-t">
                 <flux:button wire:click="$set('showSupervisorModal', false)" variant="subtle">Cancel</flux:button>
                 <flux:button wire:click="assignSupervisor" variant="primary">Update Supervisor</flux:button>
+            </div>
+        </div>
+    </flux:modal>
+
+    <!-- Topic Review Modal -->
+    <flux:modal wire:model="showTopicReviewModal" class="w-full max-w-full sm:max-w-xl">
+        <div class="space-y-6">
+            <div>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white">Review Topics for {{ $project->student->first_name }} {{ $project->student->last_name }}</h3>
+                <p class="text-xs text-gray-500">Matric: {{ $project->student->matric_number }} | Program: {{ $project->program->acronym ?? $project->program->name }}</p>
+            </div>
+
+            @if($project->approvedTopic)
+                <div class="p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg text-xs text-emerald-900 dark:text-emerald-200 flex items-center justify-between">
+                    <div>
+                        <span class="font-bold">Currently Approved:</span> Option {{ $project->approvedTopic->topic_order }} — {{ $project->approvedTopic->topic_title }}
+                    </div>
+                    <flux:badge variant="success" size="sm">Approved</flux:badge>
+                </div>
+            @endif
+
+            <div class="space-y-4">
+                <label class="block text-xs font-bold uppercase tracking-wider text-gray-600 dark:text-gray-400">Proposed Topics Submitted:</label>
+
+                <div class="space-y-3">
+                    @foreach($project->topics as $tpc)
+                        <label class="p-3 rounded-lg border flex items-start gap-3 cursor-pointer transition {{ $selectedTopicIdToApprove == $tpc->id ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30' : 'border-gray-200 dark:border-gray-800' }}">
+                            <input type="radio" wire:model="selectedTopicIdToApprove" value="{{ $tpc->id }}" name="topic_option" class="mt-1 text-indigo-600">
+                            <div class="flex-1">
+                                <div class="flex items-center justify-between gap-2">
+                                    <span class="font-bold text-sm text-gray-900 dark:text-white">Option {{ $tpc->topic_order }}: {{ $tpc->topic_title }}</span>
+                                    <flux:badge :variant="$tpc->status === 'Approved' ? 'success' : ($tpc->status === 'Rejected' ? 'danger' : 'warning')" size="sm">
+                                        {{ $tpc->status }}
+                                    </flux:badge>
+                                </div>
+                                @if($tpc->description)
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $tpc->description }}</p>
+                                @endif
+                            </div>
+                        </label>
+                    @endforeach
+                </div>
+
+                <flux:select wire:model="topic_action" label="Coordinator Decision">
+                    <option value="Approved">{{ $project->approved_topic_id ? 'Approve Selected Option (Change Approval)' : 'Approve Selected Option as Official Topic' }}</option>
+                    <option value="Modification Requested">Request Topic Modification from Student</option>
+                    @if($project->approved_topic_id)
+                        <option value="Revoked">Revoke Topic Approval (Reset to Pending)</option>
+                    @endif
+                </flux:select>
+
+                <flux:textarea wire:model="topic_feedback" label="Remarks / Feedback Comments" rows="3" placeholder="Enter comments or instructions for student..." />
+            </div>
+
+            <div class="flex items-center justify-between gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+                <div>
+                    @if($project->approved_topic_id)
+                        <flux:button wire:click="revokeTopicApproval" wire:confirm="Are you sure you want to revoke approval for this topic?" variant="danger" size="sm" icon="arrow-path">
+                            Revoke Approval
+                        </flux:button>
+                    @endif
+                </div>
+                <div class="flex gap-2">
+                    <flux:button wire:click="$set('showTopicReviewModal', false)" variant="subtle">Cancel</flux:button>
+                    <flux:button wire:click="processTopicReview" variant="primary">Submit Decision</flux:button>
+                </div>
             </div>
         </div>
     </flux:modal>

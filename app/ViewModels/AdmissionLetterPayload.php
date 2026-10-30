@@ -260,6 +260,7 @@ final class AdmissionLetterPayload
 
         $awardLabel = match ($student->program->award_type ?? 'diploma') {
             'degree' => 'Degree',
+            'hnd' => 'HND',
             'diploma' => 'Diploma',
             'certificate' => 'Certificate',
             default => 'Certificate',
@@ -324,6 +325,7 @@ final class AdmissionLetterPayload
         return match ($awardType) {
             'degree' => 'Degree',
             'diploma' => 'Diploma',
+            'hnd' => 'HND',
             'certificate' => 'Certificate',
             default => 'Certificate',
         };

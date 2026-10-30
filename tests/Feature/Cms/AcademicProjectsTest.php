@@ -7,6 +7,8 @@ use App\Models\Program;
 use App\Models\ProjectSession;
 use App\Models\ProjectSessionStage;
 use App\Models\ProjectSubmission;
+use App\Models\ProjectTopic;
+use App\Models\Role;
 use App\Models\Staff;
 use App\Models\Student;
 use App\Models\StudentProject;
@@ -378,4 +380,159 @@ it('filters unregistered students by department using program relationship in ma
         ->set('selectedSessionId', $this->projectSession->id)
         ->set('department_id', $this->department->id)
         ->assertSee('Unregistered Student');
+});
+
+it('allows coordinator to change approved topic and revoke topic approval in manage portal', function () {
+    $student = Student::create([
+        'institution_id' => $this->institution->id,
+        'department_id' => $this->department->id,
+        'program_id' => $this->program2Yr->id,
+        'first_name' => 'Topic',
+        'last_name' => 'Changer',
+        'email' => 'topic.changer@example.com',
+        'admission_year' => 2025,
+        'entry_level' => 100,
+    ]);
+
+    $project = StudentProject::create([
+        'institution_id' => $this->institution->id,
+        'project_session_id' => $this->projectSession->id,
+        'student_id' => $student->id,
+        'department_id' => $this->department->id,
+        'program_id' => $this->program2Yr->id,
+        'overall_status' => 'Topic Pending',
+    ]);
+
+    $topic1 = ProjectTopic::create([
+        'student_project_id' => $project->id,
+        'topic_title' => 'Topic Option One',
+        'description' => 'First option description',
+        'topic_order' => 1,
+        'status' => 'Submitted',
+    ]);
+
+    $topic2 = ProjectTopic::create([
+        'student_project_id' => $project->id,
+        'topic_title' => 'Topic Option Two',
+        'description' => 'Second option description',
+        'topic_order' => 2,
+        'status' => 'Submitted',
+    ]);
+
+    // 1. Approve Topic 1
+    Livewire::actingAs($this->adminUser)
+        ->test('admin.projects.manage')
+        ->call('openProjectTopicsReview', $project->id)
+        ->set('selectedTopicIdToApprove', $topic1->id)
+        ->set('topic_action', 'Approved')
+        ->call('processProjectTopicsReview');
+
+    $project->refresh();
+    $topic1->refresh();
+    $topic2->refresh();
+
+    expect($project->approved_topic_id)->toBe($topic1->id)
+        ->and($topic1->status)->toBe('Approved')
+        ->and($topic2->status)->toBe('Rejected')
+        ->and($project->overall_status)->toBe('Topic Approved');
+
+    // 2. Change Approval to Topic 2
+    Livewire::actingAs($this->adminUser)
+        ->test('admin.projects.manage')
+        ->call('openProjectTopicsReview', $project->id)
+        ->set('selectedTopicIdToApprove', $topic2->id)
+        ->set('topic_action', 'Approved')
+        ->call('processProjectTopicsReview');
+
+    $project->refresh();
+    $topic1->refresh();
+    $topic2->refresh();
+
+    expect($project->approved_topic_id)->toBe($topic2->id)
+        ->and($topic2->status)->toBe('Approved')
+        ->and($topic1->status)->toBe('Rejected');
+
+    // 3. Revoke Topic Approval
+    Livewire::actingAs($this->adminUser)
+        ->test('admin.projects.manage')
+        ->call('revokeTopicApproval', $project->id);
+
+    $project->refresh();
+    $topic1->refresh();
+    $topic2->refresh();
+
+    expect($project->approved_topic_id)->toBeNull()
+        ->and($project->overall_status)->toBe('Topic Pending')
+        ->and($topic1->status)->toBe('Submitted')
+        ->and($topic2->status)->toBe('Submitted');
+
+    $this->assertDatabaseHas('project_activities', [
+        'student_project_id' => $project->id,
+        'action' => 'Topic Approval Revoked',
+    ]);
+});
+
+it('allows coordinator to change and revoke topic approval in project workspace', function () {
+    $role = Role::firstOrCreate(['role_name' => 'Super Admin']);
+    $this->adminUser->roles()->syncWithoutDetaching([$role->role_id]);
+
+    $student = Student::create([
+        'institution_id' => $this->institution->id,
+        'department_id' => $this->department->id,
+        'program_id' => $this->program2Yr->id,
+        'first_name' => 'Workspace',
+        'last_name' => 'Student',
+        'email' => 'workspace.student@example.com',
+        'admission_year' => 2025,
+        'entry_level' => 100,
+    ]);
+
+    $project = StudentProject::create([
+        'institution_id' => $this->institution->id,
+        'project_session_id' => $this->projectSession->id,
+        'student_id' => $student->id,
+        'department_id' => $this->department->id,
+        'program_id' => $this->program2Yr->id,
+        'overall_status' => 'Topic Pending',
+    ]);
+
+    $topic1 = ProjectTopic::create([
+        'student_project_id' => $project->id,
+        'topic_title' => 'Workspace Topic 1',
+        'topic_order' => 1,
+        'status' => 'Submitted',
+    ]);
+
+    $topic2 = ProjectTopic::create([
+        'student_project_id' => $project->id,
+        'topic_title' => 'Workspace Topic 2',
+        'topic_order' => 2,
+        'status' => 'Submitted',
+    ]);
+
+    // Approve Topic 1 directly in workspace
+    Livewire::actingAs($this->adminUser)
+        ->test('pages::cms.projects.show', ['project' => $project])
+        ->call('approveSpecificTopic', $topic1->id);
+
+    $project->refresh();
+    expect($project->approved_topic_id)->toBe($topic1->id)
+        ->and($project->overall_status)->toBe('Topic Approved');
+
+    // Switch to Topic 2 in workspace
+    Livewire::actingAs($this->adminUser)
+        ->test('pages::cms.projects.show', ['project' => $project])
+        ->call('approveSpecificTopic', $topic2->id);
+
+    $project->refresh();
+    expect($project->approved_topic_id)->toBe($topic2->id);
+
+    // Revoke topic approval in workspace
+    Livewire::actingAs($this->adminUser)
+        ->test('pages::cms.projects.show', ['project' => $project])
+        ->call('revokeTopicApproval');
+
+    $project->refresh();
+    expect($project->approved_topic_id)->toBeNull()
+        ->and($project->overall_status)->toBe('Topic Pending');
 });

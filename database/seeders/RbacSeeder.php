@@ -20,6 +20,7 @@ class RbacSeeder extends Seeder
             'payments', 'cbt_exams', 'cbt_questions', 'students', 'registrations',
             'grading_systems', 'academic_sessions', 'ca_tests', 'ca_results', 'ca_attempts', 'ca_questions', 'ca_answers', 'student_coins',
             'timetables', 'placements', 'placement_supervisors', 'projects', 'project_supervisors',
+            'inventory_categories', 'inventory_items', 'inventory_locations',
         ];
 
         // Define Permissions with explicit, clear descriptions
@@ -130,6 +131,22 @@ class RbacSeeder extends Seeder
             'departments.assign_roles' => 'Assign administrative roles scoped to specific departments',
             'courses.assign_roles' => 'Assign roles scoped to specific course modules',
             'cbt_exams.assign_roles' => 'Assign invigilator or examiner roles scoped to specific CBT exams',
+
+            // Inventory Management Granular Permissions
+            'inventory.view' => 'Access inventory dashboard, assigned room stock balances, and low-stock alerts',
+            'inventory.view_all' => 'View and audit inventory holdings across all facility locations in the institution',
+            'inventory.reconcile' => 'Record verified stock counts and direct quantity adjustments in accessible locations',
+            'inventory.assign_officers' => 'Allocate or revoke custodial Inventory Officers on physical locations',
+            'inventory.reports' => 'Generate printable room stock sheets, campus audit summaries, and category/replenishment CSV exports',
+
+            // Payroll Management Permissions
+            'payroll.view' => 'Access payroll dashboard and monthly run summaries',
+            'payroll.manage' => 'Configure staff categories, staff pay profiles, allowances, and deductions',
+            'payroll.create_run' => 'Generate draft payroll runs, adjust paylines, and submit for review',
+            'payroll.approve' => 'Execute final administrative sign-off and post-approval edits on payroll runs',
+            'payroll.mark_paid' => 'Mark approved payroll runs as paid/disbursed',
+            'payroll.reports' => 'View and export departmental payroll summaries and bank payment schedules',
+            'payroll.view_own_payslip' => 'View and print personal approved monthly payslips',
         ];
 
         // Human-friendly labels for standard CRUD models
@@ -160,6 +177,9 @@ class RbacSeeder extends Seeder
             'timetables' => 'lecture class timetable schedules',
             'placements' => 'student industrial placement postings',
             'placement_supervisors' => 'placement supervisor allocations',
+            'inventory_categories' => 'inventory asset and consumable categories',
+            'inventory_items' => 'central inventory catalogue items',
+            'inventory_locations' => 'facility inventory locations and rooms',
         ];
 
         // Generate CRUD permissions with clear, human-readable descriptions
@@ -200,7 +220,7 @@ class RbacSeeder extends Seeder
             'Institutional Admin' => [
                 'description' => 'Full administrative control within one institution',
                 'permissions' => array_merge(
-                    $crud(['staff', 'departments', 'programs', 'courses', 'application_forms', 'invoices', 'payments', 'cbt_exams', 'cbt_questions', 'students', 'registrations', 'grading_systems', 'ca_tests', 'placements', 'placement_supervisors', 'projects', 'project_supervisors']),
+                    $crud(['staff', 'departments', 'programs', 'courses', 'application_forms', 'invoices', 'payments', 'cbt_exams', 'cbt_questions', 'students', 'registrations', 'grading_systems', 'ca_tests', 'placements', 'placement_supervisors', 'projects', 'project_supervisors', 'inventory_categories', 'inventory_items', 'inventory_locations']),
                     [
                         'students.view_dept', 'courses.view_dept', 'results.view_dept',
                         'courses.view_assigned', 'results.enter', 'results.modify',
@@ -217,11 +237,34 @@ class RbacSeeder extends Seeder
                         'results.export', 'results.import', 'invoices.manage_students',
                         'placements.view', 'placements.organizations', 'placements.types', 'placements.manage', 'placements.supervisors', 'placements.supervise', 'placements.reports', 'placements.templates',
                         'projects.view', 'projects.manage_sessions', 'projects.assign_supervisors', 'projects.review_topics', 'projects.supervise', 'projects.view_dept', 'projects.reports',
+                        'inventory.view', 'inventory.view_all', 'inventory.reconcile', 'inventory.assign_officers', 'inventory.reports',
+                        'payroll.view', 'payroll.manage', 'payroll.create_run', 'payroll.approve', 'payroll.mark_paid', 'payroll.reports', 'payroll.view_own_payslip',
                         'dashboard.view', 'id_cards.request', 'id_cards.manage',
                         'activity_logs.view', 'activity_logs.export',
                         'institutions.assign_roles', 'departments.assign_roles', 'courses.assign_roles', 'cbt_exams.assign_roles',
                     ]
                 ),
+            ],
+            'Inventory Officer' => [
+                'description' => 'Custodial inventory management and stock reconciliation for assigned locations',
+                'permissions' => [
+                    'inventory.view', 'inventory_categories.view', 'inventory_items.view', 'inventory_locations.view',
+                    'inventory.reconcile', 'inventory.reports', 'dashboard.view', 'id_cards.request',
+                ],
+            ],
+            'Inventory Auditor' => [
+                'description' => 'Read-only institutional audit and variance review across all facility holdings',
+                'permissions' => [
+                    'inventory.view', 'inventory.view_all', 'inventory_categories.view', 'inventory_items.view',
+                    'inventory_locations.view', 'inventory.reports', 'activity_logs.view', 'dashboard.view', 'id_cards.request',
+                ],
+            ],
+            'Payroll Officer' => [
+                'description' => 'Prepare payroll runs, manage staff compensation profiles, and generate bank schedules (cannot self-approve)',
+                'permissions' => [
+                    'payroll.view', 'payroll.manage', 'payroll.create_run', 'payroll.reports', 'payroll.view_own_payslip',
+                    'attendance.view_history', 'dashboard.view', 'id_cards.request',
+                ],
             ],
             'Project Coordinator' => [
                 'description' => 'Manage academic project sessions, topic approvals, and supervisor assignments',
@@ -243,6 +286,8 @@ class RbacSeeder extends Seeder
                         'results.export', 'invoices.manage_students', 'reports.generate',
                         'placements.view', 'placements.organizations', 'placements.types', 'placements.manage', 'placements.supervisors', 'placements.supervise', 'placements.reports', 'placements.templates',
                         'projects.view', 'projects.manage_sessions', 'projects.assign_supervisors', 'projects.review_topics', 'projects.supervise', 'projects.view_dept', 'projects.reports',
+                        'inventory.view', 'inventory_categories.view', 'inventory_items.view', 'inventory_locations.view', 'inventory.reconcile', 'inventory.reports',
+                        'payroll.view_own_payslip',
                         'activity_logs.view', 'activity_logs.export',
                         'dashboard.view', 'id_cards.request',
                     ]
@@ -252,7 +297,7 @@ class RbacSeeder extends Seeder
                 'description' => 'Academic instruction and result entry',
                 'permissions' => array_merge(
                     $crud(['cbt_questions', 'ca_tests']),
-                    ['cbt_exams.view', 'cbt_questions.import', 'cbt_questions.export', 'courses.view_assigned', 'results.enter', 'results.modify', 'attendance.take', 'attendance.view_history', 'timetables.view_personal', 'placements.supervise', 'projects.supervise', 'projects.view', 'dashboard.view', 'id_cards.request']
+                    ['cbt_exams.view', 'cbt_questions.import', 'cbt_questions.export', 'courses.view_assigned', 'results.enter', 'results.modify', 'attendance.take', 'attendance.view_history', 'timetables.view_personal', 'placements.supervise', 'projects.supervise', 'projects.view', 'payroll.view_own_payslip', 'dashboard.view', 'id_cards.request']
                 ),
             ],
             'Academic Secretary' => [
@@ -288,7 +333,13 @@ class RbacSeeder extends Seeder
                 'description' => 'Institutional financial management',
                 'permissions' => array_merge(
                     $crud(['payments', 'invoices']),
-                    ['attendance_payments.process', 'attendance.view_history', 'attendance.manage', 'invoices.generate', 'invoices.cancel', 'invoices.print_report', 'payments.verify', 'applications.print_receipt', 'dashboard.view', 'id_cards.request']
+                    [
+                        'attendance_payments.process', 'attendance.view_history', 'attendance.manage',
+                        'invoices.generate', 'invoices.cancel', 'invoices.print_report', 'payments.verify', 'applications.print_receipt',
+                        'inventory.view', 'inventory.view_all', 'inventory_categories.view', 'inventory_items.view', 'inventory_locations.view', 'inventory.reports',
+                        'payroll.view', 'payroll.create_run', 'payroll.mark_paid', 'payroll.reports', 'payroll.view_own_payslip',
+                        'dashboard.view', 'id_cards.request',
+                    ]
                 ),
             ],
             'Student' => [

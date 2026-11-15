@@ -147,6 +147,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('can:staff.view')->group(function () {
         Route::livewire('staff', 'pages::cms.staff.index')->name('cms.staff.index');
         Route::livewire('staff/create', 'pages::cms.staff.create')->name('cms.staff.create')->middleware('can:staff.create');
+        Route::livewire('staff/{staff}', 'pages::cms.staff.show')->name('cms.staff.show');
         Route::livewire('staff/{staff}/edit', 'pages::cms.staff.edit')->name('cms.staff.edit')->middleware('can:staff.edit');
     });
 
@@ -262,6 +263,32 @@ Route::middleware(['auth', 'verified'])->group(function () {
                 Route::post('/attempt/{attempt}/extend-time', CaAttemptTimeExtensionController::class)->name('attempt.extend-time');
                 Route::livewire('/leaderboard', 'pages::cms.ca-tests.student.leaderboard')->name('leaderboard');
             });
+        });
+    });
+
+    // Inventory Management Add-on
+    Route::middleware(['addon:inventory'])->group(function () {
+        Route::prefix('inventory')->name('cms.inventory.')->group(function () {
+            Route::livewire('/', 'pages::cms.inventory.index')->name('index')->middleware('can:inventory.view');
+            Route::livewire('/catalogue', 'pages::cms.inventory.catalogue')->name('catalogue')->middleware('can:inventory_items.view');
+            Route::livewire('/locations', 'pages::cms.inventory.locations')->name('locations')->middleware('can:inventory_locations.view');
+            Route::livewire('/reconcile', 'pages::cms.inventory.reconcile')->name('reconcile')->middleware('can:inventory.reconcile');
+            Route::livewire('/reports', 'pages::cms.inventory.reports')->name('reports')->middleware('can:inventory.reports');
+            Route::livewire('/reports/print', 'pages::cms.inventory.print-report')->name('print-report')->middleware('can:inventory.reports');
+        });
+    });
+
+    // Payroll Management Add-on
+    Route::middleware(['addon:payroll'])->group(function () {
+        Route::prefix('payroll')->name('cms.payroll.')->group(function () {
+            Route::livewire('/', 'pages::cms.payroll.index')->name('index')->middleware('can:payroll.view');
+            Route::livewire('/settings', 'pages::cms.payroll.settings')->name('settings')->middleware('can:payroll.manage');
+            Route::livewire('/staff', 'pages::cms.payroll.staff')->name('staff')->middleware('can:payroll.manage');
+            Route::livewire('/runs', 'pages::cms.payroll.runs')->name('runs')->middleware('can:payroll.view');
+            Route::livewire('/runs/{run}/bank-schedule', 'pages::cms.payroll.bank-schedule')->name('bank-schedule')->middleware('can:payroll.reports');
+            Route::livewire('/runs/{run}/department-sheet', 'pages::cms.payroll.department-sheet')->name('department-sheet')->middleware('can:payroll.reports');
+            Route::livewire('/payslips', 'pages::cms.payroll.payslip')->name('my-payslips')->middleware('can:payroll.view_own_payslip');
+            Route::livewire('/payslip/{item}', 'pages::cms.payroll.payslip')->name('payslip');
         });
     });
 });

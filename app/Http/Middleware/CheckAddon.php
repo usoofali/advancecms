@@ -15,11 +15,21 @@ class CheckAddon
      */
     public function handle(Request $request, Closure $next, string $addon): Response
     {
-        if (! $request->user() || ! $request->user()->institution) {
+        $user = $request->user();
+
+        if (! $user) {
             abort(403, 'Unauthorized access.');
         }
 
-        if (! $request->user()->institution->hasAddon($addon)) {
+        if ($user->hasRole('Super Admin')) {
+            return $next($request);
+        }
+
+        if (! $user->institution) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        if (! $user->institution->hasAddon($addon)) {
             abort(403, 'This feature requires the '.$addon.' add-on.');
         }
 

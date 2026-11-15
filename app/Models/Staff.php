@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -129,6 +131,21 @@ class Staff extends Model
     public function hodDepartments(): HasMany
     {
         return $this->hasMany(Department::class, 'hod_id');
+    }
+
+    public function payrollProfile(): HasOne
+    {
+        return $this->hasOne(PayrollStaffProfile::class);
+    }
+
+    public function payrollItems(): HasMany
+    {
+        return $this->hasMany(PayrollItem::class);
+    }
+
+    public function payrollComponents(): MorphMany
+    {
+        return $this->morphMany(PayrollComponent::class, 'applicable');
     }
 
     public function getActivityModule(): string

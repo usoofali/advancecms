@@ -47,6 +47,12 @@ new #[Title('Module Add-ons')] class extends Component
             'icon' => 'document-text',
             'color' => 'teal',
         ],
+        'inventory' => [
+            'label' => 'Inventory Management',
+            'description' => 'Enables central asset & consumable catalogue, multi-location stock tracking, threshold alerts, and room audits.',
+            'icon' => 'archive-box',
+            'color' => 'cyan',
+        ],
     ];
 
     public function mount(): void

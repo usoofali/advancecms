@@ -10,6 +10,29 @@ use Illuminate\Support\Facades\DB;
 trait HasScopedRoles
 {
     /**
+     * In-memory per-user scoped permission cache.
+     *
+     * @var array<string, bool>
+     */
+    protected static array $scopedPermissionCache = [];
+
+    /**
+     * In-memory per-user scoped role name cache.
+     *
+     * @var array<string, array<string>>
+     */
+    protected static array $scopedRoleNameCache = [];
+
+    /**
+     * Clear cached scoped role/permission lookups (useful after assigning/removing roles or in tests).
+     */
+    public static function clearScopedRoleCache(): void
+    {
+        self::$scopedPermissionCache = [];
+        self::$scopedRoleNameCache = [];
+    }
+
+    /**
      * Assign a scoped role to this user for a specific model.
      */
     public function assignScopedRole(string $roleName, Model $model): void
@@ -36,6 +59,8 @@ trait HasScopedRoles
                 'updated_at' => now(),
             ]
         );
+
+        self::clearScopedRoleCache();
     }
 
     /**
@@ -53,6 +78,8 @@ trait HasScopedRoles
                 ->where('model_id', $model->getKey())
                 ->delete();
         }
+
+        self::clearScopedRoleCache();
     }
 
     /**
@@ -105,12 +132,10 @@ trait HasScopedRoles
      */
     public function hasScopedPermission(string $permission): bool
     {
-        static $cache = [];
-
         $cacheKey = $this->id.'|'.$permission;
 
-        if (array_key_exists($cacheKey, $cache)) {
-            return $cache[$cacheKey];
+        if (array_key_exists($cacheKey, self::$scopedPermissionCache)) {
+            return self::$scopedPermissionCache[$cacheKey];
         }
 
         $scopedRoleIds = DB::table('model_user_roles')
@@ -119,7 +144,7 @@ trait HasScopedRoles
             ->pluck('role_id');
 
         if ($scopedRoleIds->isEmpty()) {
-            return $cache[$cacheKey] = false;
+            return self::$scopedPermissionCache[$cacheKey] = false;
         }
 
         $hasPermission = DB::table('role_permissions')
@@ -128,7 +153,7 @@ trait HasScopedRoles
             ->where('permissions.permission_name', $permission)
             ->exists();
 
-        return $cache[$cacheKey] = $hasPermission;
+        return self::$scopedPermissionCache[$cacheKey] = $hasPermission;
     }
 
     /**
@@ -139,15 +164,13 @@ trait HasScopedRoles
      */
     public function getAllScopedRoleNames(): array
     {
-        static $cache = [];
-
         $cacheKey = 'scoped_roles_'.$this->id;
 
-        if (array_key_exists($cacheKey, $cache)) {
-            return $cache[$cacheKey];
+        if (array_key_exists($cacheKey, self::$scopedRoleNameCache)) {
+            return self::$scopedRoleNameCache[$cacheKey];
         }
 
-        return $cache[$cacheKey] = DB::table('model_user_roles')
+        return self::$scopedRoleNameCache[$cacheKey] = DB::table('model_user_roles')
             ->join('roles', 'model_user_roles.role_id', '=', 'roles.role_id')
             ->where('model_user_roles.user_id', $this->id)
             ->distinct()

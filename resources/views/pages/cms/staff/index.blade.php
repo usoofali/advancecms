@@ -110,88 +110,93 @@ new #[Layout('layouts.app')] #[Title('Staff Management')] class extends Componen
         @endcan
     </div>
 
-    <div class="flex items-center gap-4">
+    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
         <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search staff...')"
-            class="max-w-md" />
-        <flux:select wire:model.live="role_id" class="max-w-xs">
-            <flux:select.option value="null">{{ __('All Roles') }}</flux:select.option>
+            class="w-full sm:max-w-md" />
+        <flux:select wire:model.live="role_id" class="w-full sm:max-w-xs">
+            <flux:select.option value="">{{ __('All Roles') }}</flux:select.option>
             @foreach ($roles as $role)
             <flux:select.option :value="$role->role_id">{{ $role->role_name }}</flux:select.option>
             @endforeach
         </flux:select>
     </div>
 
-    <div
-        class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
-        <table class="w-full text-left border-collapse">
-            <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700">
-                <tr>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Name') }}</th>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Staff ID') }}
-                    </th>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Contact') }}
-                    </th>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Role') }}</th>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Designation') }}
-                    </th>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Status') }}</th>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-right">{{
-                        __('Actions') }}</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                @forelse ($staffMembers as $staff)
-                <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors" wire:key="{{ $staff->id }}">
-                    <td class="px-4 py-4">
-                        <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $staff->first_name }} {{
-                            $staff->last_name }}</div>
-                        <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 font-mono uppercase">{{
-                            $staff->staff_number }}</div>
-                    </td>
-                    <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400 font-mono uppercase">
-                        {{ $staff->staff_number }}
-                    </td>
-                    <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400">
+    <flux:table :paginate="$staffMembers">
+        <flux:table.columns>
+            <flux:table.column>{{ __('Name') }}</flux:table.column>
+            <flux:table.column>{{ __('Staff ID') }}</flux:table.column>
+            <flux:table.column>{{ __('Contact') }}</flux:table.column>
+            <flux:table.column>{{ __('Role') }}</flux:table.column>
+            <flux:table.column>{{ __('Designation') }}</flux:table.column>
+            <flux:table.column>{{ __('Status') }}</flux:table.column>
+            <flux:table.column class="text-right">{{ __('Actions') }}</flux:table.column>
+        </flux:table.columns>
+
+        <flux:table.rows>
+            @forelse ($staffMembers as $staff)
+                <flux:table.row wire:key="{{ $staff->id }}">
+                    <flux:table.cell>
+                        <a href="{{ route('cms.staff.show', $staff->id) }}" wire:navigate class="font-medium text-zinc-900 dark:text-zinc-100 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                            {{ $staff->first_name }} {{ $staff->last_name }}
+                        </a>
+                        <div class="mt-0.5">
+                            <a href="{{ route('cms.staff.show', $staff->id) }}" wire:navigate class="text-xs text-zinc-500 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 font-mono uppercase transition-colors">
+                                {{ $staff->staff_number }}
+                            </a>
+                        </div>
+                    </flux:table.cell>
+                    <flux:table.cell class="font-mono uppercase">
+                        <a href="{{ route('cms.staff.show', $staff->id) }}" wire:navigate class="text-zinc-600 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                            {{ $staff->staff_number }}
+                        </a>
+                    </flux:table.cell>
+                    <flux:table.cell class="text-zinc-600 dark:text-zinc-400">
                         <div>{{ $staff->email }}</div>
                         <div class="text-xs">{{ $staff->phone }}</div>
-                    </td>
-                    <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400">
+                    </flux:table.cell>
+                    <flux:table.cell class="text-zinc-600 dark:text-zinc-400">
                         {{ $staff->role->role_name ?? '—' }}
-                    </td>
-                    <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400 italic">
+                    </flux:table.cell>
+                    <flux:table.cell class="text-zinc-600 dark:text-zinc-400 italic">
                         {{ $staff->designation }}
-                    </td>
-                    <td class="px-4 py-4 text-sm">
+                    </flux:table.cell>
+                    <flux:table.cell>
                         <flux:badge :color="$staff->status === 'active' ? 'green' : 'zinc'" size="sm">
                             {{ ucfirst($staff->status) }}
                         </flux:badge>
-                    </td>
-                    <td class="px-4 py-4 text-right">
-                        <div class="flex items-center justify-end gap-2">
-                            @can('staff.edit')
-                            <flux:button size="sm" variant="ghost" icon="pencil-square"
-                                :href="route('cms.staff.edit', $staff->id)" wire:navigate
-                                title="{{ __('Edit Staff') }}" />
-                            @endcan
-                            @can('staff.delete')
-                            <flux:button size="sm" variant="ghost" icon="trash" title="{{ __('Delete Staff') }}"
-                                x-on:click="$wire.deletingId = {{ $staff->id }}; $flux.modal('delete-staff').show()" />
-                            @endcan
-                        </div>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="6" class="px-4 py-12 text-center text-zinc-500 dark:text-zinc-400">
+                    </flux:table.cell>
+                    <flux:table.cell class="text-right">
+                        <flux:dropdown position="bottom" align="end">
+                            <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" aria-label="{{ __('Actions') }}" />
+                            <flux:menu>
+                                <flux:menu.item icon="eye" :href="route('cms.staff.show', $staff->id)" wire:navigate>
+                                    {{ __('View Staff') }}
+                                </flux:menu.item>
+                                @can('staff.edit')
+                                    <flux:menu.item icon="pencil-square" :href="route('cms.staff.edit', $staff->id)" wire:navigate>
+                                        {{ __('Edit Staff') }}
+                                    </flux:menu.item>
+                                @endcan
+                                @can('staff.delete')
+                                    <flux:menu.separator />
+                                    <flux:menu.item icon="trash" variant="danger"
+                                        x-on:click="$wire.deletingId = {{ $staff->id }}; $flux.modal('delete-staff').show()">
+                                        {{ __('Delete Staff') }}
+                                    </flux:menu.item>
+                                @endcan
+                            </flux:menu>
+                        </flux:dropdown>
+                    </flux:table.cell>
+                </flux:table.row>
+            @empty
+                <flux:table.row>
+                    <flux:table.cell colspan="7" class="py-12 text-center text-zinc-500 dark:text-zinc-400">
                         {{ __('No staff records found.') }}
-                    </td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-
-    <div class="mt-4">{{ $staffMembers->links() }}</div>
+                    </flux:table.cell>
+                </flux:table.row>
+            @endforelse
+        </flux:table.rows>
+    </flux:table>
 
     <flux:modal name="delete-staff" variant="filled" class="min-w-[22rem]">
         <form wire:submit="confirmDelete" class="space-y-6">

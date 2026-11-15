@@ -547,6 +547,96 @@
                     @endcan
                 </flux:sidebar.group>
             @endcanany
+
+            @if(auth()->user()->hasRole('Super Admin') || auth()->user()->institution?->hasAddon('inventory'))
+                @canany(['inventory.view', 'inventory_items.view', 'inventory_locations.view', 'inventory.reconcile', 'inventory.reports'])
+                    <flux:sidebar.group :heading="__('Inventory')" class="grid" expandable :expanded="request()->routeIs('cms.inventory.*') ? 'true' : 'false'">
+                        @can('inventory.view')
+                            <flux:sidebar.item icon="archive-box" icon:class="text-cyan-500 dark:text-cyan-400"
+                                :href="route('cms.inventory.index')" :current="request()->routeIs('cms.inventory.index')"
+                                wire:navigate>
+                                {{ __('Inventory Overview') }}
+                            </flux:sidebar.item>
+                        @endcan
+
+                        @can('inventory_items.view')
+                            <flux:sidebar.item icon="clipboard-document-list" icon:class="text-indigo-500 dark:text-indigo-400"
+                                :href="route('cms.inventory.catalogue')" :current="request()->routeIs('cms.inventory.catalogue')"
+                                wire:navigate>
+                                {{ __('Items & Categories') }}
+                            </flux:sidebar.item>
+                        @endcan
+
+                        @can('inventory_locations.view')
+                            <flux:sidebar.item icon="building-office-2" icon:class="text-purple-500 dark:text-purple-400"
+                                :href="route('cms.inventory.locations')" :current="request()->routeIs('cms.inventory.locations')"
+                                wire:navigate>
+                                {{ __('Locations & Rooms') }}
+                            </flux:sidebar.item>
+                        @endcan
+
+                        @can('inventory.reconcile')
+                            <flux:sidebar.item icon="clipboard-document-check" icon:class="text-emerald-500 dark:text-emerald-400"
+                                :href="route('cms.inventory.reconcile')" :current="request()->routeIs('cms.inventory.reconcile')"
+                                wire:navigate>
+                                {{ __('Stock Count') }}
+                            </flux:sidebar.item>
+                        @endcan
+
+                        @can('inventory.reports')
+                            <flux:sidebar.item icon="document-chart-bar" icon:class="text-amber-500 dark:text-amber-400"
+                                :href="route('cms.inventory.reports')" :current="request()->routeIs('cms.inventory.reports*')"
+                                wire:navigate>
+                                {{ __('Stock Reports') }}
+                            </flux:sidebar.item>
+                        @endcan
+                    </flux:sidebar.group>
+                @endcanany
+            @endif
+
+            @if(auth()->user()->hasRole('Super Admin') || auth()->user()->institution?->hasAddon('payroll'))
+                @canany(['payroll.view', 'payroll.manage', 'payroll.create_run', 'payroll.view_own_payslip'])
+                    <flux:sidebar.group :heading="__('Payroll')" class="grid" expandable :expanded="request()->routeIs('cms.payroll.*') ? 'true' : 'false'">
+                        @can('payroll.view')
+                            <flux:sidebar.item icon="banknotes" icon:class="text-emerald-500 dark:text-emerald-400"
+                                :href="route('cms.payroll.index')" :current="request()->routeIs('cms.payroll.index')"
+                                wire:navigate>
+                                {{ __('Payroll Overview') }}
+                            </flux:sidebar.item>
+                        @endcan
+
+                        @can('payroll.manage')
+                            <flux:sidebar.item icon="adjustments-horizontal" icon:class="text-indigo-500 dark:text-indigo-400"
+                                :href="route('cms.payroll.settings')" :current="request()->routeIs('cms.payroll.settings')"
+                                wire:navigate>
+                                {{ __('Categories & Rules') }}
+                            </flux:sidebar.item>
+
+                            <flux:sidebar.item icon="users" icon:class="text-sky-500 dark:text-sky-400"
+                                :href="route('cms.payroll.staff')" :current="request()->routeIs('cms.payroll.staff')"
+                                wire:navigate>
+                                {{ __('Staff Pay Setup') }}
+                            </flux:sidebar.item>
+                        @endcan
+
+                        @can('payroll.view')
+                            <flux:sidebar.item icon="calculator" icon:class="text-amber-500 dark:text-amber-400"
+                                :href="route('cms.payroll.runs')" :current="request()->routeIs('cms.payroll.runs') || request()->routeIs('cms.payroll.bank-schedule') || request()->routeIs('cms.payroll.department-sheet')"
+                                wire:navigate>
+                                {{ __('Monthly Payroll') }}
+                            </flux:sidebar.item>
+                        @endcan
+
+                        @can('payroll.view_own_payslip')
+                            <flux:sidebar.item icon="document-text" icon:class="text-purple-500 dark:text-purple-400"
+                                :href="route('cms.payroll.my-payslips')" :current="request()->routeIs('cms.payroll.my-payslips') || request()->routeIs('cms.payroll.payslip')"
+                                wire:navigate>
+                                {{ __('My Payslips') }}
+                            </flux:sidebar.item>
+                        @endcan
+                    </flux:sidebar.group>
+                @endcanany
+            @endif
         </flux:sidebar.nav>
 
         <flux:spacer />

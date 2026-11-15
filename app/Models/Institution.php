@@ -103,4 +103,44 @@ class Institution extends Model
     {
         return $this->hasMany(AttendancePayment::class);
     }
+
+    public function inventoryCategories(): HasMany
+    {
+        return $this->hasMany(InventoryCategory::class);
+    }
+
+    public function inventoryItems(): HasMany
+    {
+        return $this->hasMany(InventoryItem::class);
+    }
+
+    public function inventoryLocations(): HasMany
+    {
+        return $this->hasMany(InventoryLocation::class);
+    }
+
+    public function inventoryStocks(): HasMany
+    {
+        return $this->hasMany(InventoryStock::class);
+    }
+
+    public function payrollCategories(): HasMany
+    {
+        return $this->hasMany(PayrollCategory::class);
+    }
+
+    public function payrollStaffProfiles(): HasMany
+    {
+        return $this->hasMany(PayrollStaffProfile::class);
+    }
+
+    public function payrollComponents(): HasMany
+    {
+        return $this->hasMany(PayrollComponent::class);
+    }
+
+    public function payrollRuns(): HasMany
+    {
+        return $this->hasMany(PayrollRun::class);
+    }
 }

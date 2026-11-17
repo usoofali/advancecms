@@ -205,7 +205,7 @@ new #[Layout('layouts.app')] #[Title('Lecture Timetables')] class extends Compon
             'department_id' => 'required',
             'program_id' => 'required',
             'level' => 'required',
-            'day_of_week' => 'required|in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday',
+            'day_of_week' => 'required|in:Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday',
             'period_number' => 'required|integer|min:1|max:6',
             'start_time' => 'required',
             'end_time' => 'required',
@@ -510,7 +510,7 @@ new #[Layout('layouts.app')] #[Title('Lecture Timetables')] class extends Compon
     @if ($view_mode === 'grid')
         <div class="overflow-x-auto rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
             @php
-                $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
                 $periods = range(1, 6);
                 $entries = $this->timetableEntries;
             @endphp
@@ -734,6 +734,7 @@ new #[Layout('layouts.app')] #[Title('Lecture Timetables')] class extends Compon
                             <option value="Thursday">Thursday</option>
                             <option value="Friday">Friday</option>
                             <option value="Saturday">Saturday</option>
+                            <option value="Sunday">Sunday</option>
                         </flux:select>
                     </div>
 

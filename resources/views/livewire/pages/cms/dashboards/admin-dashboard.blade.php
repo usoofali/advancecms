@@ -17,6 +17,9 @@
                 <h1 class="text-xl font-bold tracking-tight text-zinc-900 dark:text-white sm:text-2xl">
                     {{ $is_super_admin ? __('Overview') : ($institution?->name ?? __('Overview')) }}
                 </h1>
+                <p class="text-sm text-zinc-600 dark:text-zinc-400">
+                    {{ $is_super_admin ? __('Platform summary across institutions, academics, and operations.') : __('Academic, financial, and operational summary.') }}
+                </p>
             </div>
 
             <div class="flex flex-wrap items-center gap-2">

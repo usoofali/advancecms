@@ -96,10 +96,10 @@ class StaffDashboard extends Component
         }
 
         // Inventory stats
-        $hasInventoryAddon = $user->institution?->hasAddon('inventory') ?? false;
+        $hasInventoryAddon = $user->can('inventory.view');
         $inventoryLocationsCount = 0;
         $inventoryLowStockCount = 0;
-        if ($hasInventoryAddon && $user->can('inventory.view')) {
+        if ($hasInventoryAddon) {
             $inventoryLocationsCount = InventoryLocation::accessibleBy($user)
                 ->where('status', 'active')
                 ->count();
@@ -114,9 +114,9 @@ class StaffDashboard extends Component
         }
 
         // Payroll stats
-        $hasPayrollAddon = $user->institution?->hasAddon('payroll') ?? false;
+        $hasPayrollAddon = $user->can('payroll.view');
         $latestPayrollRun = null;
-        if ($hasPayrollAddon && $user->can('payroll.view')) {
+        if ($hasPayrollAddon) {
             $latestPayrollRun = PayrollRun::where('institution_id', $instId)
                 ->latest('year')
                 ->latest('month')
@@ -125,7 +125,8 @@ class StaffDashboard extends Component
         }
 
         $latestPayslip = null;
-        if ($hasPayrollAddon && $staff && $user->can('payroll.view_own_payslip')) {
+        $canViewOwnPayslip = $staff && $user->can('payroll.view_own_payslip');
+        if ($canViewOwnPayslip) {
             $latestPayslip = PayrollItem::with('run')
                 ->where('staff_id', $staff->id)
                 ->whereHas('run', fn ($q) => $q->whereIn('status', ['approved', 'paid']))
@@ -137,8 +138,8 @@ class StaffDashboard extends Component
             ? Applicant::where('institution_id', $instId)->where('admission_status', 'pending')->count()
             : 0;
 
-        $hasExamAddon = $user->institution?->hasAddon('exam_module') ?? false;
-        $pendingCbtReviewsCount = ($hasExamAddon && $user->can('cbt_results.view'))
+        $hasExamAddon = $user->can('cbt_results.view');
+        $pendingCbtReviewsCount = $hasExamAddon
             ? CbtResultStaging::where('status', 'pending')
                 ->whereHas('exam', fn ($q) => $q->where('institution_id', $instId))
                 ->count()
@@ -169,7 +170,7 @@ class StaffDashboard extends Component
             'hasInventoryAddon' => $hasInventoryAddon,
             'inventory_locations_count' => $inventoryLocationsCount,
             'inventory_low_stock_count' => $inventoryLowStockCount,
-            'hasPayrollAddon' => $hasPayrollAddon,
+            'hasPayrollAddon' => $hasPayrollAddon || $canViewOwnPayslip,
             'latest_payroll_run' => $latestPayrollRun,
             'latest_payslip' => $latestPayslip,
             'pending_applicants_count' => $pendingApplicantsCount,

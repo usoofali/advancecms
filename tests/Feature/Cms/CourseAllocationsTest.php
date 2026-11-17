@@ -2,8 +2,10 @@
 
 use App\Models\AcademicSession;
 use App\Models\Course;
+use App\Models\CourseAllocation;
 use App\Models\Department;
 use App\Models\Institution;
+use App\Models\Program;
 use App\Models\Role;
 use App\Models\Semester;
 use App\Models\User;
@@ -93,4 +95,44 @@ it('renders the course allocations print report with selected filter criteria', 
     ])->test('pages::cms.courses.print-allocations')
         ->assertOk()
         ->assertSee('Course Allocation Report');
+});
+
+it('displays program acronym without department name in course allocations table', function (): void {
+    $institution = Institution::factory()->create();
+    $department = Department::factory()->for($institution)->create(['name' => 'Hidden Department Name']);
+    $program = Program::factory()->create([
+        'institution_id' => $institution->id,
+        'department_id' => $department->id,
+        'name' => 'Full Program Name',
+        'acronym' => 'ND-CS',
+    ]);
+    $session = AcademicSession::factory()->create(['status' => 'active']);
+    $semester = Semester::factory()->create(['academic_session_id' => $session->id, 'name' => 'first']);
+    $course = Course::factory()->for($institution)->create([
+        'department_id' => $department->id,
+        'program_id' => $program->id,
+        'course_code' => 'COM101',
+    ]);
+
+    $superRole = Role::where('role_name', 'Super Admin')->first();
+    $user = User::factory()->create(['institution_id' => $institution->id]);
+    $user->roles()->sync([$superRole->role_id]);
+
+    CourseAllocation::create([
+        'institution_id' => $institution->id,
+        'user_id' => $user->id,
+        'course_id' => $course->id,
+        'academic_session_id' => $session->id,
+        'semester_id' => $semester->id,
+    ]);
+
+    $component = Livewire::actingAs($user)
+        ->test('pages::cms.courses.allocations')
+        ->assertOk()
+        ->assertSee('COM101')
+        ->assertSee('ND-CS');
+
+    $tbody = str($component->html())->after('<tbody');
+    expect((string) $tbody)->not->toContain('Hidden Department Name');
+    expect((string) $tbody)->not->toContain('Full Program Name');
 });

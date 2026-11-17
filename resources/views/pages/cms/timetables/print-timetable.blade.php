@@ -84,7 +84,7 @@ new #[Layout('layouts.guest')] #[Title('Print Lecture Timetable')] class extends
     }
 }; ?>
 
-<div class="min-h-screen bg-white p-8 text-black print:p-0">
+<div class="min-h-screen bg-white p-4 sm:p-8 text-black print:min-h-0 print:p-0">
     <!-- Action Bar (Hidden when printing) -->
     <div class="mb-6 flex items-center justify-between border-b pb-4 print:hidden">
         <a href="javascript:history.back()" class="inline-flex items-center text-sm font-medium text-gray-600 hover:text-gray-900">
@@ -96,17 +96,17 @@ new #[Layout('layouts.guest')] #[Title('Print Lecture Timetable')] class extends
     </div>
 
     <!-- Letterhead -->
-    <div class="mb-6 text-center">
+    <div class="mb-6 text-center print:mb-2">
         @if ($institution && $institution->logo_url)
-            <img src="{{ $institution->logo_url }}" alt="Logo" class="mx-auto mb-2 h-16 w-auto object-contain" />
+            <img src="{{ $institution->logo_url }}" alt="Logo" class="mx-auto mb-2 h-16 w-auto object-contain print:mb-1 print:h-10" />
         @endif
-        <h1 class="text-2xl font-bold uppercase tracking-wider text-gray-900">
+        <h1 class="text-xl sm:text-2xl font-bold uppercase tracking-wider text-gray-900 print:text-base">
             {{ $institution->name ?? config('app.name') }}
         </h1>
-        <h2 class="text-lg font-semibold text-gray-700">
+        <h2 class="text-base sm:text-lg font-semibold text-gray-700 print:text-xs">
             {{ $personal ? 'PERSONAL LECTURE TIMETABLE SCHEDULE' : 'OFFICIAL LECTURE TIMETABLE' }}
         </h2>
-        <div class="mt-2 flex flex-wrap justify-center gap-x-6 text-sm text-gray-600 font-medium">
+        <div class="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs sm:text-sm text-gray-600 font-medium print:mt-1 print:text-[10px]">
             <span><strong>Session:</strong> {{ $sessionModel->name ?? 'All Sessions' }}</span>
             <span><strong>Semester:</strong> {{ $semesterModel->name ?? 'All Semesters' }}</span>
             @if ($departmentModel)
@@ -132,18 +132,23 @@ new #[Layout('layouts.guest')] #[Title('Print Lecture Timetable')] class extends
         $maxAllocatedPeriod = $entries->max(fn ($e) => (int) $e->period_number) ?: 1;
         $periods = range(1, max(1, $maxAllocatedPeriod));
 
-        // Filter days: omit Saturday if no courses are allocated on Saturday
-        $allDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-        $hasSaturday = $entries->contains(fn ($e) => strcasecmp($e->day_of_week, 'Saturday') === 0);
-        $days = $hasSaturday ? array_merge($allDays, ['Saturday']) : $allDays;
+        // Filter days: omit Saturday / Sunday if no courses are allocated on them
+        $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        if ($entries->contains(fn ($e) => strcasecmp($e->day_of_week, 'Saturday') === 0)) {
+            $days[] = 'Saturday';
+        }
+        if ($entries->contains(fn ($e) => strcasecmp($e->day_of_week, 'Sunday') === 0)) {
+            $days[] = 'Sunday';
+        }
     @endphp
 
-    <table class="w-full border-collapse border border-gray-900 text-xs">
+    <div class="overflow-x-auto print:overflow-visible">
+    <table class="w-full table-fixed border-collapse border border-gray-900 text-xs print:text-[10px]">
         <thead>
             <tr class="bg-gray-100 border-b border-gray-900">
-                <th class="border border-gray-900 p-2 text-center font-bold w-24">Day / Period</th>
+                <th class="border border-gray-900 p-2 print:p-1 text-center font-bold w-24 print:w-20">Day / Period</th>
                 @foreach ($periods as $pNum)
-                    <th class="border border-gray-900 p-2 text-center font-bold">
+                    <th class="border border-gray-900 p-2 print:p-1 text-center font-bold">
                         <div>Period {{ $pNum }}</div>
                     </th>
                 @endforeach
@@ -151,26 +156,26 @@ new #[Layout('layouts.guest')] #[Title('Print Lecture Timetable')] class extends
         </thead>
         <tbody>
             @foreach ($days as $day)
-                <tr class="border-b border-gray-900">
-                    <td class="border border-gray-900 p-2 font-bold text-center bg-gray-50">
+                <tr class="border-b border-gray-900 break-inside-avoid">
+                    <td class="border border-gray-900 p-2 print:p-1 font-bold text-center bg-gray-50">
                         {{ $day }}
                     </td>
                     @foreach ($periods as $pNum)
                         @php
                             $slot = $entries->first(fn ($e) => strcasecmp($e->day_of_week, $day) === 0 && (int)$e->period_number === (int)$pNum);
                         @endphp
-                        <td class="border border-gray-900 p-2 text-left vertical-top h-20 w-36">
+                        <td class="border border-gray-900 p-2 print:p-1 text-left align-top h-20 print:h-auto">
                             @if ($slot)
-                                <div class="font-bold text-sm text-black">
+                                <div class="font-bold text-sm print:text-[10px] print:leading-tight text-black">
                                     {{ $slot->resolved_course?->course_code ?? $slot->course?->course_code }}
                                 </div>
-                                <div class="text-[11px] font-medium text-gray-800 line-clamp-1">
+                                <div class="text-[11px] print:text-[9px] print:leading-tight font-medium text-gray-800 line-clamp-1">
                                     {{ $slot->resolved_course?->title ?? $slot->course?->title }}
                                 </div>
-                                <div class="text-[10px] text-gray-600 mt-1">
+                                <div class="text-[10px] print:text-[8px] print:leading-tight text-gray-600 mt-1 print:mt-0.5">
                                     Lec: {{ $slot->resolved_lecturer?->name ?? 'Unassigned' }}
                                 </div>
-                                <div class="text-[9px] text-gray-500 italic mt-0.5">
+                                <div class="text-[9px] print:text-[8px] text-gray-500 italic mt-0.5 print:mt-0">
                                     {{ $slot->start_time }} - {{ $slot->end_time }}
                                 </div>
                             @else
@@ -182,9 +187,10 @@ new #[Layout('layouts.guest')] #[Title('Print Lecture Timetable')] class extends
             @endforeach
         </tbody>
     </table>
+    </div>
 
     <!-- Footer Signatures -->
-    <div class="mt-12 grid grid-cols-2 gap-8 text-xs">
+    <div class="mt-12 print:mt-5 grid grid-cols-2 gap-8 text-xs print:text-[10px] break-inside-avoid">
         <div>
             <div class="border-t border-gray-400 pt-1 text-center font-semibold">
                 Timetable Officer / HOD Signature & Date
@@ -212,8 +218,8 @@ new #[Layout('layouts.guest')] #[Title('Print Lecture Timetable')] class extends
             }
 
             @page {
-                margin: 1cm;
-                size: landscape;
+                margin: 0.6cm;
+                size: A4 landscape;
             }
         }
     </style>

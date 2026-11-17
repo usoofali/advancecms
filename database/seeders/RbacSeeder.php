@@ -23,172 +23,173 @@ class RbacSeeder extends Seeder
             'inventory_categories', 'inventory_items', 'inventory_locations',
         ];
 
-        // Define Permissions with explicit, clear descriptions
+        // Define Permissions with plain-language, self-describing explanations
         $permissions = [
-            'dashboard.view' => 'Access main institutional metrics dashboard and overview analytics',
-            'id_cards.request' => 'Submit personal request for digital or printed student/staff ID card',
-            'id_cards.manage' => 'Manage, approve, and print student and staff institutional ID cards',
+            'dashboard.view' => 'View the main dashboard and summary statistics',
+            'id_cards.request' => 'Request a digital or printed institutional ID card for yourself',
+            'id_cards.manage' => 'Review, approve, and print student and staff ID cards',
 
             // Projects Granular Permissions
-            'projects.view' => 'Access academic project management dashboard and overview',
-            'projects.view_personal' => 'Access personal academic project workspace and topic submission portal',
-            'projects.manage_sessions' => 'Create and configure project academic sessions and stages',
-            'projects.assign_supervisors' => 'Assign supervisors to eligible student projects',
-            'projects.review_topics' => 'Review, approve, or request modification for student project topics',
-            'projects.supervise' => 'Access assigned supervisee projects, review chapter submissions, and provide feedback',
-            'projects.view_dept' => 'Monitor departmental project progress, student submissions, and supervisor workloads',
-            'projects.reports' => 'Generate and print academic project monitoring and completion reports',
+            'projects.view' => 'Open the academic projects overview and list',
+            'projects.view_personal' => 'View your own project workspace and submit project topics',
+            'projects.manage_sessions' => 'Create and configure academic project sessions and stages',
+            'projects.assign_supervisors' => 'Assign project supervisors to eligible students',
+            'projects.review_topics' => 'Review, approve, or request changes to student project topics',
+            'projects.supervise' => 'View assigned student projects, review chapters, and give feedback',
+            'projects.view_dept' => 'Monitor project progress and supervisor workloads in your department',
+            'projects.reports' => 'Generate and print academic project summary reports',
 
             // Specialized Scopes
-            'students.view_dept' => 'View and search list of registered students within own department',
-            'courses.view_dept' => 'View list and curriculum of courses offered by own department',
-            'courses.view_assigned' => 'View courses allocated to self as a lecturer and access assigned student rosters',
+            'students.view_dept' => 'View and search students within your own department',
+            'courses.view_dept' => 'View courses offered by your own department',
+            'courses.view_assigned' => 'View courses assigned to you and their enrolled student lists',
 
-            'results.view_dept' => 'View broadsheets and published academic examination results for own department',
-            'results.enter' => 'Input and save continuous assessment and examination marks for assigned courses',
-            'results.modify' => 'Edit or update entered student scores prior to departmental approval',
-            'results.view_personal' => 'Access personal semester exam results, GPA, and grade statements',
+            'results.view_dept' => 'View exam broadsheets and published results for your department',
+            'results.enter' => 'Enter and save continuous assessment and exam scores for assigned courses',
+            'results.modify' => 'Edit student scores before final departmental approval',
+            'results.view_personal' => 'View your own semester exam results, GPA, and grade history',
 
-            'registrations.view_personal' => 'View personal registered courses and access student course portal',
+            'registrations.view_personal' => 'View your registered courses and access the student course portal',
             'registration_status.update' => 'Approve, lock, or unlock student course registrations',
 
             'reports.generate' => 'Generate official student academic transcripts and summary reports',
 
-            'applications.view' => 'View and filter incoming candidate admission applications',
-            'applications.approve' => 'Grant or deny admission approval for candidate applications',
-            'applicants.enroll' => 'Convert admitted applicants into active registered students',
+            'applications.view' => 'View and filter incoming admission applications',
+            'applications.approve' => 'Approve or decline candidate admission applications',
+            'applicants.enroll' => 'Enroll admitted applicants as active registered students',
 
-            'admission_status.update' => 'Configure and toggle institution admission application cycles',
+            'admission_status.update' => 'Open, close, and configure admission application periods',
 
-            'attendance.take' => 'Mark and submit live student class attendance for assigned courses',
-            'attendance.view_history' => 'View history of conducted attendance sessions and taught contact hours',
-            'attendance.manage' => 'Manage, audit, and override all institutional attendance records and tallies',
-            'attendance.view_own' => 'View personal class attendance record and percentage progress as a student',
-            'attendance.view_all' => 'View complete attendance logs across all departments and programs',
+            'attendance.take' => 'Mark and submit student class attendance for assigned courses',
+            'attendance.view_history' => 'View past class attendance sessions and taught hours',
+            'attendance.manage' => 'Review, edit, and manage all institutional attendance records',
+            'attendance.view_own' => 'View your own class attendance record and percentage',
+            'attendance.view_all' => 'View attendance records across all departments and programs',
 
-            'attendance_payments.process' => 'Calculate and process monthly lecturer attendance lecture payouts',
+            'attendance_payments.process' => 'Calculate and process lecturer attendance-based payments',
 
-            'invoices.generate' => 'Generate bulk student fee invoices based on institutional fee structures',
+            'invoices.generate' => 'Generate student fee invoices in bulk from fee schedules',
             'invoices.cancel' => 'Cancel or void active student fee invoices',
-            'invoices.print_report' => 'Export and print financial revenue and invoice collection reports',
-            'payments.verify' => 'Verify, approve, or reject manual student payment evidence',
+            'invoices.print_report' => 'Export and print fee collection and invoice reports',
+            'payments.verify' => 'Verify, approve, or reject manual student payment receipts',
 
-            'cbt_data.sync' => 'Sync examination question packages and import CBT exam scores from lab nodes',
-            'cbt_results.view' => 'Access synchronized CBT examination score sheets and student scores',
-            'cbt_results.review' => 'Inspect student question-by-question CBT answer scripts',
-            'cbt_results.approve' => 'Approve individual student CBT exam submissions into official results',
-            'cbt_results.reject' => 'Reject or invalidate staged CBT exam submissions',
-            'cbt_results.mass_action' => 'Batch approve or reject all staged CBT examination results',
-            'cbt_sync.view' => 'View CBT node sync status, server connectivity, and sync history',
-            'cbt_sync.manage_tokens' => 'Create, manage, and revoke CBT lab workstation access tokens',
-            'cbt_questions.import' => 'Bulk import examination questions from CSV templates into question banks',
-            'cbt_questions.export' => 'Export examination questions and options from question banks to CSV files',
+            'cbt_data.sync' => 'Sync exam questions and import CBT exam scores from exam stations',
+            'cbt_results.view' => 'View imported CBT exam score sheets and student results',
+            'cbt_results.review' => 'Inspect a student\'s question-by-question CBT exam answers',
+            'cbt_results.approve' => 'Approve an uploaded CBT exam score into official results',
+            'cbt_results.reject' => 'Reject or invalidate an uploaded CBT exam submission',
+            'cbt_results.mass_action' => 'Approve or reject all pending CBT exam scores at once',
+            'cbt_sync.view' => 'View CBT exam station sync status and sync history',
+            'cbt_sync.manage_tokens' => 'Create and revoke connection keys for CBT exam computers',
+            'cbt_questions.import' => 'Import CBT exam questions from CSV files into question banks',
+            'cbt_questions.export' => 'Export CBT exam questions and options to CSV files',
 
-            'activity_logs.view' => 'Access institutional audit logs and monitor system activity history',
-            'activity_logs.export' => 'Export activity log audit reports to CSV',
-            'activity_logs.clear' => 'Clear or archive historic activity log entries',
+            'activity_logs.view' => 'View system activity and audit logs for your institution',
+            'activity_logs.export' => 'Export activity log reports to CSV',
+            'activity_logs.clear' => 'Clear or archive older activity log entries',
 
             // Granular Specialized Permissions
-            'applications.notify' => 'Generate and issue provisional admission notification slips',
-            'applications.print_letter' => 'Download and print official candidate admission letters',
+            'applications.notify' => 'Generate and send provisional admission notification slips',
+            'applications.print_letter' => 'Download and print official admission letters',
             'applications.print_receipt' => 'Print official payment receipts for application fees',
-            'students.change_status' => 'Change student administrative status (Active, Suspended, Graduated, Withdrawn)',
-            'students.export' => 'Export student directories and registers to CSV or Excel files',
-            'students.import' => 'Bulk import student bio-data and admission records from CSV files',
-            'registrations.print_form' => 'Print official signed student course registration forms',
-            'registrations.print_exam_card' => 'Print official student examination eligibility cards',
-            'invoices.view_personal' => 'View personal student fee invoices, payment receipts, and balance',
-            'students.view_lecturers' => 'View names and contact info of lecturers assigned to registered courses',
-            'timetables.view_personal' => 'Access personal class timetable schedule',
+            'students.change_status' => 'Update student status (Active, Suspended, Graduated, or Withdrawn)',
+            'students.export' => 'Export student lists to CSV or Excel files',
+            'students.import' => 'Bulk import student records from CSV files',
+            'registrations.print_form' => 'Print official student course registration forms',
+            'registrations.print_exam_card' => 'Print official student examination cards',
+            'invoices.view_personal' => 'View your own fee invoices, payment receipts, and balance',
+            'students.view_lecturers' => 'View names and contact details of lecturers for your courses',
+            'timetables.view_personal' => 'View your personal class timetable schedule',
 
-            'courses.allocate' => 'Allocate departmental courses to lecturers for active academic sessions',
-            'courses.revoke_allocation' => 'Deallocate or remove course assignments from lecturers',
-            'courses.export' => 'Export course directory and syllabus outlines to CSV or Excel',
-            'courses.import' => 'Bulk import course curriculum records from CSV files',
+            'courses.allocate' => 'Assign departmental courses to lecturers for active sessions',
+            'courses.revoke_allocation' => 'Remove course assignments from lecturers',
+            'courses.export' => 'Export course lists and outlines to CSV or Excel',
+            'courses.import' => 'Bulk import course records from CSV files',
 
-            'results.export' => 'Export departmental result broadsheets to Excel or CSV files',
-            'results.import' => 'Bulk upload student exam marks from CSV spreadsheet files',
+            'results.export' => 'Export departmental result broadsheets to Excel or CSV',
+            'results.import' => 'Bulk upload student exam scores from CSV spreadsheets',
 
-            'invoices.manage_students' => 'Manage individual student fee accounts, waivers, and invoice balances',
+            'invoices.manage_students' => 'Manage individual student fee accounts, adjustments, and balances',
 
             // Placements Granular Permissions
-            'placements.view' => 'Access placement analytics dashboard and management overview',
-            'placements.view_personal' => 'Access personal placement status, select place of posting, and upload acceptance documents',
-            'placements.organizations' => 'Manage host company/organization directories for student placements',
-            'placements.types' => 'Create and manage placement program types (SIWES, Internship, Clinical, etc.)',
-            'placements.manage' => 'Create, assign, and manage student placement postings and official letters',
-            'placements.supervisors' => 'Assign institutional and industry supervisors to student placements',
-            'placements.supervise' => 'Access assigned supervisee rosters, inspect logbooks, and submit evaluation scores',
-            'placements.reports' => 'Generate and print comprehensive placement supervision performance reports',
-            'placements.templates' => 'Design and edit official placement letter templates',
+            'placements.view' => 'Open the industrial placements overview and list',
+            'placements.view_personal' => 'View your placement status, choose a host organization, and upload acceptance letters',
+            'placements.organizations' => 'Manage host companies and organizations for student placements',
+            'placements.types' => 'Create and manage placement types (SIWES, Internship, Clinical, etc.)',
+            'placements.manage' => 'Assign students to host organizations, review requests, and issue placement letters',
+            'placements.supervisors' => 'Assign school and industry supervisors to student placements',
+            'placements.supervise' => 'View assigned students, check logbooks, and submit placement scores',
+            'placements.reports' => 'Generate and print placement supervision and performance reports',
+            'placements.templates' => 'Create and edit official placement letter templates',
 
-            'system.manage' => 'Access global website settings, system configurations, and environment maintenance',
-            'system.manage_addons' => 'Toggle specialized institution add-on modules (CBT Exam, Online CA, etc.)',
-            'system.view_all_data' => 'Bypass multi-tenancy filters to view data across all institutions',
+            'system.manage' => 'Access global website settings, system configuration, and maintenance tools',
+            'system.view_all_data' => 'View and manage records across all institutions on the platform',
 
             // Scoped Role Assignment Permissions
-            'institutions.assign_roles' => 'Assign administrative roles scoped to specific institutions',
-            'departments.assign_roles' => 'Assign administrative roles scoped to specific departments',
-            'courses.assign_roles' => 'Assign roles scoped to specific course modules',
-            'cbt_exams.assign_roles' => 'Assign invigilator or examiner roles scoped to specific CBT exams',
+            'institutions.assign_roles' => 'Assign staff roles for a specific institution',
+            'departments.assign_roles' => 'Assign staff roles for a specific department',
+            'courses.assign_roles' => 'Assign staff roles for a specific course',
+            'cbt_exams.assign_roles' => 'Assign invigilator or examiner roles for a specific CBT exam',
 
             // Inventory Management Granular Permissions
-            'inventory.view' => 'Access inventory dashboard, assigned room stock balances, and low-stock alerts',
-            'inventory.view_all' => 'View and audit inventory holdings across all facility locations in the institution',
-            'inventory.reconcile' => 'Record verified stock counts and direct quantity adjustments in accessible locations',
-            'inventory.assign_officers' => 'Allocate or revoke custodial Inventory Officers on physical locations',
-            'inventory.reports' => 'Generate printable room stock sheets, campus audit summaries, and category/replenishment CSV exports',
+            'inventory.view' => 'View the inventory overview, assigned room stock, and low-stock alerts',
+            'inventory.view_all' => 'View stock balances across every room and store in the institution',
+            'inventory.reconcile' => 'Record physical stock counts and update item quantities in assigned rooms',
+            'inventory.assign_officers' => 'Assign or remove staff responsible for managing specific rooms or stores',
+            'inventory.reports' => 'Generate printable room stock sheets, audit summaries, and CSV exports',
 
             // Payroll Management Permissions
-            'payroll.view' => 'Access payroll dashboard and monthly run summaries',
-            'payroll.manage' => 'Configure staff categories, staff pay profiles, allowances, and deductions',
-            'payroll.create_run' => 'Generate draft payroll runs, adjust paylines, and submit for review',
-            'payroll.approve' => 'Execute final administrative sign-off and post-approval edits on payroll runs',
-            'payroll.mark_paid' => 'Mark approved payroll runs as paid/disbursed',
+            'payroll.view' => 'View the payroll overview and monthly salary summaries',
+            'payroll.manage' => 'Set up staff pay categories, individual salary rules, allowances, and deductions',
+            'payroll.create_run' => 'Prepare monthly payrolls, adjust staff pay items, and submit for approval',
+            'payroll.approve' => 'Give final approval to monthly payrolls',
+            'payroll.mark_paid' => 'Mark approved monthly payrolls as paid',
             'payroll.reports' => 'View and export departmental payroll summaries and bank payment schedules',
-            'payroll.view_own_payslip' => 'View and print personal approved monthly payslips',
+            'payroll.view_own_payslip' => 'View and print your own approved monthly payslips',
         ];
 
-        // Human-friendly labels for standard CRUD models
+        // Plain-language labels for standard CRUD models
         $modelLabels = [
-            'institutions' => 'institution profiles',
-            'departments' => 'department records',
-            'programs' => 'degree program offerings',
-            'courses' => 'course curriculum catalog',
-            'staff' => 'staff employee accounts',
-            'roles' => 'system access roles',
-            'permissions' => 'permission definitions',
+            'institutions' => 'institutions',
+            'departments' => 'departments',
+            'programs' => 'academic programs',
+            'courses' => 'courses',
+            'staff' => 'staff records',
+            'roles' => 'user roles',
+            'permissions' => 'permissions',
             'settings' => 'system settings',
-            'application_forms' => 'admission application form templates',
+            'application_forms' => 'admission application forms',
             'invoices' => 'student fee invoices',
-            'payments' => 'student fee payment records',
-            'cbt_exams' => 'CBT examination schedules',
-            'cbt_questions' => 'CBT exam question banks',
-            'students' => 'student bio-data profiles',
-            'registrations' => 'student course registration records',
-            'grading_systems' => 'academic grading scale schemes',
-            'academic_sessions' => 'academic calendar sessions',
-            'ca_tests' => 'online continuous assessment tests',
-            'ca_results' => 'CA test score submissions',
-            'ca_attempts' => 'student CA test attempt logs',
-            'ca_questions' => 'CA test question banks',
-            'ca_answers' => 'student CA test question responses',
-            'student_coins' => 'student gamification coin balances',
-            'timetables' => 'lecture class timetable schedules',
-            'placements' => 'student industrial placement postings',
-            'placement_supervisors' => 'placement supervisor allocations',
-            'inventory_categories' => 'inventory asset and consumable categories',
-            'inventory_items' => 'central inventory catalogue items',
-            'inventory_locations' => 'facility inventory locations and rooms',
+            'payments' => 'student payment records',
+            'cbt_exams' => 'CBT exams',
+            'cbt_questions' => 'CBT exam questions',
+            'students' => 'student records',
+            'registrations' => 'course registrations',
+            'grading_systems' => 'grading scales',
+            'academic_sessions' => 'academic sessions',
+            'ca_tests' => 'online C.A tests',
+            'ca_results' => 'C.A test scores',
+            'ca_attempts' => 'student C.A test attempts',
+            'ca_questions' => 'C.A test questions',
+            'ca_answers' => 'student C.A test answers',
+            'student_coins' => 'student reward coin balances',
+            'timetables' => 'class timetables',
+            'placements' => 'student placements',
+            'placement_supervisors' => 'placement supervisors',
+            'projects' => 'student academic projects',
+            'project_supervisors' => 'project supervisors',
+            'inventory_categories' => 'inventory categories',
+            'inventory_items' => 'inventory items',
+            'inventory_locations' => 'rooms and storage locations',
         ];
 
-        // Generate CRUD permissions with clear, human-readable descriptions
+        // Generate CRUD permissions with clear, natural descriptions
         foreach ($crudModels as $model) {
             $label = $modelLabels[$model] ?? str_replace('_', ' ', $model);
-            $permissions["{$model}.view"] = "View and search list of {$label}";
-            $permissions["{$model}.create"] = "Create new {$label} entries";
-            $permissions["{$model}.edit"] = "Modify existing {$label} entries";
-            $permissions["{$model}.delete"] = "Delete {$label} entries from the system";
+            $permissions["{$model}.view"] = "View and search {$label}";
+            $permissions["{$model}.create"] = "Add new {$label}";
+            $permissions["{$model}.edit"] = "Edit existing {$label}";
+            $permissions["{$model}.delete"] = "Delete {$label}";
         }
 
         foreach ($permissions as $name => $desc) {
@@ -214,11 +215,11 @@ class RbacSeeder extends Seeder
         // Define Roles and their Permissions
         $roles = [
             'Super Admin' => [
-                'description' => 'Global platform ownership',
-                'permissions' => array_keys($permissions), // Gets all permissions
+                'description' => 'Full platform access across all institutions and system settings',
+                'permissions' => array_keys($permissions),
             ],
             'Institutional Admin' => [
-                'description' => 'Full administrative control within one institution',
+                'description' => 'Full administrative control of academics, staff, students, finance, and operations within one institution',
                 'permissions' => array_merge(
                     $crud(['staff', 'departments', 'programs', 'courses', 'application_forms', 'invoices', 'payments', 'cbt_exams', 'cbt_questions', 'students', 'registrations', 'grading_systems', 'ca_tests', 'placements', 'placement_supervisors', 'projects', 'project_supervisors', 'inventory_categories', 'inventory_items', 'inventory_locations']),
                     [
@@ -246,35 +247,35 @@ class RbacSeeder extends Seeder
                 ),
             ],
             'Inventory Officer' => [
-                'description' => 'Custodial inventory management and stock reconciliation for assigned locations',
+                'description' => 'Manage stock and record physical counts for assigned rooms and stores',
                 'permissions' => [
                     'inventory.view', 'inventory_categories.view', 'inventory_items.view', 'inventory_locations.view',
                     'inventory.reconcile', 'inventory.reports', 'dashboard.view', 'id_cards.request',
                 ],
             ],
             'Inventory Auditor' => [
-                'description' => 'Read-only institutional audit and variance review across all facility holdings',
+                'description' => 'Read-only review of stock balances, reports, and activity logs across all rooms',
                 'permissions' => [
                     'inventory.view', 'inventory.view_all', 'inventory_categories.view', 'inventory_items.view',
                     'inventory_locations.view', 'inventory.reports', 'activity_logs.view', 'dashboard.view', 'id_cards.request',
                 ],
             ],
             'Payroll Officer' => [
-                'description' => 'Prepare payroll runs, manage staff compensation profiles, and generate bank schedules (cannot self-approve)',
+                'description' => 'Prepare monthly payrolls, manage staff pay rules, and export bank schedules (cannot approve)',
                 'permissions' => [
                     'payroll.view', 'payroll.manage', 'payroll.create_run', 'payroll.reports', 'payroll.view_own_payslip',
                     'attendance.view_history', 'dashboard.view', 'id_cards.request',
                 ],
             ],
             'Project Coordinator' => [
-                'description' => 'Manage academic project sessions, topic approvals, and supervisor assignments',
+                'description' => 'Oversee academic project sessions, topic approvals, and supervisor assignments',
                 'permissions' => [
                     'projects.view', 'projects.manage_sessions', 'projects.assign_supervisors', 'projects.review_topics',
                     'projects.supervise', 'projects.view_dept', 'projects.reports', 'dashboard.view', 'id_cards.request',
                 ],
             ],
             'Head of Department (HOD)' => [
-                'description' => 'Manage departmental academic activities',
+                'description' => 'Oversee departmental courses, lecturers, students, results, projects, and placements',
                 'permissions' => array_merge(
                     $crud(['cbt_questions', 'cbt_exams', 'ca_tests']),
                     [
@@ -294,28 +295,28 @@ class RbacSeeder extends Seeder
                 ),
             ],
             'Lecturer' => [
-                'description' => 'Academic instruction and result entry',
+                'description' => 'Teach assigned courses, take attendance, enter results, and supervise students',
                 'permissions' => array_merge(
                     $crud(['cbt_questions', 'ca_tests']),
                     ['cbt_exams.view', 'cbt_questions.import', 'cbt_questions.export', 'courses.view_assigned', 'results.enter', 'results.modify', 'attendance.take', 'attendance.view_history', 'timetables.view_personal', 'placements.supervise', 'projects.supervise', 'projects.view', 'payroll.view_own_payslip', 'dashboard.view', 'id_cards.request']
                 ),
             ],
             'Academic Secretary' => [
-                'description' => 'Coordinate academic record keeping',
+                'description' => 'Manage student registrations, transcripts, exam cards, and academic records',
                 'permissions' => array_merge(
                     $crud(['registrations']),
                     ['reports.generate', 'attendance.view_history', 'attendance.manage', 'cbt_data.sync', 'cbt_sync.view', 'cbt_sync.manage_tokens', 'cbt_results.view', 'cbt_results.review', 'students.change_status', 'registrations.print_form', 'registrations.print_exam_card', 'placements.reports', 'placements.view', 'projects.reports', 'projects.view', 'dashboard.view', 'id_cards.request']
                 ),
             ],
             'Admission Officer' => [
-                'description' => 'Process student admissions',
+                'description' => 'Manage application forms, review applicants, and enroll admitted students',
                 'permissions' => array_merge(
                     $crud(['application_forms']),
                     ['students.create', 'applications.view', 'applications.approve', 'applicants.enroll', 'applications.notify', 'applications.print_letter', 'applications.print_receipt', 'dashboard.view', 'id_cards.request']
                 ),
             ],
             'Exam Officer' => [
-                'description' => 'Coordinate exams and academic results management',
+                'description' => 'Manage CBT exams, question banks, result imports/exports, and exam approvals',
                 'permissions' => array_merge(
                     $crud(['cbt_exams', 'cbt_questions', 'ca_tests']),
                     [
@@ -330,7 +331,7 @@ class RbacSeeder extends Seeder
                 ),
             ],
             'Accountant' => [
-                'description' => 'Institutional financial management',
+                'description' => 'Manage student invoices, payment verification, payroll disbursements, and financial reports',
                 'permissions' => array_merge(
                     $crud(['payments', 'invoices']),
                     [
@@ -343,7 +344,7 @@ class RbacSeeder extends Seeder
                 ),
             ],
             'Student' => [
-                'description' => 'Access personal academic features',
+                'description' => 'Access personal courses, timetable, results, invoices, C.A tests, projects, and placements',
                 'permissions' => [
                     'results.view_personal', 'registrations.view_personal', 'attendance.view_own',
                     'applications.print_letter', 'applications.print_receipt',

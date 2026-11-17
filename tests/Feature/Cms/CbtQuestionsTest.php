@@ -18,9 +18,7 @@ beforeEach(function (): void {
 });
 
 it('forbids users without cbt_questions.view permission from accessing the page', function (): void {
-    $institution = Institution::factory()->create([
-        'addons' => ['exam_module'],
-    ]);
+    $institution = Institution::factory()->create();
     $user = User::factory()
         ->for($institution)
         ->withRole('Student')
@@ -32,9 +30,7 @@ it('forbids users without cbt_questions.view permission from accessing the page'
 });
 
 it('allows institutional admins to view the CBT questions page and list exams', function (): void {
-    $institution = Institution::factory()->create([
-        'addons' => ['exam_module'],
-    ]);
+    $institution = Institution::factory()->create();
     $department = Department::factory()->for($institution)->create();
     $program = Program::factory()->create([
         'department_id' => $department->id,
@@ -85,9 +81,7 @@ it('allows institutional admins to view the CBT questions page and list exams', 
 });
 
 it('can import questions from a CSV file with non-UTF-8 characters', function (): void {
-    $institution = Institution::factory()->create([
-        'addons' => ['exam_module'],
-    ]);
+    $institution = Institution::factory()->create();
     $department = Department::factory()->for($institution)->create();
     $program = Program::factory()->create([
         'department_id' => $department->id,
@@ -149,9 +143,7 @@ it('can import questions from a CSV file with non-UTF-8 characters', function ()
 });
 
 it('can export questions to a CSV file', function (): void {
-    $institution = Institution::factory()->create([
-        'addons' => ['exam_module'],
-    ]);
+    $institution = Institution::factory()->create();
     $department = Department::factory()->for($institution)->create();
     $program = Program::factory()->create([
         'department_id' => $department->id,

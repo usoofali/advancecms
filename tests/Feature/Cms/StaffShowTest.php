@@ -15,7 +15,7 @@ beforeEach(function () {
 });
 
 it('makes staff name and number clickable in staff directory and displays the staff profile page', function () {
-    $institution = Institution::factory()->create(['addons' => ['payroll']]);
+    $institution = Institution::factory()->create();
     $admin = User::factory()->create(['institution_id' => $institution->id]);
     $admin->roles()->sync([Role::where('role_name', 'Institutional Admin')->value('role_id')]);
 

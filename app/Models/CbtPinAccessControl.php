@@ -57,8 +57,12 @@ class CbtPinAccessControl extends Model
      * Check whether CBT PIN access is unlocked for a given session, semester, and optional program.
      * Defaults to false (locked) if no record exists.
      */
-    public static function isUnlocked(int $institutionId, int $sessionId, int $semesterId, ?int $programId = null): bool
+    public static function isUnlocked(?int $institutionId, int $sessionId, int $semesterId, ?int $programId = null): bool
     {
+        if (! $institutionId) {
+            return false;
+        }
+
         if ($programId) {
             $progControl = static::where('institution_id', $institutionId)
                 ->where('academic_session_id', $sessionId)

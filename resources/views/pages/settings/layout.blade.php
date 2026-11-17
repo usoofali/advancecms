@@ -1,3 +1,5 @@
+@props(['heading' => '', 'subheading' => '', 'wide' => false])
+
 <div class="flex items-start max-md:flex-col">
     <div class="me-10 w-full pb-4 md:w-[220px]">
         <flux:navlist aria-label="{{ __('Settings') }}">
@@ -21,10 +23,6 @@
                 <flux:navlist.item :href="route('settings.website')" wire:navigate icon="globe-alt">
                     {{ __('Website Settings') }}</flux:navlist.item>
             @endcan
-            @can('system.manage')
-                <flux:navlist.item :href="route('settings.addons')" wire:navigate icon="puzzle-piece">{{ __('Add-ons') }}
-                </flux:navlist.item>
-            @endcan
         </flux:navlist>
     </div>
 
@@ -34,7 +32,7 @@
         <flux:heading>{{ $heading ?? '' }}</flux:heading>
         <flux:subheading>{{ $subheading ?? '' }}</flux:subheading>
 
-        <div class="mt-5 w-full max-w-lg">
+        <div class="mt-5 w-full {{ $wide ? 'max-w-5xl' : 'max-w-lg' }}">
             {{ $slot }}
         </div>
     </div>

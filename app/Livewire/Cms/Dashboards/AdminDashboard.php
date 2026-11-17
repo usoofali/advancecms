@@ -59,7 +59,7 @@ class AdminDashboard extends Component
         }
         $registrationVelocity = $studentsCount > 0 ? round(($registeredStudentIdsCount / $studentsCount) * 100, 1) : 0;
 
-        $hasInventoryAddon = $isSuperAdmin || ($user->institution?->hasAddon('inventory') ?? false);
+        $hasInventoryAddon = $user->can('inventory.view');
         $inventoryLocationsCount = 0;
         $inventoryLowStockCount = 0;
 
@@ -77,7 +77,7 @@ class AdminDashboard extends Component
                 ->count();
         }
 
-        $hasPayrollAddon = $isSuperAdmin || ($user->institution?->hasAddon('payroll') ?? false);
+        $hasPayrollAddon = $user->can('payroll.view');
         $latestPayrollRun = null;
         $pendingPayrollRunsCount = 0;
 

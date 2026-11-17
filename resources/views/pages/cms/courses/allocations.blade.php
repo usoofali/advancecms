@@ -13,8 +13,13 @@ use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Component {
+    use WithPagination;
+
+    public string $search = '';
+
     public int|string $session_id = '';
 
     public int|string $semester_id = '';
@@ -81,12 +86,18 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
         }
     }
 
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
     public function updatedInstitutionId(): void
     {
         $this->resetDepartmentId();
         $this->program_id = 'null';
         $this->level = 'null';
         $this->course_id = 'null';
+        $this->resetPage();
     }
 
     public function updatedSessionId(): void
@@ -96,11 +107,13 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
         $this->program_id = 'null';
         $this->level = 'null';
         $this->course_id = 'null';
+        $this->resetPage();
     }
 
     public function updatedSemesterId(): void
     {
         $this->course_id = 'null';
+        $this->resetPage();
     }
 
     public function updatedDepartmentId(): void
@@ -108,17 +121,20 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
         $this->program_id = 'null';
         $this->level = 'null';
         $this->course_id = 'null';
+        $this->resetPage();
     }
 
     public function updatedProgramId(): void
     {
         $this->level = 'null';
         $this->course_id = 'null';
+        $this->resetPage();
     }
 
     public function updatedLevel(): void
     {
         $this->course_id = 'null';
+        $this->resetPage();
     }
 
     public function allocate(): void
@@ -268,6 +284,14 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
             $allocationsQuery->where('course_allocations.semester_id', $this->semester_id);
         }
 
+        if (trim($this->search) !== '') {
+            $term = '%' . trim($this->search) . '%';
+            $allocationsQuery->where(function ($q) use ($term) {
+                $q->whereHas('user', fn ($uq) => $uq->where('name', 'like', $term)->orWhere('email', 'like', $term))
+                    ->orWhereHas('course', fn ($cq) => $cq->where('course_code', 'like', $term)->orWhere('title', 'like', $term));
+            });
+        }
+
         $departmentsQuery = Department::query();
         if ($this->institution_id && $this->institution_id !== 'null') {
             $departmentsQuery->where('institution_id', $this->institution_id);
@@ -297,22 +321,22 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
             'programs' => $programsQuery->orderBy('name')->get(),
             'courses' => $coursesQuery->orderBy('course_code')->get(),
             'staff' => $staffQuery->orderBy('name')->get(),
-            'allocations' => $allocationsQuery->get(),
+            'allocations' => $allocationsQuery->paginate(15),
         ]);
     }
 }; ?>
 
-<div class="mx-auto max-w-6xl print:max-w-none print:mx-0">
-    <div class="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
+<div class="mx-auto max-w-7xl space-y-6 print:max-w-none print:mx-0">
+    {{-- Header --}}
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between print:hidden">
         <div>
-            <flux:heading size="xl" class="text-xl md:text-2xl font-bold">{{ __('Course Allocations') }}</flux:heading>
-            <flux:subheading class="text-xs md:text-sm">{{ __('Assign courses to lecturers for specific sessions and semesters') }}
-            </flux:subheading>
+            <flux:heading size="xl">{{ __('Course Allocations') }}</flux:heading>
+            <flux:subheading>{{ __('Assign courses to lecturers by academic session and semester') }}</flux:subheading>
         </div>
 
         <div class="flex flex-wrap items-center gap-3">
             <x-action-message on="allocation-created">
-                <flux:badge color="green">{{ __('Course allocated successfully!') }}</flux:badge>
+                <flux:badge color="green">{{ __('Course allocated!') }}</flux:badge>
             </x-action-message>
 
             <x-action-message on="allocation-revoked">
@@ -320,22 +344,27 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
             </x-action-message>
 
             <x-action-message on="allocation-failed">
-                <flux:badge color="red">{{ __('Allocation failed (already exists).') }}</flux:badge>
+                <flux:badge color="red">{{ __('Already allocated.') }}</flux:badge>
             </x-action-message>
 
-            <flux:button variant="primary" icon="printer" class="w-full sm:w-auto print:hidden"
+            <flux:button variant="filled" icon="printer" class="w-full sm:w-auto"
                 x-on:click="window.open('{{ route('cms.courses.allocations.print') }}?session_id=' + $wire.session_id + '&semester_id=' + $wire.semester_id + '&department_id=' + $wire.department_id + '&program_id=' + $wire.program_id + '&level=' + $wire.level + '&institution_id=' + $wire.institution_id, '_blank')">
-                {{ __('Print Allocations Report') }}
+                {{ __('Print Report') }}
             </flux:button>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-8 print:block">
-        <!-- Allocation Form -->
-        <div class="md:col-span-1 print:hidden">
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-12 print:block">
+        {{-- Allocation Form --}}
+        <div class="lg:col-span-4 print:hidden">
             @can('courses.allocate')
-                <flux:card>
-                    <form wire:submit="allocate" class="space-y-6">
+                <flux:card class="space-y-5">
+                    <div class="border-b border-zinc-100 pb-3 dark:border-zinc-800">
+                        <flux:heading size="lg">{{ __('Assign Lecturer') }}</flux:heading>
+                        <flux:subheading>{{ __('Filter a course and select a lecturer') }}</flux:subheading>
+                    </div>
+
+                    <form wire:submit="allocate" class="space-y-4">
                         @if (!auth()->user()->institution_id)
                             <flux:select wire:model.live="institution_id" :label="__('Institution')">
                                 <flux:select.option value="null">{{ __('Select institution...') }}</flux:select.option>
@@ -345,25 +374,27 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
                             </flux:select>
                         @endif
 
-                        <flux:select wire:model.live="session_id" :label="__('Academic Session')" required>
-                            <flux:select.option value="null">{{ __('Select session...') }}</flux:select.option>
-                            @foreach ($sessions as $session)
-                                <flux:select.option :value="$session->id">{{ $session->name }}</flux:select.option>
-                            @endforeach
-                        </flux:select>
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                            <flux:select wire:model.live="session_id" :label="__('Session')" required>
+                                <flux:select.option value="null">{{ __('Select session...') }}</flux:select.option>
+                                @foreach ($sessions as $session)
+                                    <flux:select.option :value="$session->id">{{ $session->name }}</flux:select.option>
+                                @endforeach
+                            </flux:select>
 
-                        <flux:select wire:model.live="semester_id" :label="__('Semester')" required
-                            :disabled="!$session_id || $session_id === 'null'">
-                            <flux:select.option value="null">{{ __('Select semester...') }}</flux:select.option>
-                            @foreach ($semesters as $semester)
-                                <flux:select.option :value="$semester->id">{{ ucfirst($semester->name) }}</flux:select.option>
-                            @endforeach
-                        </flux:select>
+                            <flux:select wire:model.live="semester_id" :label="__('Semester')" required
+                                :disabled="!$session_id || $session_id === 'null'">
+                                <flux:select.option value="null">{{ __('Select semester...') }}</flux:select.option>
+                                @foreach ($semesters as $semester)
+                                    <flux:select.option :value="$semester->id">{{ ucfirst($semester->name) }}</flux:select.option>
+                                @endforeach
+                            </flux:select>
+                        </div>
 
                         @if (!$this->isHod || count($this->hodDepartmentIds) > 1)
                             <flux:select wire:model.live="department_id" :label="__('Department')">
                                 <flux:select.option value="null">
-                                    {{ $this->isHod ? __('All My Departments') : __('All Departments (Optional)...') }}
+                                    {{ $this->isHod ? __('All My Departments') : __('All Departments') }}
                                 </flux:select.option>
                                 @foreach ($departments as $dept)
                                     <flux:select.option :value="$dept->id">{{ $dept->name }}</flux:select.option>
@@ -371,45 +402,36 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
                             </flux:select>
                         @endif
 
-                        <flux:select wire:model.live="program_id" :label="__('Program')"
-                            :disabled="!$department_id || $department_id === 'null'">
-                            <flux:select.option value="null">
-                                @if(!$department_id || $department_id === 'null')
-                                    {{ __('Select department first...') }}
-                                @else
-                                    {{ __('All Programs (Optional)...') }}
-                                @endif
-                            </flux:select.option>
-                            @foreach ($programs as $program)
-                                <flux:select.option :value="$program->id">{{ $program->name }}</flux:select.option>
-                            @endforeach
-                        </flux:select>
-                        <flux:select wire:model.live="level" :label="__('Level')"
-                            :disabled="!$program_id || $program_id === 'null'">
-                            <flux:select.option value="null">
-                                @if(!$program_id || $program_id === 'null')
-                                    {{ __('Select program first...') }}
-                                @else
-                                    {{ __('All Levels (Optional)...') }}
-                                @endif
-                            </flux:select.option>
-                            <flux:select.option value="100">100</flux:select.option>
-                            <flux:select.option value="200">200</flux:select.option>
-                            <flux:select.option value="300">300</flux:select.option>
-                        </flux:select>
+                        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                            <flux:select wire:model.live="program_id" :label="__('Program')"
+                                :disabled="!$department_id || $department_id === 'null'">
+                                <flux:select.option value="null">
+                                    {{ (!$department_id || $department_id === 'null') ? __('Select dept. first') : __('All Programs') }}
+                                </flux:select.option>
+                                @foreach ($programs as $program)
+                                    <flux:select.option :value="$program->id">{{ $program->acronym ?? $program->name }}</flux:select.option>
+                                @endforeach
+                            </flux:select>
+
+                            <flux:select wire:model.live="level" :label="__('Level')"
+                                :disabled="!$program_id || $program_id === 'null'">
+                                <flux:select.option value="null">
+                                    {{ (!$program_id || $program_id === 'null') ? __('Select prog. first') : __('All Levels') }}
+                                </flux:select.option>
+                                @foreach ([100, 200, 300, 400, 500] as $lvl)
+                                    <flux:select.option value="{{ $lvl }}">{{ $lvl }}L</flux:select.option>
+                                @endforeach
+                            </flux:select>
+                        </div>
 
                         <flux:select wire:model="course_id" :label="__('Course')" required
                             :disabled="!$program_id || $program_id === 'null'">
                             <flux:select.option value="null">
-                                @if(!$program_id || $program_id === 'null')
-                                    {{ __('Select program first...') }}
-                                @else
-                                    {{ __('Select course...') }}
-                                @endif
+                                {{ (!$program_id || $program_id === 'null') ? __('Select program first...') : __('Select course...') }}
                             </flux:select.option>
                             @foreach ($courses as $course)
-                                <flux:select.option :value="$course->id">{{ $course->course_code }} - {{ $course->title }}
-                                    ({{ $course->level }}L, {{ $course->semester == 1 ? '1st Sem' : '2nd Sem' }})
+                                <flux:select.option :value="$course->id">
+                                    {{ $course->course_code }} — {{ Str::limit($course->title, 35) }} ({{ $course->level }}L)
                                 </flux:select.option>
                             @endforeach
                         </flux:select>
@@ -421,29 +443,29 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
                             @endforeach
                         </flux:select>
 
-                        <div class="flex justify-end pt-2">
-                            <flux:button variant="primary" type="submit">
+                        <div class="pt-2">
+                            <flux:button variant="primary" type="submit" icon="plus" class="w-full">
                                 {{ __('Allocate Course') }}
                             </flux:button>
                         </div>
                     </form>
                 </flux:card>
             @else
-                <div class="p-6 text-center border-2 border-dashed rounded-2xl text-zinc-400">
-                    <flux:icon.shield-exclamation class="size-12 mx-auto mb-4 opacity-20" />
-                    <p class="text-sm">{{ __('Search and view existing allocations in the list.') }}</p>
+                <div class="rounded-2xl border-2 border-dashed border-zinc-200 p-6 text-center text-zinc-400 dark:border-zinc-800">
+                    <flux:icon.shield-exclamation class="mx-auto mb-3 size-10 opacity-30" />
+                    <p class="text-sm">{{ __('View existing course allocations in the table.') }}</p>
                 </div>
             @endcan
         </div>
 
-        <!-- Allocations List -->
-        <div class="md:col-span-2 print:col-span-1 print:w-full">
-            <flux:card
-                class="print:!border-none print:!shadow-none print:!rounded-none print:!p-0 print:!bg-transparent text-black dark:print:text-black">
-                <div class="hidden print:block mb-8 text-center text-black dark:text-black">
-                    <h2 class="text-2xl font-bold uppercase tracking-wider">{{ auth()->user()->institution->name ??
-    __('Course Allocations') }}</h2>
-                    <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-600 uppercase font-medium">
+        {{-- Allocations Table --}}
+        <div class="lg:col-span-8 print:col-span-1 print:w-full">
+            <flux:card class="space-y-4 print:!border-none print:!shadow-none print:!rounded-none print:!p-0 print:!bg-transparent">
+                <div class="hidden print:block mb-6 text-center text-black">
+                    <h2 class="text-2xl font-bold uppercase tracking-wider">
+                        {{ auth()->user()->institution->name ?? __('Course Allocations') }}
+                    </h2>
+                    <p class="mt-1 text-sm font-medium uppercase text-zinc-600">
                         {{ __('Allocated Courses') }}
                         @if($this->session_id && $this->session_id !== 'null')
                             - {{ \App\Models\AcademicSession::find($this->session_id)?->name }}
@@ -451,80 +473,97 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
                         @if($this->semester_id && $this->semester_id !== 'null')
                             - {{ ucfirst(\App\Models\Semester::find($this->semester_id)?->name) }}
                         @endif
-                        @if($this->department_id && $this->department_id !== 'null')
-                            - {{ \App\Models\Department::find($this->department_id)?->name }}
-                        @endif
                         @if($this->program_id && $this->program_id !== 'null')
-                            - {{ \App\Models\Program::find($this->program_id)?->name }}
+                            - {{ \App\Models\Program::find($this->program_id)?->acronym ?? \App\Models\Program::find($this->program_id)?->name }}
                         @endif
                     </p>
                 </div>
 
-                <flux:heading size="md" class="mb-4 print:hidden">{{ __('Current Allocations') }}</flux:heading>
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between print:hidden">
+                    <div class="flex items-center gap-2">
+                        <flux:heading size="lg">{{ __('Current Allocations') }}</flux:heading>
+                        <flux:badge size="sm" color="indigo">{{ $allocations->total() }}</flux:badge>
+                    </div>
 
-                <div class="overflow-x-auto print:overflow-visible">
-                    <table class="w-full text-left text-sm border-collapse print:text-black dark:print:text-black">
-                        <thead>
-                            <tr class="border-b border-zinc-200 dark:border-zinc-700 print:border-black/20">
-                                <th class="px-4 py-3 font-semibold text-zinc-900 dark:text-white print:text-black">{{
-    __('Lecturer') }}</th>
-                                <th class="px-4 py-3 font-semibold text-zinc-900 dark:text-white print:text-black">{{
-    __('Course / Dept / Program') }}</th>
-                                <th class="px-4 py-3 font-semibold text-zinc-900 dark:text-white print:text-black">{{
-    __('Session / Semester') }}</th>
-                                <th
-                                    class="px-4 py-3 font-semibold text-right text-zinc-900 dark:text-white print:hidden">
-                                    {{ __('Action') }}
-                                </th>
-                            </tr>
-                        </thead>
-
-                        <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700 print:divide-black/20">
-                            @forelse ($allocations as $alloc)
-                                                    <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 print:hover:bg-transparent">
-                                                        <td class="px-4 py-3">
-                                                            <div class="font-medium text-zinc-900 dark:text-white print:text-black">{{
-                                $alloc->user->name }}</div>
-                                                        </td>
-                                                        <td class="px-4 py-3">
-                                                            <div
-                                                                class="font-mono text-sm uppercase text-black dark:text-white print:text-black">
-                                                                {{ $alloc->course->course_code }}
-                                                            </div>
-                                                            <div class="text-xs text-zinc-500 dark:text-zinc-400 print:text-black/70">{{
-                                Str::limit($alloc->course->title, 40) }}</div>
-                                                            <div
-                                                                class="mt-1 flex gap-1 flex-wrap text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500 print:text-black/50">
-                                                                <span>{{ $alloc->course->department?->name }}</span>
-                                                                <span class="text-zinc-300 dark:text-zinc-700 mx-0.5">•</span>
-                                                                <span>{{ $alloc->course->program?->name }}</span>
-                                                            </div>
-                                                        </td>
-                                                        <td class="px-4 py-3">
-                                                            <div class="text-sm text-black dark:text-white print:text-black">{{
-                                $alloc->academicSession->name }}</div>
-                                                            <div class="text-xs text-zinc-500 dark:text-zinc-400 print:text-black/70">{{
-                                ucfirst($alloc->semester->name) }}</div>
-                                                        </td>
-                                                        <td class="px-4 py-3 text-right print:hidden">
-                                                            @can('courses.revoke_allocation')
-                                                                <flux:button size="sm" variant="danger" icon="trash" title="{{ __('Revoke') }}"
-                                                                    x-on:click="$wire.revokingId = {{ $alloc->id }}; $flux.modal('revoke-allocation').show()">
-                                                                </flux:button>
-                                                            @endcan
-                                                        </td>
-                                                    </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="4"
-                                        class="text-center text-zinc-500 dark:text-zinc-400 py-8 print:text-black/60">
-                                        {{ __('No course allocations found.') }}
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
+                    <flux:input
+                        wire:model.live.debounce.300ms="search"
+                        icon="magnifying-glass"
+                        size="sm"
+                        placeholder="{{ __('Search lecturer or course...') }}"
+                        class="w-full sm:w-64"
+                    />
                 </div>
+
+                <flux:table :paginate="$allocations">
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Lecturer') }}</flux:table.column>
+                        <flux:table.column>{{ __('Course / Program') }}</flux:table.column>
+                        <flux:table.column>{{ __('Session / Semester') }}</flux:table.column>
+                        <flux:table.column class="text-right print:hidden">{{ __('Action') }}</flux:table.column>
+                    </flux:table.columns>
+
+                    <flux:table.rows>
+                        @forelse ($allocations as $alloc)
+                            <flux:table.row wire:key="alloc-{{ $alloc->id }}">
+                                <flux:table.cell>
+                                    <div class="font-medium text-zinc-900 dark:text-zinc-100">
+                                        {{ $alloc->user?->name ?? '—' }}
+                                    </div>
+                                    @if ($alloc->user?->email)
+                                        <div class="text-xs text-zinc-500 dark:text-zinc-400">{{ $alloc->user->email }}</div>
+                                    @endif
+                                </flux:table.cell>
+
+                                <flux:table.cell>
+                                    <div class="flex flex-wrap items-center gap-1.5">
+                                        <span class="font-mono text-xs font-bold uppercase text-zinc-900 dark:text-zinc-100">
+                                            {{ $alloc->course?->course_code }}
+                                        </span>
+                                        @if ($alloc->course?->program)
+                                            <flux:badge size="xs" color="indigo">
+                                                {{ $alloc->course->program->acronym ?: $alloc->course->program->name }}
+                                            </flux:badge>
+                                        @endif
+                                        @if ($alloc->course?->level)
+                                            <flux:badge size="xs" color="zinc">{{ $alloc->course->level }}L</flux:badge>
+                                        @endif
+                                    </div>
+                                    <div class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                                        {{ Str::limit($alloc->course?->title ?? '', 45) }}
+                                    </div>
+                                </flux:table.cell>
+
+                                <flux:table.cell>
+                                    <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                                        {{ $alloc->academicSession?->name ?? '—' }}
+                                    </div>
+                                    <div class="text-xs text-zinc-500 dark:text-zinc-400">
+                                        {{ $alloc->semester ? ucfirst($alloc->semester->name) : '—' }}
+                                    </div>
+                                </flux:table.cell>
+
+                                <flux:table.cell class="text-right print:hidden">
+                                    @can('courses.revoke_allocation')
+                                        <flux:button
+                                            size="sm"
+                                            variant="ghost"
+                                            icon="trash"
+                                            class="text-rose-600 hover:text-rose-700 dark:text-rose-400"
+                                            title="{{ __('Revoke Allocation') }}"
+                                            x-on:click="$wire.revokingId = {{ $alloc->id }}; $flux.modal('revoke-allocation').show()"
+                                        />
+                                    @endcan
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @empty
+                            <flux:table.row>
+                                <flux:table.cell colspan="4" class="py-10 text-center text-zinc-500 dark:text-zinc-400">
+                                    {{ __('No course allocations found.') }}
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @endforelse
+                    </flux:table.rows>
+                </flux:table>
             </flux:card>
         </div>
     </div>
@@ -534,8 +573,7 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
             <div>
                 <flux:heading size="lg">{{ __('Revoke Course Allocation?') }}</flux:heading>
                 <flux:subheading>
-                    {{ __('Are you sure you want to revoke this course allocation? The lecturer will no longer be able
-                    to enter results for this course.') }}
+                    {{ __('Are you sure you want to revoke this course allocation? The lecturer will no longer be able to enter results for this course.') }}
                 </flux:subheading>
             </div>
 
@@ -549,5 +587,3 @@ new #[Layout('layouts.app')] #[Title('Course Allocations')] class extends Compon
         </form>
     </flux:modal>
 </div>
-
-{{-- Hello World --}}

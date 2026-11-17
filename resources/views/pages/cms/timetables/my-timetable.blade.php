@@ -84,9 +84,13 @@ new #[Layout('layouts.app')] #[Title('My Lecture Timetable')] class extends Comp
             $periods = range(1, max(1, $maxAllocatedPeriod));
 
             $hasSaturday = $entries->contains(fn ($e) => strcasecmp($e->day_of_week, 'Saturday') === 0);
+            $hasSunday = $entries->contains(fn ($e) => strcasecmp($e->day_of_week, 'Sunday') === 0);
             $days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
             if ($hasSaturday) {
                 $days[] = 'Saturday';
+            }
+            if ($hasSunday) {
+                $days[] = 'Sunday';
             }
         @endphp
 

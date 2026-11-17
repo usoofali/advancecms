@@ -96,6 +96,22 @@ class User extends Authenticatable
         })->exists();
     }
 
+    /**
+     * Check if the user has any of the given permissions.
+     *
+     * @param  array<int, string>  $permissions
+     */
+    public function hasAnyPermission(array $permissions): bool
+    {
+        if ($this->hasRole('Super Admin')) {
+            return true;
+        }
+
+        return $this->roles()->whereHas('permissions', function ($query) use ($permissions) {
+            $query->whereIn('permission_name', $permissions);
+        })->exists();
+    }
+
     public function student(): HasOne
     {
         return $this->hasOne(Student::class, 'email', 'email');

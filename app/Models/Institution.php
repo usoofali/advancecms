@@ -29,7 +29,6 @@ class Institution extends Model
         'admission_start_date',
         'admission_end_date',
         'established_year',
-        'addons',
         'meta',
     ];
 
@@ -46,13 +45,7 @@ class Institution extends Model
             'admission_start_date' => 'datetime',
             'admission_end_date' => 'datetime',
             'default_allowance' => 'decimal:2',
-            'addons' => 'array',
         ];
-    }
-
-    public function hasAddon(string $addon): bool
-    {
-        return is_array($this->addons) && in_array($addon, $this->addons);
     }
 
     public function isAdmissionActive(): bool

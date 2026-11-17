@@ -24,12 +24,12 @@ beforeEach(function () {
     $this->seed(RbacSeeder::class);
 });
 
-it('blocks access to payroll routes when institution does not have the payroll addon', function () {
-    $institution = Institution::factory()->create(['addons' => ['inventory']]);
-    $admin = User::factory()->create(['institution_id' => $institution->id]);
-    $admin->roles()->sync([Role::where('role_name', 'Institutional Admin')->value('role_id')]);
+it('blocks access to payroll routes when user lacks payroll permissions', function () {
+    $institution = Institution::factory()->create();
+    $lecturer = User::factory()->create(['institution_id' => $institution->id]);
+    $lecturer->roles()->sync([Role::where('role_name', 'Lecturer')->value('role_id')]);
 
-    $this->actingAs($admin);
+    $this->actingAs($lecturer);
 
     $this->get(route('cms.payroll.index'))->assertForbidden();
     $this->get(route('cms.payroll.settings'))->assertForbidden();
@@ -37,7 +37,7 @@ it('blocks access to payroll routes when institution does not have the payroll a
 });
 
 it('computes fixed permanent salaries, contact-credit-unit casual lecturer pay, and polymorphic allowances/deductions', function () {
-    $institution = Institution::factory()->create(['addons' => ['payroll']]);
+    $institution = Institution::factory()->create();
     $admin = User::factory()->create(['institution_id' => $institution->id]);
     $admin->roles()->sync([Role::where('role_name', 'Institutional Admin')->value('role_id')]);
 
@@ -164,7 +164,7 @@ it('computes fixed permanent salaries, contact-credit-unit casual lecturer pay, 
 });
 
 it('enforces segregated approval so payroll officer cannot approve final run, and logs post-approval edits', function () {
-    $institution = Institution::factory()->create(['addons' => ['payroll']]);
+    $institution = Institution::factory()->create();
     $officer = User::factory()->create(['institution_id' => $institution->id]);
     $officer->roles()->sync([Role::where('role_name', 'Payroll Officer')->value('role_id')]);
 
@@ -220,8 +220,8 @@ it('enforces segregated approval so payroll officer cannot approve final run, an
 });
 
 it('isolates payroll data between tenants and supports bank schedule export, department sheet, and staff self-service payslips', function () {
-    $instA = Institution::factory()->create(['addons' => ['payroll'], 'name' => 'College A']);
-    $instB = Institution::factory()->create(['addons' => ['payroll'], 'name' => 'College B']);
+    $instA = Institution::factory()->create(['name' => 'College A']);
+    $instB = Institution::factory()->create(['name' => 'College B']);
 
     $adminA = User::factory()->create(['institution_id' => $instA->id]);
     $adminA->roles()->sync([Role::where('role_name', 'Institutional Admin')->value('role_id')]);
@@ -270,4 +270,34 @@ it('isolates payroll data between tenants and supports bank schedule export, dep
     $this->actingAs($staffA->user);
     $this->get(route('cms.payroll.my-payslips'))->assertSuccessful()->assertSee('95,000.00');
     $this->get(route('cms.payroll.payslip', ['item' => $itemA->id]))->assertSuccessful()->assertSee('Employee Payslip');
+});
+
+it('uses staff record as single source of truth for bank account details in payroll', function () {
+    $institution = Institution::factory()->create();
+    $admin = User::factory()->create(['institution_id' => $institution->id]);
+    $admin->roles()->sync([Role::where('role_name', 'Institutional Admin')->value('role_id')]);
+
+    $staff = Staff::factory()->create([
+        'institution_id' => $institution->id,
+        'bank_name' => 'Zenith Bank',
+        'account_number' => '1122334455',
+        'account_name' => 'Old Account Name',
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test('pages::cms.payroll.staff')
+        ->call('openEditProfileModal', $staff->id)
+        ->assertSet('prof_bank_name', 'Zenith Bank')
+        ->assertSet('prof_account_number', '1122334455')
+        ->set('prof_bank_name', 'UBA')
+        ->set('prof_account_number', '2233445566')
+        ->set('prof_account_name', 'Updated Staff Name')
+        ->set('prof_base_salary', '150000')
+        ->call('saveProfile')
+        ->assertHasNoErrors();
+
+    $staff->refresh();
+    expect($staff->bank_name)->toBe('UBA');
+    expect($staff->account_number)->toBe('2233445566');
+    expect($staff->account_name)->toBe('Updated Staff Name');
 });

@@ -97,9 +97,9 @@ new #[Layout('layouts.app')] #[Title('Staff Pay Setup')] class extends Component
         $this->prof_contact_formula = (string) ($profile?->contact_formula ?? '');
         $this->prof_base_salary = (string) ($profile?->base_salary ?? '0');
         $this->prof_custom_rate = $profile?->custom_rate !== null ? (string) $profile->custom_rate : '';
-        $this->prof_bank_name = (string) ($profile?->bank_name ?: $staff->bank_name ?? '');
-        $this->prof_account_number = (string) ($profile?->account_number ?: $staff->account_number ?? '');
-        $this->prof_account_name = (string) ($profile?->account_name ?: $staff->account_name ?? '');
+        $this->prof_bank_name = (string) ($staff->bank_name ?? '');
+        $this->prof_account_number = (string) ($staff->account_number ?? '');
+        $this->prof_account_name = (string) ($staff->account_name ?? '');
         $this->prof_status = $profile?->status ?? 'active';
 
         $this->showProfileModal = true;
@@ -119,10 +119,19 @@ new #[Layout('layouts.app')] #[Title('Staff Pay Setup')] class extends Component
             'prof_contact_formula' => 'nullable|in:,contact_x_credit_unit,hour_x_credit_unit,per_contact,per_hour',
             'prof_base_salary' => 'required|numeric|min:0',
             'prof_custom_rate' => 'nullable|numeric|min:0',
+            'prof_bank_name' => 'nullable|string|max:100',
+            'prof_account_number' => 'nullable|string|max:30',
+            'prof_account_name' => 'nullable|string|max:100',
             'prof_status' => 'required|in:active,suspended',
         ]);
 
         $staff = Staff::where('institution_id', $instId)->findOrFail($this->editingStaffId);
+
+        $staff->update([
+            'bank_name' => $this->prof_bank_name ?: null,
+            'account_number' => $this->prof_account_number ?: null,
+            'account_name' => $this->prof_account_name ?: null,
+        ]);
 
         PayrollStaffProfile::updateOrCreate(
             ['institution_id' => $instId, 'staff_id' => $staff->id],
@@ -133,9 +142,6 @@ new #[Layout('layouts.app')] #[Title('Staff Pay Setup')] class extends Component
                 'contact_formula' => $this->prof_contact_formula ?: null,
                 'base_salary' => (float) $this->prof_base_salary,
                 'custom_rate' => $this->prof_custom_rate !== '' ? (float) $this->prof_custom_rate : null,
-                'bank_name' => $this->prof_bank_name ?: null,
-                'account_number' => $this->prof_account_number ?: null,
-                'account_name' => $this->prof_account_name ?: null,
                 'status' => $this->prof_status,
             ]
         );
@@ -229,8 +235,8 @@ new #[Layout('layouts.app')] #[Title('Staff Pay Setup')] class extends Component
                         $effType = $profile ? $profile->effectivePayType($defaultCategory) : ($defaultCategory?->pay_type ?? 'fixed');
                         $effRate = $profile ? $profile->effectiveRate($defaultCategory) : (float) ($defaultCategory?->default_rate ?? $staff->attendance_allowance ?? 0);
                         $isCustom = $profile?->hasCustomOverride() ?? false;
-                        $bankName = $profile?->bank_name ?: $staff->bank_name;
-                        $acctNo = $profile?->account_number ?: $staff->account_number;
+                        $bankName = $staff->bank_name;
+                        $acctNo = $staff->account_number;
                     @endphp
                     <tr wire:key="pay-staff-{{ $staff->id }}" class="hover:bg-zinc-50/60 dark:hover:bg-zinc-900/20">
                         <td class="px-4 py-3.5">

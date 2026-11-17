@@ -190,9 +190,9 @@ class PayrollCalculator
                     'adjustment_note' => $adjustmentNote,
                     'gross_pay' => $grossPay,
                     'net_pay' => $netPay,
-                    'bank_name' => $effectiveProfile->bank_name ?: $staff->bank_name,
-                    'account_number' => $effectiveProfile->account_number ?: $staff->account_number,
-                    'account_name' => $effectiveProfile->account_name ?: $staff->account_name,
+                    'bank_name' => $staff->bank_name,
+                    'account_number' => $staff->account_number,
+                    'account_name' => $staff->account_name,
                 ]);
 
                 $totalGross += $grossPay;

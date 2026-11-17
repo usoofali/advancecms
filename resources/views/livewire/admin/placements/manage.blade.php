@@ -107,6 +107,12 @@ new #[Layout('layouts.app')] class extends Component {
 
     public $batch_generate_letters = false;
 
+    public array $batch_selected_student_ids = [];
+
+    public bool $batch_select_all = true;
+
+    public string $batch_student_search = '';
+
     // Generation fields
     public ?StudentPlacement $placementToGenerate = null;
 
@@ -167,6 +173,20 @@ new #[Layout('layouts.app')] class extends Component {
         $this->resetPage();
     }
 
+    public function updatingStatusFilter()
+    {
+        $this->resetPage();
+    }
+
+    protected function findScopedPlacement(int|string $placementId): ?StudentPlacement
+    {
+        $instId = auth()->user()?->institution_id;
+
+        return StudentPlacement::query()
+            ->when($instId, fn ($q) => $q->whereHas('student', fn ($sq) => $sq->where('institution_id', $instId)))
+            ->find($placementId);
+    }
+
     public function rules()
     {
         return [
@@ -197,12 +217,13 @@ new #[Layout('layouts.app')] class extends Component {
             'create_custom_city',
             'create_custom_state',
         ]);
+        $this->academic_session = AcademicSession::where('status', 'active')->value('name') ?? '';
         $this->showModal = true;
     }
 
     public function openAssignPlaceModal($placementId)
     {
-        $this->placementToAssign = StudentPlacement::find($placementId);
+        $this->placementToAssign = $this->findScopedPlacement($placementId);
         if (!$this->placementToAssign) {
             return;
         }
@@ -275,8 +296,73 @@ new #[Layout('layouts.app')] class extends Component {
             'batch_end_date',
             'batch_template_id',
             'batch_generate_letters',
+            'batch_selected_student_ids',
+            'batch_student_search',
         ]);
+        $this->batch_select_all = true;
+        $this->batch_session = AcademicSession::where('status', 'active')->value('name') ?? '';
         $this->batchModal = true;
+    }
+
+    public function updatedBatchSession(): void
+    {
+        $this->syncBatchSelection();
+    }
+
+    public function updatedBatchProgramId(): void
+    {
+        $this->syncBatchSelection();
+    }
+
+    public function updatedBatchLevel(): void
+    {
+        $this->syncBatchSelection();
+    }
+
+    public function updatedBatchSelectAll(bool $value): void
+    {
+        if ($value) {
+            $this->batch_selected_student_ids = $this->getBatchMatchingStudents()
+                ->pluck('id')
+                ->map(fn ($id) => (string) $id)
+                ->toArray();
+        } else {
+            $this->batch_selected_student_ids = [];
+        }
+    }
+
+    protected function syncBatchSelection(): void
+    {
+        $students = $this->getBatchMatchingStudents();
+        if ($this->batch_select_all) {
+            $this->batch_selected_student_ids = $students
+                ->pluck('id')
+                ->map(fn ($id) => (string) $id)
+                ->toArray();
+        } else {
+            $this->batch_selected_student_ids = [];
+        }
+    }
+
+    protected function getBatchMatchingStudents()
+    {
+        if (! $this->batch_session || ! $this->batch_program_id || ! $this->batch_level) {
+            return collect();
+        }
+
+        $session = AcademicSession::where('name', $this->batch_session)->first();
+        if (! $session) {
+            return collect();
+        }
+
+        $instId = auth()->user()?->institution_id;
+
+        return Student::query()
+            ->when($instId, fn ($q) => $q->where('institution_id', $instId))
+            ->where('program_id', $this->batch_program_id)
+            ->atLevel($this->batch_level, $session)
+            ->orderBy('first_name')
+            ->get();
     }
 
     public function savePlacement(DocumentGenerationService $generator)
@@ -350,6 +436,10 @@ new #[Layout('layouts.app')] class extends Component {
             'batch_placement_type_id' => 'required|exists:placement_types,id',
             'batch_start_date' => 'required|date',
             'batch_end_date' => 'required|date|after_or_equal:batch_start_date',
+            'batch_selected_student_ids' => 'required|array|min:1',
+        ], [
+            'batch_selected_student_ids.required' => 'Please select at least one student to assign.',
+            'batch_selected_student_ids.min' => 'Please select at least one student to assign.',
         ]);
 
         if ($this->batch_generate_letters && !$this->batch_template_id) {
@@ -358,15 +448,14 @@ new #[Layout('layouts.app')] class extends Component {
             return;
         }
 
-        $sessionStartYear = (int) explode('/', $this->batch_session)[0];
-        $level = (int) $this->batch_level;
-
-        $students = Student::where('program_id', $this->batch_program_id)
-            ->whereRaw('entry_level + (CAST(? AS SIGNED) - CAST(admission_year AS SIGNED)) * 100 = ?', [$sessionStartYear, $level])
+        $instId = auth()->user()?->institution_id;
+        $students = Student::query()
+            ->when($instId, fn ($q) => $q->where('institution_id', $instId))
+            ->whereIn('id', $this->batch_selected_student_ids)
             ->get();
 
         if ($students->isEmpty()) {
-            Flux::toast('No students found matching the selected program and level.', variant: 'warning');
+            Flux::toast('No students found matching your selection.', variant: 'warning');
 
             return;
         }
@@ -410,7 +499,7 @@ new #[Layout('layouts.app')] class extends Component {
 
             DB::commit();
 
-            Flux::toast("Processed cohort: {$successCount} initiated, {$skipCount} skipped due to overlap.", variant: 'success');
+            Flux::toast("Bulk assignment complete: {$successCount} assigned, {$skipCount} skipped due to overlap.", variant: 'success');
             $this->batchModal = false;
 
         } catch (Exception $e) {
@@ -421,7 +510,7 @@ new #[Layout('layouts.app')] class extends Component {
 
     public function approveRequest($placementId, ApprovePlacementRequestAction $action)
     {
-        $placement = StudentPlacement::find($placementId);
+        $placement = $this->findScopedPlacement($placementId);
         if (!$placement) {
             return;
         }
@@ -437,7 +526,11 @@ new #[Layout('layouts.app')] class extends Component {
             return;
         }
 
-        $placements = StudentPlacement::whereIn('id', $this->selectedPlacements)->get();
+        $instId = auth()->user()?->institution_id;
+        $placements = StudentPlacement::query()
+            ->when($instId, fn ($q) => $q->whereHas('student', fn ($sq) => $sq->where('institution_id', $instId)))
+            ->whereIn('id', $this->selectedPlacements)
+            ->get();
         $count = 0;
         foreach ($placements as $placement) {
             if ($placement->workflow_stage === PlacementWorkflowStage::PENDING_REQUEST_APPROVAL->value) {
@@ -452,7 +545,7 @@ new #[Layout('layouts.app')] class extends Component {
 
     public function verifyAcceptanceAndPost($placementId, VerifyPlacementAcceptanceAction $action)
     {
-        $placement = StudentPlacement::find($placementId);
+        $placement = $this->findScopedPlacement($placementId);
         if (!$placement) {
             return;
         }
@@ -464,7 +557,7 @@ new #[Layout('layouts.app')] class extends Component {
 
     public function openRejectModal($placementId, $rejectionType = 'organization')
     {
-        $this->placementToReject = StudentPlacement::find($placementId);
+        $this->placementToReject = $this->findScopedPlacement($placementId);
         if (!$this->placementToReject) {
             return;
         }
@@ -524,7 +617,7 @@ new #[Layout('layouts.app')] class extends Component {
             return;
         }
 
-        $placement = StudentPlacement::find($id);
+        $placement = $this->findScopedPlacement($id);
         if (!$placement) {
             return;
         }
@@ -541,7 +634,7 @@ new #[Layout('layouts.app')] class extends Component {
 
     public function restorePlacement($placementId)
     {
-        $placement = StudentPlacement::find($placementId);
+        $placement = $this->findScopedPlacement($placementId);
         if (!$placement) {
             return;
         }
@@ -556,8 +649,10 @@ new #[Layout('layouts.app')] class extends Component {
     public function generateGroupCoverLetterForOrganization($organizationId)
     {
         $generator = app(DocumentGenerationService::class);
+        $instId = auth()->user()?->institution_id;
 
         $placements = StudentPlacement::with(['student.program'])
+            ->when($instId, fn ($q) => $q->whereHas('student', fn ($sq) => $sq->where('institution_id', $instId)))
             ->where('organization_id', $organizationId)
             ->whereIn('workflow_stage', ['Request_Approved', 'Acceptance_Submitted', 'Posting_Issued'])
             ->get();
@@ -604,7 +699,10 @@ new #[Layout('layouts.app')] class extends Component {
 
     public function openGenerateModal($placementId)
     {
-        $this->placementToGenerate = StudentPlacement::find($placementId);
+        $this->placementToGenerate = $this->findScopedPlacement($placementId);
+        if (!$this->placementToGenerate) {
+            return;
+        }
         $this->selectedTemplateId = '';
         $this->generateModal = true;
     }
@@ -647,7 +745,13 @@ new #[Layout('layouts.app')] class extends Component {
 
         return [
             'placements' => StudentPlacement::query()
-                ->with(['student', 'organization', 'placementType'])
+                ->with([
+                    'student',
+                    'organization',
+                    'placementType',
+                    'placementDocuments',
+                    'generatedDocuments' => fn ($q) => $q->latest(),
+                ])
                 ->when($instId, fn ($q) => $q->whereHas('student', fn ($sq) => $sq->where('institution_id', $instId)))
                 ->when($this->search, function ($query) {
                     $query->whereHas('student', function ($q) {
@@ -675,10 +779,9 @@ new #[Layout('layouts.app')] class extends Component {
                 ? Student::query()
                     ->when($instId, fn ($q) => $q->where('institution_id', $instId))
                     ->where('program_id', $this->create_program_id)
-                    ->whereRaw("entry_level + (CAST(SUBSTRING_INDEX(?, '/', 1) AS SIGNED) - CAST(admission_year AS SIGNED)) * 100 = ?", [
-                        $activeSession->name,
-                        $this->create_level,
-                    ])->orderBy('first_name')->get()
+                    ->atLevel($this->create_level, $activeSession)
+                    ->orderBy('first_name')
+                    ->get()
                 : collect(),
             'organizations' => Organization::where('active_status', true)->get(),
             'types' => PlacementType::query()
@@ -690,6 +793,7 @@ new #[Layout('layouts.app')] class extends Component {
                 ->orderBy('name')
                 ->get(),
             'academicSessions' => AcademicSession::orderBy('name', 'desc')->get(),
+            'batchStudents' => $this->getBatchMatchingStudents(),
         ];
     }
 };
@@ -699,20 +803,19 @@ new #[Layout('layouts.app')] class extends Component {
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Manage Placements</h2>
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Initiate student cohorts, review posting requests,
-                and issue authorization letters.</p>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Assign students to host organizations, review posting requests, and issue placement letters.</p>
         </div>
 
         <div class="flex flex-wrap items-center gap-2">
-            <flux:button wire:click="openBatchModal" variant="filled" icon="rectangle-stack" class="w-full sm:w-auto">
-                Initiate Cohort</flux:button>
+            <flux:button wire:click="openBatchModal" variant="filled" icon="user-group" class="w-full sm:w-auto">
+                Bulk Assign</flux:button>
             <flux:button wire:click="createPlacement" variant="primary" icon="plus" class="w-full sm:w-auto">New
                 Assignment</flux:button>
         </div>
     </div>
 
     <flux:card>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
             <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass"
                 placeholder="Search student..." />
 
@@ -725,7 +828,7 @@ new #[Layout('layouts.app')] class extends Component {
 
             <flux:select wire:model.live="levelFilter" placeholder="All Levels">
                 <flux:select.option value="">All Levels</flux:select.option>
-                @foreach([100, 200, 300] as $lvl)
+                @foreach([100, 200, 300, 400, 500] as $lvl)
                     <flux:select.option value="{{ $lvl }}">{{ $lvl }}L</flux:select.option>
                 @endforeach
             </flux:select>
@@ -738,13 +841,20 @@ new #[Layout('layouts.app')] class extends Component {
                 @endforeach
             </flux:select>
 
-            <flux:select wire:model.live="workflowStageFilter" placeholder="All Workflow Stages">
-                <flux:select.option value="">All Stages</flux:select.option>
-                <flux:select.option value="Pending_Selection">Pending Selection</flux:select.option>
-                <flux:select.option value="Pending_Request_Approval">Pending Request Approval</flux:select.option>
-                <flux:select.option value="Request_Approved">Request Approved</flux:select.option>
-                <flux:select.option value="Acceptance_Submitted">Acceptance Submitted</flux:select.option>
+            <flux:select wire:model.live="workflowStageFilter" placeholder="All Statuses">
+                <flux:select.option value="">All Statuses</flux:select.option>
+                <flux:select.option value="Pending_Selection">Awaiting Selection</flux:select.option>
+                <flux:select.option value="Pending_Request_Approval">Pending Approval</flux:select.option>
+                <flux:select.option value="Request_Approved">Approved</flux:select.option>
+                <flux:select.option value="Acceptance_Submitted">Acceptance Uploaded</flux:select.option>
                 <flux:select.option value="Posting_Issued">Posting Issued</flux:select.option>
+            </flux:select>
+
+            <flux:select wire:model.live="statusFilter" placeholder="All Record States">
+                <flux:select.option value="">All States</flux:select.option>
+                @foreach(\App\Enums\PlacementStatus::cases() as $st)
+                    <flux:select.option value="{{ $st->value }}">{{ $st->value }}</flux:select.option>
+                @endforeach
             </flux:select>
 
             <flux:select wire:model.live="approvalFilter" placeholder="All Approvals">
@@ -780,8 +890,8 @@ new #[Layout('layouts.app')] class extends Component {
                         <flux:checkbox wire:model.live="selectAll" />
                     </flux:table.column>
                     <flux:table.column>Student</flux:table.column>
-                    <flux:table.column>Selected Organization</flux:table.column>
-                    <flux:table.column>Workflow Stage</flux:table.column>
+                    <flux:table.column>Host Organization</flux:table.column>
+                    <flux:table.column>Status</flux:table.column>
                     <flux:table.column>Duration</flux:table.column>
                     <flux:table.column align="right">Actions</flux:table.column>
                 </flux:table.columns>
@@ -825,26 +935,26 @@ new #[Layout('layouts.app')] class extends Component {
                                     <flux:menu>
                                         <flux:menu.item wire:click="openAssignPlaceModal({{ $placement->id }})"
                                             icon="map-pin">
-                                            Assign / Edit Place of Posting
+                                            Change Organization
                                         </flux:menu.item>
                                         @if($placement->workflow_stage === 'Pending_Request_Approval')
                                             <flux:menu.item wire:click="approveRequest({{ $placement->id }})" icon="check">
-                                                Approve Organization Request
+                                                Approve Request
                                             </flux:menu.item>
                                             <flux:menu.item wire:click="openRejectModal({{ $placement->id }}, 'organization')"
                                                 icon="x-mark" variant="danger">
-                                                Reject Request / Require Re-selection
+                                                Reject Request
                                             </flux:menu.item>
                                         @endif
 
                                         @if($placement->workflow_stage === 'Acceptance_Submitted' || $placement->placementDocuments->isNotEmpty())
                                             <flux:menu.item wire:click="verifyAcceptanceAndPost({{ $placement->id }})"
                                                 icon="check-badge">
-                                                Verify Acceptance & Issue Posting
+                                                Verify Acceptance
                                             </flux:menu.item>
                                             <flux:menu.item wire:click="openRejectModal({{ $placement->id }}, 'acceptance')"
                                                 icon="x-mark" variant="danger">
-                                                Reject Acceptance Scan
+                                                Reject Acceptance
                                             </flux:menu.item>
                                         @endif
 
@@ -852,25 +962,27 @@ new #[Layout('layouts.app')] class extends Component {
                                             <flux:menu.item
                                                 wire:click="generateGroupCoverLetterForOrganization({{ $placement->organization_id }})"
                                                 icon="users">
-                                                Generate Group Cover Letter
+                                                Group Cover Letter
                                             </flux:menu.item>
                                         @endif
 
                                         <flux:menu.item wire:click="openGenerateModal({{ $placement->id }})"
                                             icon="document-text">
-                                            Custom Generate Letter
+                                            Generate Letter
                                         </flux:menu.item>
 
                                         @php
-                                            $generatedDoc = $placement->generatedDocuments()->latest()->first();
+                                            $generatedDoc = $placement->generatedDocuments->first();
                                         @endphp
                                         @if($generatedDoc)
                                             <flux:menu.item
                                                 href="{{ route('cms.placements.print', ['doc' => $generatedDoc->document_number]) }}"
                                                 target="_blank" icon="printer">
-                                                View / Print Letter
+                                                Print Letter
                                             </flux:menu.item>
                                         @endif
+
+                                        <flux:menu.separator />
 
                                         @if($placement->status !== 'Cancelled')
                                             <flux:menu.item wire:click="confirmCancelPlacement({{ $placement->id }})"
@@ -889,7 +1001,7 @@ new #[Layout('layouts.app')] class extends Component {
                         </flux:table.row>
                     @empty
                         <flux:table.row>
-                            <flux:table.cell colspan="5" class="text-center py-8 text-gray-500">
+                            <flux:table.cell colspan="6" class="text-center py-8 text-gray-500">
                                 No placements found matching criteria.
                             </flux:table.cell>
                         </flux:table.row>
@@ -918,6 +1030,8 @@ new #[Layout('layouts.app')] class extends Component {
                         <option value="100">100 Level</option>
                         <option value="200">200 Level</option>
                         <option value="300">300 Level</option>
+                        <option value="400">400 Level</option>
+                        <option value="500">500 Level</option>
                     </flux:select>
 
                     <div class="md:col-span-2">
@@ -980,8 +1094,14 @@ new #[Layout('layouts.app')] class extends Component {
                         @endforeach
                     </flux:select>
 
-                    <flux:input wire:model="academic_session" label="Academic Session" placeholder="2025/2026"
-                        required />
+                    <flux:select wire:model="academic_session" label="Academic Session" required>
+                        <option value="">Select Session</option>
+                        @foreach ($academicSessions as $session)
+                            <option value="{{ $session->name }}">
+                                {{ $session->name }}{{ $session->status === 'active' ? ' (Active)' : '' }}
+                            </option>
+                        @endforeach
+                    </flux:select>
                     <flux:input wire:model="start_date" type="date" label="Start Date" required />
                     <flux:input wire:model="end_date" type="date" label="End Date" required />
                 </div>
@@ -1054,34 +1174,37 @@ new #[Layout('layouts.app')] class extends Component {
         </div>
     </flux:modal>
 
-    <!-- Batch Assignment / Cohort Initiation Modal -->
+    <!-- Bulk Assign Placements Modal -->
     <flux:modal wire:model="batchModal" class="w-full max-w-2xl">
         <div class="p-6">
-            <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-2">Initiate Placement Cohort</h2>
-            <p class="text-sm text-gray-500 mb-4">Initiate placement requirements for an entire student cohort. Leave
-                Organization unselected to let students choose their place of posting.</p>
+            <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-1">Bulk Assign Placements</h2>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Select a class and choose which students to assign. Leave Organization unselected to let students pick their own host organization.</p>
 
-            <form wire:submit.prevent="processBatchGeneration">
+            <form wire:submit.prevent="processBatchGeneration" class="space-y-4">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <flux:select wire:model="batch_session" label="Academic Session" required>
+                    <flux:select wire:model.live="batch_session" label="Academic Session" required>
                         <option value="">Select Session</option>
                         @foreach ($academicSessions as $session)
-                            <option value="{{ $session->name }}">{{ $session->name }}</option>
+                            <option value="{{ $session->name }}">
+                                {{ $session->name }}{{ $session->status === 'active' ? ' (Active)' : '' }}
+                            </option>
                         @endforeach
                     </flux:select>
 
-                    <flux:select wire:model="batch_program_id" label="Program" required>
+                    <flux:select wire:model.live="batch_program_id" label="Program" required>
                         <option value="">Select Program</option>
                         @foreach($programs as $program)
                             <option value="{{ $program->id }}">{{ $program->name }}</option>
                         @endforeach
                     </flux:select>
 
-                    <flux:select wire:model="batch_level" label="Target Level" required>
+                    <flux:select wire:model.live="batch_level" label="Target Level" required>
                         <option value="">Select Level</option>
                         <option value="100">100 Level</option>
                         <option value="200">200 Level</option>
                         <option value="300">300 Level</option>
+                        <option value="400">400 Level</option>
+                        <option value="500">500 Level</option>
                     </flux:select>
 
                     <flux:select wire:model="batch_placement_type_id" label="Placement Type" required>
@@ -1093,7 +1216,7 @@ new #[Layout('layouts.app')] class extends Component {
 
                     <div class="md:col-span-2">
                         <flux:select wire:model="batch_organization_id" label="Default Organization (Optional)">
-                            <option value="">-- Let Students Choose Place of Posting --</option>
+                            <option value="">-- Let Students Choose Host Organization --</option>
                             @foreach($organizations as $org)
                                 <option value="{{ $org->id }}">{{ $org->name }} - {{ $org->city }}</option>
                             @endforeach
@@ -1104,11 +1227,61 @@ new #[Layout('layouts.app')] class extends Component {
                     <flux:input wire:model="batch_end_date" type="date" label="End Date" required />
                 </div>
 
+                @if ($batch_session && $batch_program_id && $batch_level)
+                    <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/70 dark:bg-zinc-900/40 p-4 space-y-3">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm font-semibold text-zinc-900 dark:text-white">Select Students</span>
+                                <flux:badge size="sm" color="indigo">
+                                    {{ count($batch_selected_student_ids) }} / {{ $batchStudents->count() }} selected
+                                </flux:badge>
+                            </div>
+                            @if ($batchStudents->isNotEmpty())
+                                <flux:checkbox wire:model.live="batch_select_all" label="Select all" />
+                            @endif
+                        </div>
+
+                        @if ($batchStudents->isNotEmpty())
+                            <flux:input wire:model.live.debounce.200ms="batch_student_search" icon="magnifying-glass"
+                                placeholder="Filter students by name or matric..." size="sm" />
+
+                            @php
+                                $filteredBatchStudents = $batchStudents->filter(function ($s) {
+                                    if (empty(trim($this->batch_student_search))) {
+                                        return true;
+                                    }
+                                    $term = strtolower(trim($this->batch_student_search));
+                                    return str_contains(strtolower($s->full_name), $term)
+                                        || str_contains(strtolower((string) $s->matric_number), $term);
+                                });
+                            @endphp
+
+                            <div class="max-h-52 overflow-y-auto divide-y divide-zinc-200/70 dark:divide-zinc-700/70 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900">
+                                @forelse ($filteredBatchStudents as $stu)
+                                    <label class="flex items-center justify-between gap-3 px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800/60 cursor-pointer">
+                                        <div class="flex items-center gap-3 min-w-0">
+                                            <input type="checkbox" wire:model.live="batch_selected_student_ids" value="{{ $stu->id }}"
+                                                class="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-600 dark:bg-zinc-800" />
+                                            <span class="truncate font-medium text-zinc-900 dark:text-zinc-100">{{ $stu->full_name }}</span>
+                                        </div>
+                                        <span class="shrink-0 text-xs font-mono text-zinc-500 dark:text-zinc-400">{{ $stu->matric_number }}</span>
+                                    </label>
+                                @empty
+                                    <div class="px-3 py-4 text-center text-xs text-zinc-500">No students match "{{ $batch_student_search }}".</div>
+                                @endforelse
+                            </div>
+                        @else
+                            <p class="text-xs text-zinc-500 dark:text-zinc-400">No students found for the selected session, program, and level.</p>
+                        @endif
+                        <flux:error name="batch_selected_student_ids" />
+                    </div>
+                @endif
+
                 <div class="mt-6 flex flex-col sm:flex-row sm:justify-end gap-3 sm:space-x-3">
                     <flux:button wire:click="$set('batchModal', false)" variant="ghost" class="w-full sm:w-auto">Cancel
                     </flux:button>
-                    <flux:button type="submit" variant="primary" icon="rectangle-stack" class="w-full sm:w-auto">
-                        Initiate Cohort</flux:button>
+                    <flux:button type="submit" variant="primary" icon="user-group" class="w-full sm:w-auto">
+                        Assign Selected Students</flux:button>
                 </div>
             </form>
         </div>
@@ -1144,6 +1317,7 @@ new #[Layout('layouts.app')] class extends Component {
                     </div>
                 </div>
             @endif
+        </div>
     </flux:modal>
 
     <!-- Rejection / Re-selection Modal -->

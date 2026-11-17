@@ -2,6 +2,7 @@
 
 use App\Models\AcademicSession;
 use App\Models\CbtPinAccessControl;
+use App\Models\Institution;
 use App\Models\Program;
 use App\Models\Semester;
 use Livewire\Attributes\Layout;
@@ -9,6 +10,8 @@ use Livewire\Attributes\Title;
 use Livewire\Component;
 
 new #[Layout('layouts.app')] #[Title('CBT PIN Access Control')] class extends Component {
+    public $institution_id = '';
+
     public $session_id = '';
 
     public $semester_id = '';
@@ -18,6 +21,13 @@ new #[Layout('layouts.app')] #[Title('CBT PIN Access Control')] class extends Co
     public function mount(): void
     {
         Gate::authorize('cbt_exams.view');
+
+        $user = auth()->user();
+        if ($user->institution_id) {
+            $this->institution_id = $user->institution_id;
+        } elseif ($user->hasRole('Super Admin')) {
+            $this->institution_id = Institution::orderBy('name')->value('id') ?? '';
+        }
 
         $activeSession = AcademicSession::where('status', 'active')->first()
             ?? AcademicSession::latest()->first();
@@ -29,6 +39,17 @@ new #[Layout('layouts.app')] #[Title('CBT PIN Access Control')] class extends Co
                 $this->semester_id = $firstSemester->id;
             }
         }
+    }
+
+    protected function resolveInstitutionId(): ?int
+    {
+        $user = auth()->user();
+
+        if ($user->institution_id) {
+            return (int) $user->institution_id;
+        }
+
+        return $this->institution_id ? (int) $this->institution_id : null;
     }
 
     public function updatedSessionId($value): void
@@ -44,11 +65,10 @@ new #[Layout('layouts.app')] #[Title('CBT PIN Access Control')] class extends Co
     public function toggleGlobalUnlock(): void
     {
         Gate::authorize('cbt_exams.view');
-        if (!$this->session_id || !$this->semester_id) {
+        $instId = $this->resolveInstitutionId();
+        if (! $instId || ! $this->session_id || ! $this->semester_id) {
             return;
         }
-
-        $instId = auth()->user()->institution_id;
         $current = CbtPinAccessControl::isUnlocked($instId, (int)$this->session_id, (int)$this->semester_id);
         $newStatus = !$current;
 
@@ -77,11 +97,10 @@ new #[Layout('layouts.app')] #[Title('CBT PIN Access Control')] class extends Co
     public function toggleProgramUnlock(int $programId): void
     {
         Gate::authorize('cbt_exams.view');
-        if (!$this->session_id || !$this->semester_id) {
+        $instId = $this->resolveInstitutionId();
+        if (! $instId || ! $this->session_id || ! $this->semester_id) {
             return;
         }
-
-        $instId = auth()->user()->institution_id;
         $currentStatus = CbtPinAccessControl::isUnlocked($instId, (int)$this->session_id, (int)$this->semester_id, $programId);
         $newStatus = !$currentStatus;
 
@@ -110,11 +129,10 @@ new #[Layout('layouts.app')] #[Title('CBT PIN Access Control')] class extends Co
     public function setAllProgramsStatus(bool $unlocked): void
     {
         Gate::authorize('cbt_exams.view');
-        if (!$this->session_id || !$this->semester_id) {
+        $instId = $this->resolveInstitutionId();
+        if (! $instId || ! $this->session_id || ! $this->semester_id) {
             return;
         }
-
-        $instId = auth()->user()->institution_id;
         $programs = Program::where('institution_id', $instId)->get();
 
         foreach ($programs as $prog) {
@@ -158,13 +176,16 @@ new #[Layout('layouts.app')] #[Title('CBT PIN Access Control')] class extends Co
 
     public function with(): array
     {
-        $instId = auth()->user()->institution_id;
+        $instId = $this->resolveInstitutionId();
+        $isSuperAdmin = auth()->user()->hasRole('Super Admin') && ! auth()->user()->institution_id;
         $sessions = AcademicSession::orderBy('name', 'desc')->get();
         $semesters = $this->session_id
             ? Semester::where('academic_session_id', $this->session_id)->get()
             : collect();
 
-        $programsQuery = Program::where('institution_id', $instId)->with('department');
+        $programsQuery = $instId
+            ? Program::where('institution_id', $instId)->with('department')
+            : Program::whereRaw('1 = 0');
         if ($this->search) {
             $programsQuery->where(function ($q) {
                 $q->where('name', 'like', '%' . $this->search . '%')
@@ -176,7 +197,7 @@ new #[Layout('layouts.app')] #[Title('CBT PIN Access Control')] class extends Co
         $isGlobalUnlocked = false;
         $unlockedProgramIds = [];
 
-        if ($this->session_id && $this->semester_id) {
+        if ($instId && $this->session_id && $this->semester_id) {
             $isGlobalUnlocked = CbtPinAccessControl::isUnlocked($instId, (int)$this->session_id, (int)$this->semester_id);
 
             foreach ($programs as $prog) {
@@ -187,6 +208,8 @@ new #[Layout('layouts.app')] #[Title('CBT PIN Access Control')] class extends Co
         }
 
         return [
+            'isSuperAdmin' => $isSuperAdmin,
+            'institutions' => $isSuperAdmin ? Institution::orderBy('name')->get() : collect(),
             'sessions' => $sessions,
             'semesters' => $semesters,
             'programs' => $programs,
@@ -224,7 +247,16 @@ new #[Layout('layouts.app')] #[Title('CBT PIN Access Control')] class extends Co
 
     {{-- Filter Card --}}
     <flux:card class="space-y-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 {{ $isSuperAdmin ? 'md:grid-cols-3' : 'md:grid-cols-2' }} gap-4">
+            @if ($isSuperAdmin)
+                <flux:select wire:model.live="institution_id" :label="__('Institution')">
+                    <option value="">{{ __('Select Institution') }}</option>
+                    @foreach ($institutions as $inst)
+                        <option value="{{ $inst->id }}">{{ $inst->name }}</option>
+                    @endforeach
+                </flux:select>
+            @endif
+
             <flux:select wire:model.live="session_id" :label="__('Academic Session')">
                 <option value="">{{ __('Select Session') }}</option>
                 @foreach ($sessions as $s)

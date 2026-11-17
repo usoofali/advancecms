@@ -1,11 +1,13 @@
 <?php
 
+use App\Livewire\Cms\Dashboards\AdminDashboard;
 use App\Models\AcademicSession;
 use App\Models\ActivityLog;
 use App\Models\Institution;
 use App\Models\InventoryItem;
 use App\Models\InventoryLocation;
 use App\Models\PayrollRun;
+use App\Models\Permission;
 use App\Models\Role;
 use App\Models\Staff;
 use App\Models\Student;
@@ -20,10 +22,9 @@ beforeEach(function () {
     AcademicSession::factory()->create(['status' => 'active', 'name' => '2026/2027']);
 });
 
-it('renders institutional admin dashboard with payroll, inventory, and activity logs when addons are enabled', function () {
+it('renders institutional admin dashboard with payroll, inventory, and activity logs when permitted', function () {
     $institution = Institution::factory()->create([
         'name' => 'Arise College of Health',
-        'addons' => ['inventory', 'payroll'],
     ]);
 
     $admin = User::factory()->create(['institution_id' => $institution->id]);
@@ -73,17 +74,24 @@ it('renders institutional admin dashboard with payroll, inventory, and activity 
         ->assertSee('Prepared October 2026 Payroll run');
 });
 
-it('hides payroll and inventory cards on institutional admin dashboard when addons are disabled', function () {
+it('hides payroll and inventory cards on admin dashboard when user lacks those permissions', function () {
     $institution = Institution::factory()->create([
         'name' => 'Plain College',
-        'addons' => [],
+    ]);
+
+    $limitedRole = Role::create([
+        'role_name' => 'Limited Admin',
+        'description' => 'Dashboard access without payroll or inventory permissions',
+    ]);
+    $limitedRole->permissions()->sync([
+        Permission::where('permission_name', 'dashboard.view')->value('permission_id'),
     ]);
 
     $admin = User::factory()->create(['institution_id' => $institution->id]);
-    $admin->roles()->sync([Role::where('role_name', 'Institutional Admin')->value('role_id')]);
+    $admin->roles()->sync([$limitedRole->role_id]);
 
-    $this->actingAs($admin)
-        ->get(route('dashboard'))
+    Livewire::actingAs($admin)
+        ->test(AdminDashboard::class)
         ->assertSuccessful()
         ->assertSee('Plain College')
         ->assertDontSee('Payroll Operations')
@@ -103,7 +111,7 @@ it('renders super admin dashboard with overview', function () {
 });
 
 it('renders lecturer dashboard with teaching metrics and personal timetable', function () {
-    $institution = Institution::factory()->create(['addons' => []]);
+    $institution = Institution::factory()->create();
     Staff::factory()->create([
         'institution_id' => $institution->id,
         'email' => 'ibrahim.sadiq@example.com',
@@ -125,7 +133,7 @@ it('renders lecturer dashboard with teaching metrics and personal timetable', fu
 });
 
 it('renders inventory officer dashboard without teaching clutter', function () {
-    $institution = Institution::factory()->create(['addons' => ['inventory']]);
+    $institution = Institution::factory()->create();
     InventoryItem::factory()->create([
         'institution_id' => $institution->id,
         'min_stock_threshold' => 5,
@@ -150,7 +158,7 @@ it('renders inventory officer dashboard without teaching clutter', function () {
 });
 
 it('renders payroll officer dashboard with payroll management card', function () {
-    $institution = Institution::factory()->create(['addons' => ['payroll']]);
+    $institution = Institution::factory()->create();
     Staff::factory()->create([
         'institution_id' => $institution->id,
         'email' => 'chinedu.okafor@example.com',
@@ -169,7 +177,7 @@ it('renders payroll officer dashboard with payroll management card', function ()
 });
 
 it('renders student dashboard with academic standing, financial pulse, and student services', function () {
-    $institution = Institution::factory()->create(['addons' => ['ca_module']]);
+    $institution = Institution::factory()->create();
     $studentUser = User::factory()->create([
         'institution_id' => $institution->id,
         'email' => 'student.dash@example.com',

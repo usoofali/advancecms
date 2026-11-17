@@ -50,6 +50,7 @@ class InventoryLocation extends Model
         return [
             'lab_clinic' => 'Clinical & Practical Lab',
             'store_warehouse' => 'Store & Warehousing',
+            'demo_room' => 'Demonstration Room',
             'office_hall' => 'Office & Lecture Hall',
             'workshop' => 'Technical Workshop',
             'other' => 'Other Facility',

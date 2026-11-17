@@ -21,7 +21,6 @@ beforeEach(function (): void {
 
 test('cbt pin access is locked by default for session, semester and program', function (): void {
     $institution = Institution::factory()->create([
-        'addons' => ['exam_module'],
     ]);
     $session = AcademicSession::factory()->create(['status' => 'active']);
     $semester = Semester::factory()->create(['academic_session_id' => $session->id, 'name' => 'first']);
@@ -34,7 +33,6 @@ test('cbt pin access is locked by default for session, semester and program', fu
 
 test('authorized admin can unlock and lock cbt pin access via pin-access page', function (): void {
     $institution = Institution::factory()->create([
-        'addons' => ['exam_module'],
     ]);
     $adminUser = User::factory()
         ->for($institution)
@@ -68,7 +66,6 @@ test('authorized admin can unlock and lock cbt pin access via pin-access page', 
 
 test('exam card respects cbt pin access lock state', function (): void {
     $institution = Institution::factory()->create([
-        'addons' => ['exam_module'],
     ]);
     $session = AcademicSession::factory()->create(['status' => 'active']);
     $semester = Semester::factory()->create(['academic_session_id' => $session->id, 'name' => 'first']);
@@ -112,4 +109,18 @@ test('exam card respects cbt pin access lock state', function (): void {
         ->assertOk()
         ->assertSee('CLICK TO SCRATCH PIN')
         ->assertDontSee('LOCKED (CONTACT EXAM OFFICE)');
+});
+
+it('renders cbt pin access control for super admin without institution_id', function () {
+    $institution = Institution::factory()->create(['name' => 'Central College']);
+    $session = AcademicSession::factory()->create(['status' => 'active']);
+    Semester::factory()->create(['academic_session_id' => $session->id]);
+
+    $superAdmin = User::factory()->create(['institution_id' => null]);
+    $superAdmin->roles()->sync([Role::where('role_name', 'Super Admin')->value('role_id')]);
+
+    $this->actingAs($superAdmin)
+        ->get(route('cms.cbt.pin-access'))
+        ->assertSuccessful()
+        ->assertSee('Central College');
 });

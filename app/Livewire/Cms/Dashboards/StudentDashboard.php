@@ -32,7 +32,7 @@ class StudentDashboard extends Component
 
         $invoices = $student ? StudentInvoice::where('student_id', $student->id)->get() : collect();
 
-        $hasCaAddon = $user->institution?->hasAddon('ca_module') ?? false;
+        $hasCaAddon = $user->can('registrations.view_personal');
         $coinsBalance = ($hasCaAddon && $student)
             ? (int) (StudentCoin::where('student_id', $student->id)->value('total_coins') ?? 0)
             : 0;

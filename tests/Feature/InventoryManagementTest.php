@@ -19,20 +19,20 @@ beforeEach(function () {
     $this->seed(RbacSeeder::class);
 });
 
-it('blocks access to inventory routes when institution does not have the inventory addon', function () {
-    $institution = Institution::factory()->create(['addons' => []]);
-    $adminRole = Role::where('role_name', 'Institutional Admin')->firstOrFail();
+it('blocks access to inventory routes when user lacks inventory permissions', function () {
+    $institution = Institution::factory()->create();
+    $lecturerRole = Role::where('role_name', 'Lecturer')->firstOrFail();
 
     $user = User::factory()->create(['institution_id' => $institution->id]);
-    $user->roles()->attach($adminRole->role_id);
+    $user->roles()->attach($lecturerRole->role_id);
 
     $this->actingAs($user)
         ->get(route('cms.inventory.index'))
         ->assertForbidden();
 });
 
-it('allows institutional admin with inventory addon to seed categories, create items, and flag low stock', function () {
-    $institution = Institution::factory()->create(['addons' => ['inventory']]);
+it('allows institutional admin to seed categories, create items, and flag low stock', function () {
+    $institution = Institution::factory()->create();
     $adminRole = Role::where('role_name', 'Institutional Admin')->firstOrFail();
 
     $admin = User::factory()->create(['institution_id' => $institution->id]);
@@ -86,7 +86,7 @@ it('allows institutional admin with inventory addon to seed categories, create i
 });
 
 it('supports polymorphic locatable ownership and strict location officer custody scoping', function () {
-    $institution = Institution::factory()->create(['addons' => ['inventory']]);
+    $institution = Institution::factory()->create();
     $dept = Department::factory()->create(['institution_id' => $institution->id, 'name' => 'Medical Laboratory']);
     $program = Program::factory()->create(['institution_id' => $institution->id, 'department_id' => $dept->id]);
 
@@ -163,8 +163,8 @@ it('supports polymorphic locatable ownership and strict location officer custody
 });
 
 it('isolates inventory data strictly between tenant institutions', function () {
-    $institutionA = Institution::factory()->create(['addons' => ['inventory']]);
-    $institutionB = Institution::factory()->create(['addons' => ['inventory']]);
+    $institutionA = Institution::factory()->create();
+    $institutionB = Institution::factory()->create();
 
     $adminRole = Role::where('role_name', 'Institutional Admin')->firstOrFail();
 
@@ -198,7 +198,7 @@ it('isolates inventory data strictly between tenant institutions', function () {
 });
 
 it('renders inventory reports, exports CSV, and renders printable stock sheets for auditor role', function () {
-    $institution = Institution::factory()->create(['addons' => ['inventory']]);
+    $institution = Institution::factory()->create();
     $auditorRole = Role::where('role_name', 'Inventory Auditor')->firstOrFail();
 
     $auditor = User::factory()->create(['institution_id' => $institution->id]);

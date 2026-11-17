@@ -188,8 +188,8 @@ new #[Layout('layouts.app')] #[Title('Staff Profile')] class extends Component
         </div>
     </div>
 
-    {{-- Payroll Profile & Recent Payslips (when Payroll addon is active & user has permission) --}}
-    @if((auth()->user()->hasRole('Super Admin') || $staff->institution?->hasAddon('payroll')) && auth()->user()->can('payroll.view'))
+    {{-- Payroll Profile & Recent Payslips (when user has permission) --}}
+    @can('payroll.view')
         <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-5 shadow-xs space-y-4">
             <div class="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-700 pb-2">
                 <h2 class="text-sm font-bold uppercase tracking-wider text-zinc-500">{{ __('Payroll & Compensation') }}</h2>
@@ -246,5 +246,5 @@ new #[Layout('layouts.app')] #[Title('Staff Profile')] class extends Component
                 </div>
             @endif
         </div>
-    @endif
+    @endcan
 </div>

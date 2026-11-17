@@ -112,3 +112,47 @@ it('allows a student to render printable personal timetable view', function (): 
     $this->get(route('cms.timetables.print', ['personal' => 1]))
         ->assertOk();
 });
+
+it('supports Sunday timetable slots and includes Sunday on print when scheduled', function (): void {
+    $institution = Institution::factory()->create();
+    $superRole = Role::where('role_name', 'Super Admin')->first();
+    $user = User::factory()->create(['institution_id' => $institution->id]);
+    $user->roles()->sync([$superRole->role_id]);
+
+    $session = AcademicSession::factory()->create(['status' => 'active']);
+    $semester = Semester::factory()->create(['academic_session_id' => $session->id]);
+    $department = Department::factory()->create(['institution_id' => $institution->id]);
+    $program = Program::factory()->create([
+        'institution_id' => $institution->id,
+        'department_id' => $department->id,
+    ]);
+    $course = Course::factory()->create([
+        'department_id' => $department->id,
+        'program_id' => $program->id,
+    ]);
+
+    Livewire::actingAs($user)
+        ->test('pages::cms.timetables.index')
+        ->set('session_id', $session->id)
+        ->set('semester_id', $semester->id)
+        ->set('department_id', $department->id)
+        ->set('program_id', $program->id)
+        ->set('level', '100')
+        ->set('allocation_mode', 'course')
+        ->set('selected_course_id', $course->id)
+        ->set('day_of_week', 'Sunday')
+        ->set('period_number', 1)
+        ->call('saveSlot')
+        ->assertHasNoErrors();
+
+    $this->actingAs($user)
+        ->get(route('cms.timetables.print', [
+            'session_id' => $session->id,
+            'semester_id' => $semester->id,
+            'department_id' => $department->id,
+            'program_id' => $program->id,
+            'level' => '100',
+        ]))
+        ->assertOk()
+        ->assertSee('Sunday');
+});

@@ -22,11 +22,15 @@ new #[Title('Print Official Document')] #[Layout('layouts.guest')] class extends
 
         // Authorization check
         if ($user->hasRole('Student')) {
-            if (!$user->student || $user->student->id !== $this->document->placement->student_id) {
+            if (! $user->student || $user->student->id !== $this->document->placement->student_id) {
                 abort(403, 'Unauthorized. You can only view your own placement documents.');
             }
         } else {
-            if (!$user->hasAnyPermission(['placements.manage', 'placements.view', 'placements.reports', 'placements.supervise'])) {
+            if (! $user->canAny(['placements.manage', 'placements.view', 'placements.reports', 'placements.supervise'])) {
+                abort(403, 'Unauthorized.');
+            }
+
+            if ($user->institution_id && $this->document->placement?->student?->institution_id !== $user->institution_id && ! $user->hasRole('Super Admin')) {
                 abort(403, 'Unauthorized.');
             }
         }

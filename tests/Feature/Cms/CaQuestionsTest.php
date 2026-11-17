@@ -19,7 +19,6 @@ beforeEach(function (): void {
 
 it('forbids users without ca_tests.view permission from exporting questions as CSV', function (): void {
     $institution = Institution::factory()->create([
-        'addons' => ['exam_module'],
     ]);
     $user = User::factory()
         ->for($institution)
@@ -61,7 +60,6 @@ it('forbids users without ca_tests.view permission from exporting questions as C
 
 it('allows authorized users to export CA questions as CSV', function (): void {
     $institution = Institution::factory()->create([
-        'addons' => ['exam_module'],
     ]);
     $department = Department::factory()->for($institution)->create();
     $program = Program::factory()->create([

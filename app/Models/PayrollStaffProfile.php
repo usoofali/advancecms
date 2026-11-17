@@ -22,9 +22,6 @@ class PayrollStaffProfile extends Model
         'contact_formula',
         'base_salary',
         'custom_rate',
-        'bank_name',
-        'account_number',
-        'account_name',
         'status',
     ];
 

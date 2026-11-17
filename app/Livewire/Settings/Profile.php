@@ -76,11 +76,15 @@ class Profile extends Component
     {
         $user = Auth::user();
 
-        if ($user->hasRole('Student')) {
+        if ($user->hasRole('Student') && $user->student) {
             $student = $user->student;
+            if (! $student) {
+                return;
+            }
+
             $this->phone = $student->phone ?? '';
-            $this->gender = $student->gender ?? '';
-            $this->date_of_birth = $student->date_of_birth ? $student->date_of_birth->format('Y-m-d') : '';
+            $this->gender = strtolower((string) ($student->gender ?? ''));
+            $this->date_of_birth = $student->date_of_birth?->format('Y-m-d') ?? '';
             $this->next_of_kin_name = $student->next_of_kin_name ?? '';
             $this->next_of_kin_relationship = $student->next_of_kin_relationship ?? '';
             $this->next_of_kin_phone = $student->next_of_kin_phone ?? '';
@@ -99,17 +103,22 @@ class Profile extends Component
             $this->subject_biology = $student->subject_biology ?? '';
             $this->subject_chemistry = $student->subject_chemistry ?? '';
             $this->subject_physics = $student->subject_physics ?? '';
-        } elseif ($user->isStaff()) {
-            $this->phone = $user->staff->phone ?? '';
-            $this->gender = $user->staff->gender ?? '';
-            $this->date_of_birth = $user->staff->date_of_birth ? $user->staff->date_of_birth->format('Y-m-d') : '';
-            $this->next_of_kin_name = $user->staff->next_of_kin_name ?? '';
-            $this->next_of_kin_relationship = $user->staff->next_of_kin_relationship ?? '';
-            $this->next_of_kin_phone = $user->staff->next_of_kin_phone ?? '';
-            $this->next_of_kin_address = $user->staff->next_of_kin_address ?? '';
-            $this->bank_name = $user->staff->bank_name ?? '';
-            $this->account_number = $user->staff->account_number ?? '';
-            $this->account_name = $user->staff->account_name ?? '';
+        } elseif ($user->isStaff() && $user->staff) {
+            $staff = $user->staff;
+            if (! $staff) {
+                return;
+            }
+
+            $this->phone = $staff->phone ?? '';
+            $this->gender = strtolower((string) ($staff->gender ?? ''));
+            $this->date_of_birth = $staff->date_of_birth?->format('Y-m-d') ?? '';
+            $this->next_of_kin_name = $staff->next_of_kin_name ?? '';
+            $this->next_of_kin_relationship = $staff->next_of_kin_relationship ?? '';
+            $this->next_of_kin_phone = $staff->next_of_kin_phone ?? '';
+            $this->next_of_kin_address = $staff->next_of_kin_address ?? '';
+            $this->bank_name = $staff->bank_name ?? '';
+            $this->account_number = $staff->account_number ?? '';
+            $this->account_name = $staff->account_name ?? '';
         }
     }
 
@@ -131,7 +140,7 @@ class Profile extends Component
             'next_of_kin_address' => ['nullable', 'string', 'max:500'],
         ];
 
-        if ($user->hasRole('Student')) {
+        if ($user->hasRole('Student') && $user->student) {
             $examTypes = ['NECO', 'WAEC', 'NABTEB', 'NBAIS'];
             $validGrades = ['A', 'A1', 'B2', 'B3', 'C4', 'C5', 'C6', 'D7', 'E8', 'F9'];
             $nigerianStates = [
@@ -209,7 +218,7 @@ class Profile extends Component
             }
         }
 
-        if ($user->hasRole('Student')) {
+        if ($user->hasRole('Student') && $user->student) {
             $data = [
                 'phone' => $this->phone,
                 'gender' => $this->gender ?: null,
@@ -242,7 +251,7 @@ class Profile extends Component
             }
 
             $user->student->update($data);
-        } elseif ($user->isStaff()) {
+        } elseif ($user->isStaff() && $user->staff) {
             $data = [
                 'phone' => $this->phone,
                 'gender' => $this->gender ?: null,
@@ -295,7 +304,7 @@ class Profile extends Component
     {
         $user = $this->user();
 
-        if ($user->hasRole('Student')) {
+        if ($user->hasRole('Student') && $user->student) {
             return $user->student;
         }
 

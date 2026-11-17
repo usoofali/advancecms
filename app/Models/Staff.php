@@ -87,6 +87,8 @@ class Staff extends Model
         'staff_number',
         'first_name',
         'last_name',
+        'gender',
+        'date_of_birth',
         'email',
         'phone',
         'bank_name',
@@ -102,6 +104,17 @@ class Staff extends Model
         'next_of_kin_phone',
         'next_of_kin_address',
     ];
+
+    /**
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'date_of_birth' => 'date',
+            'attendance_allowance' => 'decimal:2',
+        ];
+    }
 
     public function getPhotoUrlAttribute(): ?string
     {

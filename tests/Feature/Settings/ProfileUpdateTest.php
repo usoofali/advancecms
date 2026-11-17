@@ -1,6 +1,11 @@
 <?php
 
+use App\Livewire\Settings\Profile;
+use App\Models\Institution;
+use App\Models\Staff;
 use App\Models\User;
+use Database\Seeders\RbacSeeder;
+use Livewire\Livewire;
 use Livewire\Volt\Volt;
 
 test('profile page is displayed', function () {
@@ -72,4 +77,32 @@ test('correct password must be provided to delete account', function () {
     $response->assertHasErrors(['password']);
 
     expect($user->fresh())->not->toBeNull();
+});
+
+test('staff can load and update gender and date of birth on profile settings', function () {
+    $this->seed(RbacSeeder::class);
+
+    $institution = Institution::factory()->create();
+    $staff = Staff::factory()->create([
+        'institution_id' => $institution->id,
+        'email' => 'staff.profile@example.com',
+        'gender' => 'Female',
+        'date_of_birth' => '1990-05-14',
+        'phone' => '08012345678',
+    ]);
+
+    $user = User::where('email', 'staff.profile@example.com')->firstOrFail();
+
+    Livewire::actingAs($user)
+        ->test(Profile::class)
+        ->assertSet('gender', 'female')
+        ->assertSet('date_of_birth', '1990-05-14')
+        ->set('gender', 'male')
+        ->set('date_of_birth', '1992-08-20')
+        ->call('updateProfile')
+        ->assertHasNoErrors();
+
+    $staff->refresh();
+    expect($staff->gender)->toBe('male');
+    expect($staff->date_of_birth?->format('Y-m-d'))->toBe('1992-08-20');
 });

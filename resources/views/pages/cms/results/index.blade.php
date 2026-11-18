@@ -684,58 +684,45 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
     @if($resultsReady && $viewMode === 'matrix')
     {{-- Paginated table (screen); full matrix is loaded again for browser print (hidden on screen). --}}
     <div class="print:hidden">
-        <div
-            class="results-print-table overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
-            <table class="w-full text-left border-collapse text-sm">
-                <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700">
-                    <tr>
-                        <th
-                            class="sticky left-0 z-10 bg-zinc-50 dark:bg-zinc-900/50 px-3 py-3 font-semibold text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
-                            {{ __('Student') }}</th>
+        <flux:card>
+            <div class="relative overflow-x-auto">
+                <flux:table :paginate="$matrixPaginator" class="results-print-table">
+                    <flux:table.columns>
+                        <flux:table.column class="sticky left-0 z-10 bg-zinc-50 dark:bg-zinc-900/50 whitespace-nowrap">{{ __('Student') }}</flux:table.column>
                         @foreach ($catalogCourses as $colCourse)
-                        <th class="px-2 py-3 font-semibold text-zinc-900 dark:text-zinc-100 whitespace-nowrap">
-                            <span class="font-mono uppercase">{{ $colCourse->course_code }}</span>
-                        </th>
+                            <flux:table.column class="whitespace-nowrap">
+                                <span class="font-mono uppercase">{{ $colCourse->course_code }}</span>
+                            </flux:table.column>
                         @endforeach
-                        <th class="px-3 py-3 font-semibold text-green-700 dark:text-green-400 whitespace-nowrap">{{
-                            __('Passes') }}</th>
-                        <th class="px-3 py-3 font-semibold text-red-700 dark:text-red-400 whitespace-nowrap">{{ __('Fails')
-                            }}</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                    @forelse ($matrixPaginator as $row)
-                    <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors"
-                        wire:key="m-{{ $row['student']->id }}">
-                        <td
-                            class="sticky left-0 z-10 bg-white dark:bg-zinc-800 px-3 py-3 border-r border-zinc-100 dark:border-zinc-700">
-                            <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $row['student']->full_name }}
-                            </div>
-                            <div class="text-xs text-zinc-500 dark:text-zinc-400 font-mono">{{ $row['student']->matric_number
-                                }}</div>
-                        </td>
-                        @foreach ($catalogCourses as $colCourse)
-                        <td class="px-2 py-3 text-center text-zinc-800 dark:text-zinc-200 whitespace-nowrap">
-                            {{ $row['cells'][$colCourse->id] ?? '' }}
-                        </td>
-                        @endforeach
-                        <td class="px-3 py-3 text-center font-semibold text-green-700 dark:text-green-400">{{ $row['passes']
-                            }}</td>
-                        <td class="px-3 py-3 text-center font-semibold text-red-700 dark:text-red-400">{{ $row['fails'] }}
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="{{ 3 + $catalogCourses->count() }}"
-                            class="px-4 py-12 text-center text-zinc-500 dark:text-zinc-400">
-                            {{ __('No students with results for this selection.') }}
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-        <div class="mt-4 no-print">{{ $matrixPaginator->links() }}</div>
+                        <flux:table.column class="text-green-700 dark:text-green-400 whitespace-nowrap">{{ __('Passes') }}</flux:table.column>
+                        <flux:table.column class="text-red-700 dark:text-red-400 whitespace-nowrap">{{ __('Fails') }}</flux:table.column>
+                    </flux:table.columns>
+                    <flux:table.rows>
+                        @forelse ($matrixPaginator as $row)
+                            <flux:table.row :key="'m-' . $row['student']->id">
+                                <flux:table.cell class="sticky left-0 z-10 bg-white dark:bg-zinc-800 border-r border-zinc-100 dark:border-zinc-700">
+                                    <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $row['student']->full_name }}</div>
+                                    <div class="text-xs text-zinc-500 dark:text-zinc-400 font-mono">{{ $row['student']->matric_number }}</div>
+                                </flux:table.cell>
+                                @foreach ($catalogCourses as $colCourse)
+                                    <flux:table.cell class="text-center text-zinc-800 dark:text-zinc-200 whitespace-nowrap">
+                                        {{ $row['cells'][$colCourse->id] ?? '' }}
+                                    </flux:table.cell>
+                                @endforeach
+                                <flux:table.cell class="text-center font-semibold text-green-700 dark:text-green-400">{{ $row['passes'] }}</flux:table.cell>
+                                <flux:table.cell class="text-center font-semibold text-red-700 dark:text-red-400">{{ $row['fails'] }}</flux:table.cell>
+                            </flux:table.row>
+                        @empty
+                            <flux:table.row>
+                                <flux:table.cell :colspan="3 + $catalogCourses->count()" class="py-12 text-center text-zinc-500 dark:text-zinc-400">
+                                    {{ __('No students with results for this selection.') }}
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @endforelse
+                    </flux:table.rows>
+                </flux:table>
+            </div>
+        </flux:card>
     </div>
     <div
         class="hidden print:block results-print-table overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
@@ -792,54 +779,49 @@ new #[Layout('layouts.app')] #[Title('View Results')] class extends Component {
 
     @elseif($resultsReady && $viewMode === 'course')
     <div class="print:hidden">
-        <div
-            class="results-print-table overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
-            <table class="w-full text-left border-collapse">
-                <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700">
-                    <tr>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Student') }}
-                        </th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('CA') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Exam') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Total') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Grade') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Remark') }}</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                    @forelse ($courseResults as $res)
-                    <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors" wire:key="{{ $res->id }}">
-                        <td class="px-4 py-4">
-                            <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $res->student->full_name }}</div>
-                            <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{{ $res->student->matric_number }}
-                            </div>
-                        </td>
-                        <td class="px-4 py-4 text-sm text-zinc-900 dark:text-zinc-100">{{ (float) $res->ca_score }}</td>
-                        <td class="px-4 py-4 text-sm text-zinc-900 dark:text-zinc-100">{{ (float) $res->exam_score }}</td>
-                        <td class="px-4 py-4 font-bold text-sm text-zinc-900 dark:text-zinc-100">{{ (float) $res->total_score
-                            }}</td>
-                        <td class="px-4 py-4 text-sm">
-                            <flux:badge variant="outline" size="sm" color="zinc">{{ $res->grade }}</flux:badge>
-                        </td>
-                        <td class="px-4 py-4 text-sm">
-                            <flux:badge
-                                :color="$res->remark === 'pass' ? 'green' : ($res->remark === 'fail' ? 'red' : 'zinc')"
-                                size="sm">
-                                {{ $res->remark ? ucfirst($res->remark) : '—' }}
-                            </flux:badge>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="6" class="px-4 py-12 text-center text-zinc-500 dark:text-zinc-400">
-                            {{ __('No results found.') }}
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-        <div class="mt-4 no-print">{{ $courseResults->links() }}</div>
+        <flux:card>
+            <div class="relative overflow-x-auto">
+                <flux:table :paginate="$courseResults" class="results-print-table">
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Student') }}</flux:table.column>
+                        <flux:table.column>{{ __('CA') }}</flux:table.column>
+                        <flux:table.column>{{ __('Exam') }}</flux:table.column>
+                        <flux:table.column>{{ __('Total') }}</flux:table.column>
+                        <flux:table.column>{{ __('Grade') }}</flux:table.column>
+                        <flux:table.column>{{ __('Remark') }}</flux:table.column>
+                    </flux:table.columns>
+                    <flux:table.rows>
+                        @forelse ($courseResults as $res)
+                            <flux:table.row :key="$res->id">
+                                <flux:table.cell>
+                                    <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $res->student->full_name }}</div>
+                                    <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{{ $res->student->matric_number }}</div>
+                                </flux:table.cell>
+                                <flux:table.cell class="text-zinc-900 dark:text-zinc-100">{{ (float) $res->ca_score }}</flux:table.cell>
+                                <flux:table.cell class="text-zinc-900 dark:text-zinc-100">{{ (float) $res->exam_score }}</flux:table.cell>
+                                <flux:table.cell class="font-bold text-zinc-900 dark:text-zinc-100">{{ (float) $res->total_score }}</flux:table.cell>
+                                <flux:table.cell>
+                                    <flux:badge variant="outline" size="sm" color="zinc">{{ $res->grade }}</flux:badge>
+                                </flux:table.cell>
+                                <flux:table.cell>
+                                    <flux:badge
+                                        :color="$res->remark === 'pass' ? 'green' : ($res->remark === 'fail' ? 'red' : 'zinc')"
+                                        size="sm">
+                                        {{ $res->remark ? ucfirst($res->remark) : '—' }}
+                                    </flux:badge>
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @empty
+                            <flux:table.row>
+                                <flux:table.cell colspan="6" class="py-12 text-center text-zinc-500 dark:text-zinc-400">
+                                    {{ __('No results found.') }}
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @endforelse
+                    </flux:table.rows>
+                </flux:table>
+            </div>
+        </flux:card>
     </div>
     <div
         class="hidden print:block results-print-table overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">

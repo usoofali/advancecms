@@ -10,9 +10,12 @@ use Illuminate\Support\Str;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Layout('layouts.app')] #[Title('Edit Course')] class extends Component
 {
+    use WithPagination;
+
     public Course $course;
 
     public int|string|null $institution_id = '';
@@ -129,7 +132,7 @@ new #[Layout('layouts.app')] #[Title('Edit Course')] class extends Component
                 ->where('model_type', $this->course->getMorphClass())
                 ->where('model_id', $this->course->id)
                 ->select('users.id as user_id', 'users.name as user_name', 'roles.role_id', 'roles.role_name')
-                ->get(),
+                ->paginate(10, ['*'], 'assignedUsersPage'),
         ];
     }
 
@@ -279,7 +282,7 @@ new #[Layout('layouts.app')] #[Title('Edit Course')] class extends Component
             </form>
         </div>
 
-        <flux:table>
+        <flux:table :paginate="$assignedUsers">
             <flux:table.columns>
                 <flux:table.column>{{ __('User') }}</flux:table.column>
                 <flux:table.column>{{ __('Role') }}</flux:table.column>

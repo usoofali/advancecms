@@ -309,35 +309,35 @@ new #[Layout('layouts.app')] #[Title('Take Attendance')] class extends Component
                         </div>
 
                         <!-- Desktop List (Table) -->
-                        <div class="hidden md:block border rounded-xl overflow-hidden">
-                            <table class="w-full text-left text-sm border-collapse">
-                                <thead class="bg-zinc-50 dark:bg-zinc-900">
-                                    <tr>
-                                        <th class="px-4 py-3 font-semibold text-zinc-900 dark:text-white">{{ __('Student Name') }}</th>
-                                        <th class="px-4 py-3 font-semibold text-zinc-900 dark:text-white">{{ __('Matric Number') }}</th>
-                                        <th class="px-4 py-3 font-semibold text-center text-zinc-900 dark:text-white">{{ __('Present?') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                                    @foreach ($students as $reg)
-                                        <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                                            <td class="px-4 py-3">
-                                                <div class="font-medium text-zinc-900 dark:text-white">
-                                                    {{ $reg->student->last_name }}, {{ $reg->student->first_name }}
-                                                </div>
-                                            </td>
-                                            <td class="px-4 py-3">
-                                                <span class="font-mono text-xs uppercase text-zinc-500 dark:text-zinc-400">
-                                                    {{ $reg->student->matric_number ?? '—' }}
-                                                </span>
-                                            </td>
-                                            <td class="px-4 py-3 text-center">
-                                                <flux:checkbox wire:model="attendance_data.{{ $reg->student_id }}" />
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+                        <div class="hidden md:block">
+                            <flux:card>
+                                <div class="relative overflow-x-auto">
+                                    <flux:table>
+                                        <flux:table.columns>
+                                            <flux:table.column>{{ __('Student Name') }}</flux:table.column>
+                                            <flux:table.column>{{ __('Matric Number') }}</flux:table.column>
+                                            <flux:table.column class="text-center">{{ __('Present?') }}</flux:table.column>
+                                        </flux:table.columns>
+                                        <flux:table.rows>
+                                            @foreach ($students as $reg)
+                                                <flux:table.row :key="$reg->student_id">
+                                                    <flux:table.cell class="font-medium text-zinc-900 dark:text-white">
+                                                        {{ $reg->student->last_name }}, {{ $reg->student->first_name }}
+                                                    </flux:table.cell>
+                                                    <flux:table.cell>
+                                                        <span class="font-mono text-xs uppercase text-zinc-500 dark:text-zinc-400">
+                                                            {{ $reg->student->matric_number ?? '—' }}
+                                                        </span>
+                                                    </flux:table.cell>
+                                                    <flux:table.cell class="text-center">
+                                                        <flux:checkbox wire:model="attendance_data.{{ $reg->student_id }}" />
+                                                    </flux:table.cell>
+                                                </flux:table.row>
+                                            @endforeach
+                                        </flux:table.rows>
+                                    </flux:table>
+                                </div>
+                            </flux:card>
                         </div>
 
                         <!-- Mobile Sticky Actions -->

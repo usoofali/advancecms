@@ -34,71 +34,71 @@
                 </div>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left text-zinc-500 dark:text-zinc-400">
-                    <thead class="text-xs uppercase bg-zinc-50 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
-                        <tr>
-                            <th scope="col" class="px-6 py-3">{{ __('Template Name') }}</th>
-                            <th scope="col" class="px-6 py-3">{{ __('Institution') }}</th>
-                            <th scope="col" class="px-6 py-3">{{ __('Type / Layout') }}</th>
-                            <th scope="col" class="px-6 py-3">{{ __('Status') }}</th>
-                            <th scope="col" class="px-6 py-3 text-right">{{ __('Actions') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
+            <div class="relative overflow-x-auto">
+                <flux:table :paginate="$templates">
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Template Name') }}</flux:table.column>
+                        <flux:table.column>{{ __('Institution') }}</flux:table.column>
+                        <flux:table.column>{{ __('Type / Layout') }}</flux:table.column>
+                        <flux:table.column>{{ __('Status') }}</flux:table.column>
+                        <flux:table.column class="text-right">{{ __('Actions') }}</flux:table.column>
+                    </flux:table.columns>
+                    <flux:table.rows>
                         @forelse($templates as $template)
-                            <tr class="border-b dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/50">
-                                <td class="px-6 py-4 font-medium text-zinc-900 dark:text-white flex items-center gap-3">
+                            <flux:table.row :key="$template->id">
+                                <flux:table.cell class="font-medium text-zinc-900 dark:text-white flex items-center gap-3">
                                     <div class="w-4 h-4 rounded-full border border-zinc-200 dark:border-zinc-700 shadow-sm"
                                         style="background-color: {{ $template->primary_color }}"></div>
                                     {{ $template->name }}
-                                </td>
-                                <td class="px-6 py-4">
+                                </flux:table.cell>
+                                <flux:table.cell>
                                     @if($template->institution_id)
                                         <flux:badge size="sm" color="zinc">{{ $template->institution->name }}</flux:badge>
                                     @else
                                         <flux:badge size="sm" color="blue">{{ __('System Default') }}</flux:badge>
                                     @endif
-                                </td>
-                                <td class="px-6 py-4">
+                                </flux:table.cell>
+                                <flux:table.cell>
                                     <div class="flex items-center gap-2">
                                         <flux:badge size="sm"
                                             color="{{ $template->type === 'student' ? 'green' : ($template->type === 'staff' ? 'orange' : 'indigo') }}">
                                             {{ ucfirst($template->type) }}
                                         </flux:badge>
-                                        <span
-                                            class="text-xs text-zinc-400">{{ ucfirst(str_replace('_', ' ', $template->layout)) }}
+                                        <span class="text-xs text-zinc-400">{{ ucfirst(str_replace('_', ' ', $template->layout)) }}
                                             ({{ ucfirst($template->orientation) }})</span>
                                     </div>
-                                </td>
-                                <td class="px-6 py-4">
+                                </flux:table.cell>
+                                <flux:table.cell>
                                     @if($template->is_active)
                                         <flux:badge size="sm" color="green" icon="check-circle">{{ __('Active') }}</flux:badge>
                                     @else
                                         <flux:badge size="sm" color="red" icon="x-circle">{{ __('Inactive') }}</flux:badge>
                                     @endif
-                                </td>
-                                <td class="px-6 py-4 text-right">
-                                    <flux:button wire:click="editTemplate({{ $template->id }})" size="sm" variant="ghost"
-                                        icon="pencil-square" />
-                                    <flux:button wire:click="deleteTemplate({{ $template->id }})"
-                                        wire:confirm="Are you sure you want to delete this template?" size="sm" variant="ghost"
-                                        icon="trash" class="text-red-500 hover:text-red-700" />
-                                </td>
-                            </tr>
+                                </flux:table.cell>
+                                <flux:table.cell class="text-right">
+                                    <flux:dropdown position="bottom" align="end">
+                                        <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" />
+                                        <flux:menu>
+                                            <flux:menu.item icon="pencil-square" wire:click="editTemplate({{ $template->id }})">
+                                                {{ __('Edit') }}
+                                            </flux:menu.item>
+                                            <flux:menu.separator />
+                                            <flux:menu.item icon="trash" variant="danger" wire:click="deleteTemplate({{ $template->id }})" wire:confirm="Are you sure you want to delete this template?">
+                                                {{ __('Delete') }}
+                                            </flux:menu.item>
+                                        </flux:menu>
+                                    </flux:dropdown>
+                                </flux:table.cell>
+                            </flux:table.row>
                         @empty
-                            <tr>
-                                <td colspan="5" class="px-6 py-8 text-center text-zinc-500 dark:text-zinc-400">
+                            <flux:table.row>
+                                <flux:table.cell colspan="5" class="py-8 text-center text-zinc-500 dark:text-zinc-400">
                                     {{ __('No ID card templates found. Create one to get started.') }}
-                                </td>
-                            </tr>
+                                </flux:table.cell>
+                            </flux:table.row>
                         @endforelse
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="mt-4">
-                {{ $templates->links() }}
+                    </flux:table.rows>
+                </flux:table>
             </div>
         </flux:card>
     @else

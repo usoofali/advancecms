@@ -4,11 +4,16 @@ use App\Models\Student;
 use App\Models\AcademicSession;
 use App\Models\Semester;
 use App\Services\GradingService;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Component {
+    use WithPagination;
+
     public ?Student $student = null;
     public bool $isStudentView = true;
     public int|string $filterSession = '';
@@ -366,62 +371,58 @@ new #[Layout('layouts.app')] #[Title('My Academic Results')] class extends Compo
             </div>
 
             @if ($hasAccess)
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="border-b border-zinc-100 dark:border-zinc-700">
-                            <th class="pb-2 text-left font-semibold text-zinc-600 dark:text-zinc-400">{{ __('Course') }}
-                            </th>
-                            <th class="pb-2 text-center font-semibold text-zinc-600 dark:text-zinc-400">{{ __('Units')
-                                }}</th>
-                            <th class="pb-2 text-center font-semibold text-zinc-600 dark:text-zinc-400">{{ __('Score')
-                                }}</th>
-                            <th class="pb-2 text-center font-semibold text-zinc-600 dark:text-zinc-400">{{ __('Grade')
-                                }}</th>
-                            <th class="pb-2 text-center font-semibold text-zinc-600 dark:text-zinc-400">{{ __('GP') }}
-                            </th>
-                            <th class="pb-2 text-right font-semibold text-zinc-600 dark:text-zinc-400">{{ __('Remark')
-                                }}</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
-                        @foreach ($groupResults as $res)
-                        @php $isSuperseded = !in_array($res->id, $bestResultIds); @endphp
-                        <tr
-                            class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors {{ $isSuperseded ? 'opacity-50 grayscale select-none' : '' }}">
-                            <td class="py-1.5 pr-2">
-                                <div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
-                                    <span class="font-mono font-bold uppercase text-zinc-900 dark:text-zinc-100">{{
-                                        $res->course->course_code }}</span>
-                                    <span class="text-xs text-zinc-500 truncate max-w-[200px] sm:max-w-xs md:max-w-sm">&mdash; {{ $res->course->title }}</span>
-                                    @if ($isSuperseded)
-                                    <flux:badge size="sm" inset="top bottom" color="zinc"
-                                        class="text-[10px] uppercase tracking-tighter">{{ __('Superseded') }}
+            @php
+                $groupPageName = 'groupPage_' . $loop->index;
+                $groupPage = Paginator::resolveCurrentPage($groupPageName);
+                $groupItems = $groupResults->values();
+                $paginatedGroupResults = new LengthAwarePaginator(
+                    $groupItems->forPage($groupPage, 25)->values(),
+                    $groupItems->count(),
+                    25,
+                    $groupPage,
+                    ['path' => Paginator::resolveCurrentPath(), 'pageName' => $groupPageName]
+                );
+            @endphp
+            <div class="relative overflow-x-auto">
+                <flux:table :paginate="$paginatedGroupResults">
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Course') }}</flux:table.column>
+                        <flux:table.column class="text-center">{{ __('Units') }}</flux:table.column>
+                        <flux:table.column class="text-center">{{ __('Score') }}</flux:table.column>
+                        <flux:table.column class="text-center">{{ __('Grade') }}</flux:table.column>
+                        <flux:table.column class="text-center">{{ __('GP') }}</flux:table.column>
+                        <flux:table.column class="text-right">{{ __('Remark') }}</flux:table.column>
+                    </flux:table.columns>
+                    <flux:table.rows>
+                        @foreach ($paginatedGroupResults as $res)
+                            @php $isSuperseded = !in_array($res->id, $bestResultIds); @endphp
+                            <flux:table.row :key="$res->id" class="{{ $isSuperseded ? 'opacity-50 grayscale select-none' : '' }}">
+                                <flux:table.cell>
+                                    <div class="flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+                                        <span class="font-mono font-bold uppercase text-zinc-900 dark:text-zinc-100">{{ $res->course->course_code }}</span>
+                                        <span class="text-xs text-zinc-500 truncate max-w-[200px] sm:max-w-xs md:max-w-sm">&mdash; {{ $res->course->title }}</span>
+                                        @if ($isSuperseded)
+                                            <flux:badge size="sm" inset="top bottom" color="zinc" class="text-[10px] uppercase tracking-tighter">{{ __('Superseded') }}</flux:badge>
+                                        @endif
+                                    </div>
+                                </flux:table.cell>
+                                <flux:table.cell class="text-center text-zinc-600 dark:text-zinc-400">{{ $res->course->credit_unit }}</flux:table.cell>
+                                <flux:table.cell class="text-center font-medium text-zinc-800 dark:text-zinc-200">{{ (float) $res->total_score }}</flux:table.cell>
+                                <flux:table.cell class="text-center">
+                                    <span class="inline-block px-1.5 py-0.5 rounded font-bold text-xs {{ $res->remark === 'pass' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' }}">
+                                        {{ $res->grade }}
+                                    </span>
+                                </flux:table.cell>
+                                <flux:table.cell class="text-center text-zinc-600 dark:text-zinc-400">{{ number_format((float) $res->grade_point, 1) }}</flux:table.cell>
+                                <flux:table.cell class="text-right">
+                                    <flux:badge :color="$res->remark === 'pass' ? 'green' : 'red'" size="sm" class="text-[10px]">
+                                        {{ ucfirst($res->remark) }}
                                     </flux:badge>
-                                    @endif
-                                </div>
-                            </td>
-                            <td class="py-1.5 text-center text-zinc-600 dark:text-zinc-400">{{ $res->course->credit_unit
-                                }}</td>
-                            <td class="py-1.5 text-center font-medium text-zinc-800 dark:text-zinc-200">{{ (float)
-                                $res->total_score }}</td>
-                            <td class="py-1.5 text-center">
-                                <span
-                                    class="inline-block px-1.5 py-0.5 rounded font-bold text-xs {{ $res->remark === 'pass' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' }}">
-                                    {{ $res->grade }}
-                                </span>
-                            </td>
-                            <td class="py-1.5 text-center text-zinc-600 dark:text-zinc-400">{{ number_format((float)
-                                $res->grade_point, 1) }}</td>
-                            <td class="py-1.5 text-right">
-                                <flux:badge :color="$res->remark === 'pass' ? 'green' : 'red'" size="sm" class="text-[10px]">
-                                    {{ ucfirst($res->remark) }}
-                                </flux:badge>
-                            </td>
-                        </tr>
+                                </flux:table.cell>
+                            </flux:table.row>
                         @endforeach
-                    </tbody>
-                </table>
+                    </flux:table.rows>
+                </flux:table>
             </div>
 
             @php

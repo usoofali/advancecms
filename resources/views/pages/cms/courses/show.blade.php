@@ -37,6 +37,7 @@ new #[Layout('layouts.app')] #[Title('Course Details')] class extends Component 
     public function updatedSelectedSessionId(): void
     {
         $this->resetPage();
+        $this->resetPage('allocationsPage');
     }
 
     public function updatedSearch(): void
@@ -48,11 +49,13 @@ new #[Layout('layouts.app')] #[Title('Course Details')] class extends Component 
     {
         $sessions = AcademicSession::orderByDesc('id')->get();
 
-        $allocations = CourseAllocation::with(['user', 'academicSession', 'semester'])
+        $allocationsQuery = CourseAllocation::with(['user', 'academicSession', 'semester'])
             ->where('course_id', $this->course->id)
             ->when($this->selectedSessionId, fn($q) => $q->where('academic_session_id', $this->selectedSessionId))
-            ->latest()
-            ->get();
+            ->latest();
+
+        $totalAllocations = (clone $allocationsQuery)->count();
+        $allocations = $allocationsQuery->paginate(10, ['*'], 'allocationsPage');
 
         $registrationsQuery = CourseRegistration::with(['student', 'academicSession', 'semester'])
             ->where('course_id', $this->course->id)
@@ -73,6 +76,7 @@ new #[Layout('layouts.app')] #[Title('Course Details')] class extends Component 
         return [
             'sessions' => $sessions,
             'allocations' => $allocations,
+            'totalAllocations' => $totalAllocations,
             'registrations' => $registrationsQuery->paginate(20),
             'totalRegistrations' => $totalRegistrations,
             'carryovers' => $carryovers,
@@ -162,7 +166,7 @@ new #[Layout('layouts.app')] #[Title('Course Details')] class extends Component 
             </div>
             <div class="space-y-1 relative z-10">
                 <div class="text-[10px] font-black text-emerald-100 uppercase tracking-widest">{{ __('Allocated Lecturers') }}</div>
-                <div class="text-4xl font-black text-white">{{ $allocations->count() }}</div>
+                <div class="text-4xl font-black text-white">{{ $totalAllocations }}</div>
                 <div class="text-[10px] text-emerald-50 font-bold uppercase">
                     @if($selectedSession)
                         {{ $selectedSession->name }}
@@ -188,40 +192,58 @@ new #[Layout('layouts.app')] #[Title('Course Details')] class extends Component 
 
     {{-- Allocated Lecturers --}}
     <flux:card class="space-y-4">
-        <div class="flex items-center gap-3 border-b border-zinc-100 dark:border-zinc-800 pb-4">
-            <flux:icon.academic-cap class="size-5 text-zinc-400" />
-            <flux:heading size="lg">{{ __('Allocated Lecturers') }}</flux:heading>
-            <flux:badge color="zinc" size="sm" inset="top bottom">{{ $allocations->count() }}</flux:badge>
+        <div class="flex items-center justify-between gap-3 border-b border-zinc-100 dark:border-zinc-800 pb-4">
+            <div class="flex items-center gap-3">
+                <flux:icon.academic-cap class="size-5 text-zinc-400" />
+                <flux:heading size="lg">{{ __('Allocated Lecturers') }}</flux:heading>
+                <flux:badge color="zinc" size="sm" inset="top bottom">{{ $totalAllocations }}</flux:badge>
+            </div>
+            @can('courses.allocate')
+                <flux:button variant="ghost" size="xs" icon="plus" :href="route('cms.courses.allocations')" wire:navigate>
+                    {{ __('Allocate Lecturer') }}
+                </flux:button>
+            @endcan
         </div>
 
-        @if($allocations->isEmpty())
-            <div class="py-10 text-center">
-                <flux:icon.user-minus class="size-10 mx-auto text-zinc-300 dark:text-zinc-600 mb-3" />
-                <p class="text-sm text-zinc-500 dark:text-zinc-400 font-medium">{{ __('No lecturer has been allocated to this course') }}
-                    @if($selectedSession) {{ __('for') }} {{ $selectedSession->name }} @endif.
-                </p>
-                @can('courses.view')
-                    <flux:button variant="ghost" size="sm" icon="plus" :href="route('cms.courses.allocations')" wire:navigate class="mt-3">
-                        {{ __('Allocate a Lecturer') }}
-                    </flux:button>
-                @endcan
-            </div>
-        @else
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                @foreach($allocations as $allocation)
-                    <div class="flex items-start gap-4 p-4 rounded-xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800">
-                        <div class="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900/40 flex items-center justify-center shrink-0">
-                            <flux:icon.user class="size-5 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                        <div class="min-w-0">
-                            <p class="font-bold text-zinc-900 dark:text-white text-sm truncate">{{ $allocation->user->name }}</p>
-                            <p class="text-xs text-zinc-500 mt-0.5">{{ $allocation->academicSession->name }}</p>
-                            <p class="text-xs text-zinc-400 mt-0.5 capitalize">{{ ucfirst($allocation->semester->name) }}</p>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-        @endif
+        <flux:table :paginate="$allocations">
+            <flux:table.columns>
+                <flux:table.column>{{ __('Lecturer') }}</flux:table.column>
+                <flux:table.column>{{ __('Session') }}</flux:table.column>
+                <flux:table.column>{{ __('Semester') }}</flux:table.column>
+            </flux:table.columns>
+
+            <flux:table.rows>
+                @forelse($allocations as $allocation)
+                    <flux:table.row wire:key="alloc-{{ $allocation->id }}">
+                        <flux:table.cell>
+                            <div class="flex items-center gap-3">
+                                <div class="flex size-8 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/40">
+                                    <flux:icon.user class="size-4 text-emerald-600 dark:text-emerald-400" />
+                                </div>
+                                <div>
+                                    <div class="font-semibold text-zinc-900 dark:text-white">{{ $allocation->user?->name ?? '—' }}</div>
+                                    @if($allocation->user?->email)
+                                        <div class="text-xs text-zinc-500">{{ $allocation->user->email }}</div>
+                                    @endif
+                                </div>
+                            </div>
+                        </flux:table.cell>
+                        <flux:table.cell class="text-zinc-600 dark:text-zinc-300">
+                            {{ $allocation->academicSession?->name ?? '—' }}
+                        </flux:table.cell>
+                        <flux:table.cell class="text-zinc-600 dark:text-zinc-300 capitalize">
+                            {{ $allocation->semester ? ucfirst($allocation->semester->name) : '—' }}
+                        </flux:table.cell>
+                    </flux:table.row>
+                @empty
+                    <flux:table.row>
+                        <flux:table.cell colspan="3" class="py-8 text-center text-zinc-500 dark:text-zinc-400">
+                            {{ __('No lecturer has been allocated to this course') }}@if($selectedSession) {{ __('for') }} {{ $selectedSession->name }}@endif.
+                        </flux:table.cell>
+                    </flux:table.row>
+                @endforelse
+            </flux:table.rows>
+        </flux:table>
     </flux:card>
 
     {{-- Registered Students --}}

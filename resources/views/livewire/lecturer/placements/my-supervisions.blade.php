@@ -4,11 +4,16 @@ use App\Actions\Placements\SubmitPlacementEvaluationAction;
 use App\Models\AcademicSession;
 use App\Models\StudentPlacement;
 use App\Services\PlacementSupervisorResolver;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Layout('layouts.app')] class extends Component {
+    use WithPagination;
+
     public $sessionFilter = '';
     public $search = '';
     public $evalStatusFilter = '';
@@ -90,7 +95,7 @@ new #[Layout('layouts.app')] class extends Component {
         $sessionId = $this->sessionFilter ? (int) $this->sessionFilter : null;
         $allAssignedPlacements = $resolver->getPlacementsForSupervisor(Auth::id(), $sessionId);
 
-        $filteredPlacements = $allAssignedPlacements->filter(function ($p) {
+        $filteredCollection = $allAssignedPlacements->filter(function ($p) {
             $matchesSearch = true;
             if ($this->search) {
                 $term = strtolower($this->search);
@@ -108,7 +113,16 @@ new #[Layout('layouts.app')] class extends Component {
             }
 
             return $matchesSearch && $matchesEval;
-        });
+        })->values();
+
+        $currentPage = Paginator::resolveCurrentPage();
+        $filteredPlacements = new LengthAwarePaginator(
+            $filteredCollection->forPage($currentPage, 15)->values(),
+            $filteredCollection->count(),
+            15,
+            $currentPage,
+            ['path' => Paginator::resolveCurrentPath()]
+        );
 
         $academicSessions = AcademicSession::orderByDesc('name')->get();
 
@@ -180,49 +194,47 @@ new #[Layout('layouts.app')] class extends Component {
     </div>
 
     <!-- Supervisees Table -->
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm overflow-hidden">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm text-slate-700 dark:text-slate-200">
-                <thead class="bg-slate-50 dark:bg-slate-800/80 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
-                    <tr>
-                        <th class="px-4 py-3">#</th>
-                        <th class="px-4 py-3">Student</th>
-                        <th class="px-4 py-3">Department & Program</th>
-                        <th class="px-4 py-3">Organization</th>
-                        <th class="px-4 py-3">Level</th>
-                        <th class="px-4 py-3">Evaluation Status</th>
-                        <th class="px-4 py-3 text-right">Action</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+    <flux:card>
+        <div class="relative overflow-x-auto">
+            <flux:table :paginate="$filteredPlacements">
+                <flux:table.columns>
+                    <flux:table.column>#</flux:table.column>
+                    <flux:table.column>Student</flux:table.column>
+                    <flux:table.column>Department &amp; Program</flux:table.column>
+                    <flux:table.column>Organization</flux:table.column>
+                    <flux:table.column>Level</flux:table.column>
+                    <flux:table.column>Evaluation Status</flux:table.column>
+                    <flux:table.column class="text-right">Action</flux:table.column>
+                </flux:table.columns>
+                <flux:table.rows>
                     @forelse($filteredPlacements as $index => $placement)
-                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-                            <td class="px-4 py-3.5 text-xs text-slate-400 font-mono">
-                                {{ $index + 1 }}
-                            </td>
-                            <td class="px-4 py-3.5">
+                        <flux:table.row :key="$placement->id">
+                            <flux:table.cell class="text-xs text-slate-400 font-mono">
+                                {{ ($filteredPlacements->firstItem() ?? 1) + $loop->index }}
+                            </flux:table.cell>
+                            <flux:table.cell>
                                 <div class="font-bold text-slate-900 dark:text-white">
                                     {{ $placement->student?->user?->name ?? 'Student' }}
                                 </div>
                                 <div class="text-xs text-slate-500 font-mono">
                                     {{ $placement->student?->matric_number ?? 'N/A' }}
                                 </div>
-                            </td>
-                            <td class="px-4 py-3.5">
+                            </flux:table.cell>
+                            <flux:table.cell>
                                 <div class="font-medium text-slate-800 dark:text-slate-200">
                                     {{ $placement->student?->department?->name ?? 'N/A' }}
                                 </div>
                                 <div class="text-xs text-slate-500">
                                     {{ $placement->student?->program?->name ?? 'N/A' }}
                                 </div>
-                            </td>
-                            <td class="px-4 py-3.5 font-medium text-slate-800 dark:text-slate-200">
+                            </flux:table.cell>
+                            <flux:table.cell class="font-medium text-slate-800 dark:text-slate-200">
                                 {{ $placement->organization?->name ?? $placement->custom_organization_name ?? 'N/A' }}
-                            </td>
-                            <td class="px-4 py-3.5 text-xs font-semibold text-slate-600 dark:text-slate-400">
+                            </flux:table.cell>
+                            <flux:table.cell class="text-xs font-semibold text-slate-600 dark:text-slate-400">
                                 {{ $placement->student?->level ?? 'N/A' }}
-                            </td>
-                            <td class="px-4 py-3.5">
+                            </flux:table.cell>
+                            <flux:table.cell>
                                 @if($placement->evaluation)
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                                         Grade: {{ $placement->evaluation->performance_grade }} ({{ number_format($placement->evaluation->total_score, 0) }}%)
@@ -232,24 +244,24 @@ new #[Layout('layouts.app')] class extends Component {
                                         Pending Eval
                                     </span>
                                 @endif
-                            </td>
-                            <td class="px-4 py-3.5 text-right">
+                            </flux:table.cell>
+                            <flux:table.cell class="text-right">
                                 <flux:button wire:click="openEvalModal({{ $placement->id }})" variant="primary" size="sm" icon="pencil">
                                     {{ $placement->evaluation ? 'Edit Assessment' : 'Evaluate' }}
                                 </flux:button>
-                            </td>
-                        </tr>
+                            </flux:table.cell>
+                        </flux:table.row>
                     @empty
-                        <tr>
-                            <td colspan="7" class="px-4 py-12 text-center text-slate-500 dark:text-slate-400">
+                        <flux:table.row>
+                            <flux:table.cell colspan="7" class="py-12 text-center text-slate-500 dark:text-slate-400">
                                 No students found under your supervision matching the criteria.
-                            </td>
-                        </tr>
+                            </flux:table.cell>
+                        </flux:table.row>
                     @endforelse
-                </tbody>
-            </table>
+                </flux:table.rows>
+            </flux:table>
         </div>
-    </div>
+    </flux:card>
 
     <!-- Evaluation Questionnaire Modal -->
     <flux:modal wire:model="showEvalModal" name="evaluation-modal" class="md:max-w-2xl">

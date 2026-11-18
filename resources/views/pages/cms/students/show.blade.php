@@ -5,13 +5,18 @@ use App\Models\Student;
 use App\Models\StudentInvoice;
 use App\Models\User;
 use App\Services\GradingService;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Layout('layouts.app')] #[Title('Student Profile')] class extends Component
 {
+    use WithPagination;
+
     public Student $student;
 
     public string $newStatus = '';
@@ -122,6 +127,16 @@ new #[Layout('layouts.app')] #[Title('Student Profile')] class extends Component
         $invoices = StudentInvoice::where('student_id', $this->student->id)->with('invoice.academicSession')->get();
         $hasUserAccount = User::where('email', $this->student->email)->exists();
 
+        $sortedInvoices = $invoices->sortByDesc('created_at')->values();
+        $invPage = Paginator::resolveCurrentPage('invoicesPage');
+        $paginatedInvoices = new LengthAwarePaginator(
+            $sortedInvoices->forPage($invPage, 10)->values(),
+            $sortedInvoices->count(),
+            10,
+            $invPage,
+            ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'invoicesPage']
+        );
+
         return [
             'cgpa' => $gradingService->computeCgpa($this->student),
             'attendance' => $this->student->getAttendancePercentage(),
@@ -130,7 +145,7 @@ new #[Layout('layouts.app')] #[Title('Student Profile')] class extends Component
             'unitsEarned' => $this->student->results()->with('course')->get()->sum(fn ($r) => $r->course->credit_unit ?? 0),
             'currentLevel' => $activeSession ? $this->student->currentLevel($activeSession) : '—',
             'institutionLogo' => $this->student->institution->logo_path ? Storage::url($this->student->institution->logo_path) : null,
-            'studentInvoices' => $invoices->sortByDesc('created_at'),
+            'studentInvoices' => $paginatedInvoices,
             'hasUserAccount' => $hasUserAccount,
             'statusColorMap' => [
                 'active' => 'green',
@@ -329,40 +344,38 @@ new #[Layout('layouts.app')] #[Title('Student Profile')] class extends Component
                     </div>
                 </div>
 
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead>
-                            <tr class="border-b border-zinc-200 dark:border-zinc-700">
-                                <th class="py-3 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-[10px] tracking-wider">Invoice</th>
-                                <th class="py-3 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-[10px] tracking-wider text-right">Total</th>
-                                <th class="py-3 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-[10px] tracking-wider text-right">Paid</th>
-                                <th class="py-3 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-[10px] tracking-wider">Status</th>
-                                <th class="py-3"></th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
+                <div class="relative overflow-x-auto">
+                    <flux:table :paginate="$studentInvoices">
+                        <flux:table.columns>
+                            <flux:table.column>Invoice</flux:table.column>
+                            <flux:table.column class="text-right">Total</flux:table.column>
+                            <flux:table.column class="text-right">Paid</flux:table.column>
+                            <flux:table.column>Status</flux:table.column>
+                            <flux:table.column class="text-right"></flux:table.column>
+                        </flux:table.columns>
+                        <flux:table.rows>
                             @forelse ($studentInvoices as $item)
-                                <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors">
-                                    <td class="py-3">
+                                <flux:table.row :key="$item->id">
+                                    <flux:table.cell>
                                         <flux:text weight="medium" class="text-sm">{{ $item->invoice->title }}</flux:text>
                                         <flux:text size="xs" class="text-zinc-500 uppercase">{{ $item->invoice->academicSession->name }}</flux:text>
-                                    </td>
-                                    <td class="py-3 text-right text-sm">₦{{ number_format($item->total_amount, 2) }}</td>
-                                    <td class="py-3 text-right text-sm font-bold text-green-600">₦{{ number_format($item->amount_paid, 2) }}</td>
-                                    <td class="py-3">
+                                    </flux:table.cell>
+                                    <flux:table.cell class="text-right text-sm">₦{{ number_format($item->total_amount, 2) }}</flux:table.cell>
+                                    <flux:table.cell class="text-right text-sm font-bold text-green-600">₦{{ number_format($item->amount_paid, 2) }}</flux:table.cell>
+                                    <flux:table.cell>
                                         <flux:badge size="sm" :variant="$badgeVariantMap[$item->status] ?? 'zinc'">{{ ucfirst($item->status) }}</flux:badge>
-                                    </td>
-                                    <td class="py-3 text-right">
+                                    </flux:table.cell>
+                                    <flux:table.cell class="text-right">
                                         <flux:button variant="ghost" size="xs" icon="printer" :href="route('cms.invoices.print', $item)" target="_blank" />
-                                    </td>
-                                </tr>
+                                    </flux:table.cell>
+                                </flux:table.row>
                             @empty
-                                <tr>
-                                    <td colspan="5" class="py-8 text-center text-zinc-500 italic text-sm">{{ __('No invoices recorded.') }}</td>
-                                </tr>
+                                <flux:table.row>
+                                    <flux:table.cell colspan="5" class="py-8 text-center text-zinc-500 italic text-sm">{{ __('No invoices recorded.') }}</flux:table.cell>
+                                </flux:table.row>
                             @endforelse
-                        </tbody>
-                    </table>
+                        </flux:table.rows>
+                    </flux:table>
                 </div>
             </flux:card>
 

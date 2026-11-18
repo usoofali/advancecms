@@ -3,12 +3,17 @@
 use App\Models\Applicant;
 use App\Models\ApplicantCredential;
 use App\Services\AdmissionService;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Title('Review Application')] #[Layout('layouts.app')] class extends Component
 {
+    use WithPagination;
+
     public Applicant $applicant;
     public ?ApplicantCredential $credentials = null;
     public string $rejectionReason = '';
@@ -353,34 +358,40 @@ new #[Title('Review Application')] #[Layout('layouts.app')] class extends Compon
                     </div>
 
                     <flux:heading size="sm" class="mb-3 text-zinc-500 uppercase tracking-widest font-semibold">{{ __('Core Subjects Review') }}</flux:heading>
-                    <div class="overflow-hidden bg-white dark:bg-zinc-900 shadow-sm ring-1 ring-zinc-200 dark:ring-zinc-800 rounded-lg">
-                        <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-800">
-                            <thead class="bg-zinc-50 dark:bg-zinc-800/50">
-                                <tr>
-                                    <th scope="col" class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ __('Subject') }}</th>
-                                    <th scope="col" class="px-3 py-3.5 text-center text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ __('Grade') }}</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-zinc-200 dark:divide-zinc-800 bg-white dark:bg-zinc-900">
-                                @php
-                                    $subjects = [
-                                        'English Language' => $credentials->subject_english,
-                                        'Mathematics' => $credentials->subject_mathematics,
-                                        'Biology' => $credentials->subject_biology,
-                                        'Chemistry' => $credentials->subject_chemistry,
-                                        'Physics' => $credentials->subject_physics,
-                                    ];
-                                @endphp
-                                @foreach($subjects as $subject => $grade)
-                                <tr>
-                                    <td class="whitespace-nowrap py-3 pl-4 pr-3 text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ $subject }}</td>
-                                    <td class="whitespace-nowrap px-3 py-3 text-sm font-bold text-center {{ in_array($grade, ['A1', 'B2', 'B3', 'C4', 'C5', 'C6', 'A']) ? 'text-green-600' : 'text-red-600' }}">
-                                        {{ $grade }}
-                                    </td>
-                                </tr>
+                    @php
+                        $subjects = collect([
+                            ['subject' => 'English Language', 'grade' => $credentials->subject_english],
+                            ['subject' => 'Mathematics', 'grade' => $credentials->subject_mathematics],
+                            ['subject' => 'Biology', 'grade' => $credentials->subject_biology],
+                            ['subject' => 'Chemistry', 'grade' => $credentials->subject_chemistry],
+                            ['subject' => 'Physics', 'grade' => $credentials->subject_physics],
+                        ]);
+                        $subjPage = Paginator::resolveCurrentPage('subjectsPage');
+                        $paginatedSubjects = new LengthAwarePaginator(
+                            $subjects->forPage($subjPage, 10)->values(),
+                            $subjects->count(),
+                            10,
+                            $subjPage,
+                            ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'subjectsPage']
+                        );
+                    @endphp
+                    <div class="relative overflow-x-auto">
+                        <flux:table :paginate="$paginatedSubjects">
+                            <flux:table.columns>
+                                <flux:table.column>{{ __('Subject') }}</flux:table.column>
+                                <flux:table.column class="text-center">{{ __('Grade') }}</flux:table.column>
+                            </flux:table.columns>
+                            <flux:table.rows>
+                                @foreach($paginatedSubjects as $row)
+                                    <flux:table.row :key="$row['subject']">
+                                        <flux:table.cell class="font-medium text-zinc-900 dark:text-zinc-100">{{ $row['subject'] }}</flux:table.cell>
+                                        <flux:table.cell class="font-bold text-center {{ in_array($row['grade'], ['A1', 'B2', 'B3', 'C4', 'C5', 'C6', 'A']) ? 'text-green-600' : 'text-red-600' }}">
+                                            {{ $row['grade'] }}
+                                        </flux:table.cell>
+                                    </flux:table.row>
                                 @endforeach
-                            </tbody>
-                        </table>
+                            </flux:table.rows>
+                        </flux:table>
                     </div>
 
                     <div class="mt-8">

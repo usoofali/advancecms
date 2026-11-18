@@ -5,14 +5,18 @@ declare(strict_types=1);
 use App\Models\Permission;
 use App\Models\Role;
 use Flux\Flux;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Title('Role Management')] class extends Component
 {
+    use WithPagination;
+
     public string $tab = 'roles';
 
     public string $search = '';
@@ -46,7 +50,12 @@ new #[Title('Role Management')] class extends Component
     }
 
     #[Computed]
-    public function roles(): Collection
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function roles(): LengthAwarePaginator
     {
         return Role::query()
             ->withCount(['permissions', 'users'])
@@ -57,7 +66,7 @@ new #[Title('Role Management')] class extends Component
                 });
             })
             ->orderBy('role_name')
-            ->get();
+            ->paginate(15);
     }
 
     #[Computed]
@@ -347,7 +356,7 @@ new #[Title('Role Management')] class extends Component
 
             {{-- Roles Tab --}}
             <div x-show="currentTab === 'roles'" class="space-y-4">
-                <flux:table>
+                <flux:table :paginate="$this->roles">
                     <flux:table.columns>
                         <flux:table.column>{{ __('Role') }}</flux:table.column>
                         <flux:table.column class="text-center">{{ __('Users') }}</flux:table.column>

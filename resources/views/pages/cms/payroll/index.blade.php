@@ -6,16 +6,26 @@ use App\Models\PayrollComponent;
 use App\Models\PayrollRun;
 use App\Models\PayrollStaffProfile;
 use App\Models\Staff;
+use App\Services\ActivityLogger;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Layout('layouts.app')] #[Title('Payroll Overview')] class extends Component
 {
+    use WithPagination;
+
     #[Url]
     public ?int $institution_id = null;
+
+    public bool $showDeleteModal = false;
+
+    public ?int $deleteRunId = null;
+
+    public string $deleteRunTitle = '';
 
     public function mount(): void
     {
@@ -25,8 +35,15 @@ new #[Layout('layouts.app')] #[Title('Payroll Overview')] class extends Componen
         if (! $user->hasRole('Super Admin')) {
             $this->institution_id = $user->institution_id;
         } elseif (! $this->institution_id) {
-            $this->institution_id = Institution::where('status', 'active')->value('id');
+            $this->institution_id = PayrollRun::latest('id')->value('institution_id')
+                ?? Institution::where('status', 'active')->value('id')
+                ?? Institution::value('id');
         }
+    }
+
+    public function updatedInstitutionId(): void
+    {
+        $this->resetPage();
     }
 
     private function resolveInstitutionId(): ?int
@@ -34,8 +51,61 @@ new #[Layout('layouts.app')] #[Title('Payroll Overview')] class extends Componen
         $user = auth()->user();
 
         return $user->hasRole('Super Admin')
-            ? ($this->institution_id ?: Institution::where('status', 'active')->value('id'))
+            ? ($this->institution_id ?: PayrollRun::latest('id')->value('institution_id') ?? Institution::where('status', 'active')->value('id') ?? Institution::value('id'))
             : $user->institution_id;
+    }
+
+    public function confirmDeleteRun(int $runId): void
+    {
+        $instId = $this->resolveInstitutionId();
+        $run = PayrollRun::where('institution_id', $instId)->findOrFail($runId);
+
+        if ($run->status === 'paid') {
+            return;
+        }
+
+        if ($run->status === 'approved') {
+            Gate::authorize('payroll.approve');
+        } else {
+            Gate::authorize('payroll.create_run');
+        }
+
+        $this->deleteRunId = $run->id;
+        $this->deleteRunTitle = $run->title;
+        $this->showDeleteModal = true;
+    }
+
+    public function deleteRun(): void
+    {
+        $instId = $this->resolveInstitutionId();
+        $run = PayrollRun::where('institution_id', $instId)->findOrFail($this->deleteRunId);
+
+        if ($run->status === 'paid') {
+            $this->showDeleteModal = false;
+
+            return;
+        }
+
+        if ($run->status === 'approved') {
+            Gate::authorize('payroll.approve');
+        } else {
+            Gate::authorize('payroll.create_run');
+        }
+
+        $title = $run->title;
+        ActivityLogger::log(
+            action: 'deleted',
+            module: 'Payroll',
+            description: "Deleted payroll run: {$title}",
+            subject: $run,
+            institutionId: $instId
+        );
+
+        $run->delete();
+        $this->showDeleteModal = false;
+        $this->deleteRunId = null;
+        $this->deleteRunTitle = '';
+        $this->dispatch('notify', ['type' => 'success', 'message' => __('Payroll run deleted.')]);
     }
 
     public function with(): array
@@ -45,21 +115,28 @@ new #[Layout('layouts.app')] #[Title('Payroll Overview')] class extends Componen
 
         $latestRun = $instId
             ? PayrollRun::withCount('items')
+                ->withSum('items as computed_gross', 'gross_pay')
+                ->withSum('items as computed_deductions', 'total_deductions')
+                ->withSum('items as computed_net', 'net_pay')
                 ->where('institution_id', $instId)
                 ->orderByDesc('year')
                 ->orderByDesc('month')
+                ->orderByDesc('id')
                 ->first()
             : null;
 
         $recentRuns = $instId
             ? PayrollRun::with(['preparer', 'approver'])
                 ->withCount('items')
+                ->withSum('items as computed_gross', 'gross_pay')
+                ->withSum('items as computed_deductions', 'total_deductions')
+                ->withSum('items as computed_net', 'net_pay')
                 ->where('institution_id', $instId)
                 ->orderByDesc('year')
                 ->orderByDesc('month')
-                ->take(6)
-                ->get()
-            : collect();
+                ->orderByDesc('id')
+                ->paginate(10)
+            : new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10);
 
         $activeStaffCount = $instId
             ? Staff::where('institution_id', $instId)->where('status', 'active')->count()
@@ -97,27 +174,15 @@ new #[Layout('layouts.app')] #[Title('Payroll Overview')] class extends Componen
             <flux:subheading>{{ __('Manage staff salaries, contact-hour pay, allowances, deductions, and monthly runs') }}</flux:subheading>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2">
-            @if(auth()->user()->hasRole('Super Admin'))
+        @if(auth()->user()->hasRole('Super Admin'))
+            <div class="flex items-center">
                 <flux:select wire:model.live="institution_id" class="w-full sm:w-60" :placeholder="__('Select Institution...')">
                     @foreach($institutions as $inst)
                         <flux:select.option :value="$inst->id">{{ $inst->name }}</flux:select.option>
                     @endforeach
                 </flux:select>
-            @endif
-
-            @can('payroll.manage')
-                <flux:button variant="ghost" icon="adjustments-horizontal" :href="route('cms.payroll.settings', ['institution_id' => $institution_id])" wire:navigate class="w-full sm:w-auto">
-                    {{ __('Categories & Rules') }}
-                </flux:button>
-            @endcan
-
-            @can('payroll.create_run')
-                <flux:button variant="primary" icon="calculator" :href="route('cms.payroll.runs', ['institution_id' => $institution_id])" wire:navigate class="w-full sm:w-auto">
-                    {{ __('Run Monthly Payroll') }}
-                </flux:button>
-            @endcan
-        </div>
+            </div>
+        @endif
     </div>
 
     {{-- KPI Cards --}}
@@ -128,7 +193,7 @@ new #[Layout('layouts.app')] #[Title('Payroll Overview')] class extends Componen
                 <flux:icon.banknotes class="size-5 text-emerald-500" />
             </div>
             <div class="text-2xl font-black text-zinc-900 dark:text-white mt-2">
-                ₦{{ number_format((float) ($latestRun?->total_net ?? 0), 2) }}
+                ₦{{ number_format((float) ($latestRun?->computed_net ?? $latestRun?->total_net ?? 0), 2) }}
             </div>
             <div class="text-xs text-zinc-500 mt-1">
                 {{ $latestRun ? $latestRun->title : __('No payroll run yet') }}
@@ -141,10 +206,10 @@ new #[Layout('layouts.app')] #[Title('Payroll Overview')] class extends Componen
                 <flux:icon.chart-bar class="size-5 text-indigo-500" />
             </div>
             <div class="text-2xl font-black text-zinc-900 dark:text-white mt-2">
-                ₦{{ number_format((float) ($latestRun?->total_gross ?? 0), 2) }}
+                ₦{{ number_format((float) ($latestRun?->computed_gross ?? $latestRun?->total_gross ?? 0), 2) }}
             </div>
             <div class="text-xs text-zinc-500 mt-1">
-                {{ __('Deductions:') }} ₦{{ number_format((float) ($latestRun?->total_deductions ?? 0), 2) }}
+                {{ __('Deductions:') }} ₦{{ number_format((float) ($latestRun?->computed_deductions ?? $latestRun?->total_deductions ?? 0), 2) }}
             </div>
         </div>
 
@@ -196,82 +261,102 @@ new #[Layout('layouts.app')] #[Title('Payroll Overview')] class extends Componen
     @endif
 
     {{-- Recent Payroll Runs --}}
-    <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-xs overflow-hidden">
-        <div class="px-5 py-4 border-b border-zinc-200 dark:border-zinc-700 flex items-center justify-between">
-            <h3 class="font-bold text-zinc-900 dark:text-zinc-100">{{ __('Recent Monthly Runs') }}</h3>
+    <div class="space-y-3">
+        <div class="flex items-center justify-between">
+            <flux:heading size="lg">{{ __('Recent Monthly Runs') }}</flux:heading>
             <flux:button size="xs" variant="ghost" :href="route('cms.payroll.runs', ['institution_id' => $institution_id])" wire:navigate>
-                {{ __('View All') }}
+                {{ __('Manage Runs') }}
             </flux:button>
         </div>
 
-        {{-- Desktop Table --}}
-        <div class="hidden md:block overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-                <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                    <tr>
-                        <th class="px-5 py-3">{{ __('Payroll Period') }}</th>
-                        <th class="px-5 py-3 text-center">{{ __('Staff') }}</th>
-                        <th class="px-5 py-3 text-right">{{ __('Gross Pay') }}</th>
-                        <th class="px-5 py-3 text-right">{{ __('Deductions') }}</th>
-                        <th class="px-5 py-3 text-right">{{ __('Net Payout') }}</th>
-                        <th class="px-5 py-3 text-center">{{ __('Status') }}</th>
-                        <th class="px-5 py-3 text-right">{{ __('Actions') }}</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
-                    @forelse($recentRuns as $run)
-                        <tr wire:key="overview-run-{{ $run->id }}" class="hover:bg-zinc-50/60 dark:hover:bg-zinc-900/20">
-                            <td class="px-5 py-3.5">
-                                <div class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $run->title }}</div>
-                                <div class="text-xs text-zinc-500">{{ __('Prepared by:') }} {{ $run->preparer?->name ?? __('System') }}</div>
-                            </td>
-                            <td class="px-5 py-3.5 text-center font-medium">{{ $run->items_count }}</td>
-                            <td class="px-5 py-3.5 text-right font-mono text-xs">₦{{ number_format((float) $run->total_gross, 2) }}</td>
-                            <td class="px-5 py-3.5 text-right font-mono text-xs text-red-600 dark:text-red-400">₦{{ number_format((float) $run->total_deductions, 2) }}</td>
-                            <td class="px-5 py-3.5 text-right font-bold text-emerald-600 dark:text-emerald-400">₦{{ number_format((float) $run->total_net, 2) }}</td>
-                            <td class="px-5 py-3.5 text-center">
-                                <flux:badge size="sm" :color="$run->statusColor()">{{ __($run->statusLabel()) }}</flux:badge>
-                            </td>
-                            <td class="px-5 py-3.5 text-right">
-                                <flux:button size="xs" variant="ghost" :href="route('cms.payroll.runs', ['institution_id' => $institution_id, 'run_id' => $run->id])" wire:navigate>
-                                    {{ __('Open') }}
-                                </flux:button>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="px-5 py-10 text-center text-zinc-500">
-                                {{ __('No payroll runs created yet.') }}
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+        <flux:table :paginate="$recentRuns">
+            <flux:table.columns>
+                <flux:table.column>{{ __('Payroll Period') }}</flux:table.column>
+                <flux:table.column class="text-center">{{ __('Staff') }}</flux:table.column>
+                <flux:table.column class="text-right">{{ __('Gross Pay') }}</flux:table.column>
+                <flux:table.column class="text-right">{{ __('Deductions') }}</flux:table.column>
+                <flux:table.column class="text-right">{{ __('Net Payout') }}</flux:table.column>
+                <flux:table.column class="text-center">{{ __('Status') }}</flux:table.column>
+                <flux:table.column class="text-right">{{ __('Actions') }}</flux:table.column>
+            </flux:table.columns>
 
-        {{-- Mobile Cards --}}
-        <div class="divide-y divide-zinc-200 dark:divide-zinc-700 md:hidden">
-            @forelse($recentRuns as $run)
-                <div class="p-4 space-y-2.5">
-                    <div class="flex items-start justify-between gap-2">
-                        <div>
-                            <div class="font-bold text-zinc-900 dark:text-zinc-100">{{ $run->title }}</div>
-                            <div class="text-xs text-zinc-500">{{ $run->items_count }} {{ __('staff') }}</div>
-                        </div>
-                        <flux:badge size="sm" :color="$run->statusColor()">{{ __($run->statusLabel()) }}</flux:badge>
-                    </div>
-                    <div class="flex items-center justify-between text-xs pt-2 border-t border-zinc-100 dark:border-zinc-700">
-                        <span class="text-zinc-500">{{ __('Net Payout:') }} <strong class="text-emerald-600 dark:text-emerald-400">₦{{ number_format((float) $run->total_net, 2) }}</strong></span>
-                        <flux:button size="xs" variant="ghost" :href="route('cms.payroll.runs', ['institution_id' => $institution_id, 'run_id' => $run->id])" wire:navigate>
-                            {{ __('Open') }}
-                        </flux:button>
-                    </div>
-                </div>
-            @empty
-                <div class="p-8 text-center text-sm text-zinc-500">
-                    {{ __('No payroll runs created yet.') }}
-                </div>
-            @endforelse
-        </div>
+            <flux:table.rows>
+                @forelse($recentRuns as $run)
+                    <flux:table.row wire:key="overview-run-{{ $run->id }}">
+                        <flux:table.cell>
+                            <div class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $run->title }}</div>
+                            <div class="text-xs text-zinc-500">{{ __('Prepared by:') }} {{ $run->preparer?->name ?? __('System') }}</div>
+                        </flux:table.cell>
+                        <flux:table.cell class="text-center font-medium">{{ $run->items_count }}</flux:table.cell>
+                        <flux:table.cell class="text-right font-mono text-xs">
+                            ₦{{ number_format((float) ($run->computed_gross ?? $run->total_gross), 2) }}
+                        </flux:table.cell>
+                        <flux:table.cell class="text-right font-mono text-xs text-red-600 dark:text-red-400">
+                            ₦{{ number_format((float) ($run->computed_deductions ?? $run->total_deductions), 2) }}
+                        </flux:table.cell>
+                        <flux:table.cell class="text-right font-bold text-emerald-600 dark:text-emerald-400">
+                            ₦{{ number_format((float) ($run->computed_net ?? $run->total_net), 2) }}
+                        </flux:table.cell>
+                        <flux:table.cell class="text-center">
+                            <flux:badge size="sm" :color="$run->statusColor()">{{ __($run->statusLabel()) }}</flux:badge>
+                        </flux:table.cell>
+                        <flux:table.cell class="text-right">
+                            <flux:dropdown position="bottom" align="end">
+                                <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" aria-label="{{ __('Actions') }}" />
+
+                                <flux:menu>
+                                    <flux:menu.item icon="eye" :href="route('cms.payroll.runs', ['institution_id' => $institution_id, 'run_id' => $run->id])" wire:navigate>
+                                        {{ __('Open Run') }}
+                                    </flux:menu.item>
+
+                                    @can('payroll.reports')
+                                        <flux:menu.item icon="building-office" :href="route('cms.payroll.department-sheet', ['run' => $run->id])" wire:navigate>
+                                            {{ __('Department Sheet') }}
+                                        </flux:menu.item>
+                                        <flux:menu.item icon="building-library" :href="route('cms.payroll.bank-schedule', ['run' => $run->id])" wire:navigate>
+                                            {{ __('Bank Schedule') }}
+                                        </flux:menu.item>
+                                    @endcan
+
+                                    @if($run->status !== 'paid' && (($run->status === 'approved' && auth()->user()->can('payroll.approve')) || ($run->status !== 'approved' && auth()->user()->can('payroll.create_run'))))
+                                        <flux:menu.separator />
+                                        <flux:menu.item icon="trash" variant="danger" wire:click="confirmDeleteRun({{ $run->id }})">
+                                            {{ __('Delete Payroll') }}
+                                        </flux:menu.item>
+                                    @endif
+                                </flux:menu>
+                            </flux:dropdown>
+                        </flux:table.cell>
+                    </flux:table.row>
+                @empty
+                    <flux:table.row>
+                        <flux:table.cell colspan="7" class="py-10 text-center text-zinc-500">
+                            {{ __('No payroll runs created yet.') }}
+                        </flux:table.cell>
+                    </flux:table.row>
+                @endforelse
+            </flux:table.rows>
+        </flux:table>
     </div>
+
+    {{-- Delete Payroll Run Modal --}}
+    <flux:modal wire:model.self="showDeleteModal" class="max-w-md w-full">
+        <div class="space-y-5">
+            <div>
+                <flux:heading size="lg">{{ __('Delete Payroll Run?') }}</flux:heading>
+                <flux:subheading>
+                    {{ __('Are you sure you want to delete ":title"? All calculated paylines for this period will be removed.', ['title' => $deleteRunTitle]) }}
+                </flux:subheading>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <flux:modal.close>
+                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                </flux:modal.close>
+                <flux:button variant="danger" icon="trash" wire:click="deleteRun" wire:loading.attr="disabled">
+                    {{ __('Delete Payroll') }}
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
 </div>

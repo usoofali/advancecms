@@ -229,97 +229,104 @@ new #[Layout('layouts.app')] #[Title('Manage Application Forms')] class extends 
         @endif
     </div>
 
-    <div class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
-        <table class="w-full text-left border-collapse">
-            <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700">
-                <tr>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Form Name') }}</th>
+    <flux:card>
+        <div class="relative overflow-x-auto">
+            <flux:table :paginate="$forms">
+                <flux:table.columns>
+                    <flux:table.column>{{ __('Form Name') }}</flux:table.column>
                     @if(Auth::user()->hasRole('Super Admin'))
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Inst.') }}</th>
+                        <flux:table.column>{{ __('Inst.') }}</flux:table.column>
                     @endif
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Program') }}</th>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Category') }}</th>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Academic Session') }}</th>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Linked Invoice') }}</th>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Amount') }}</th>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Status') }}</th>
-                    <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-right">{{ __('Actions') }}</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                @foreach ($forms as $form)
-                    <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors" wire:key="{{ $form->id }}">
-                        <td class="px-4 py-4">
-                            <div class="flex flex-col">
-                                <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ $form->name }}</span>
-                                <span class="text-xs text-zinc-500 md:hidden">{{ $form->program?->name ?? __('All Programs') }}</span>
-                            </div>
-                        </td>
-                        @if(Auth::user()->hasRole('Super Admin'))
-                            <td class="px-4 py-4 text-sm">{{ $form->institution?->acronym }}</td>
-                        @endif
-                        <td class="px-4 py-4">
-                            <flux:badge color="zinc" size="sm" variant="outline">
-                                {{ $form->program?->name ?? __('All Programs') }}
-                            </flux:badge>
-                        </td>
-                        <td class="px-4 py-4">
-                            <flux:badge size="sm" color="{{ $form->category === 'fresh' ? 'blue' : 'orange' }}" variant="solid">
-                                {{ $form->category === 'fresh' ? __('Fresh') : __('Retrainee') }}
-                            </flux:badge>
-                        </td>
-                        <td class="px-4 py-4 text-sm text-zinc-500">{{ $form->academicSession->name }}</td>
-                        <td class="px-4 py-4 text-sm">
-                            @if ($form->invoice)
+                    <flux:table.column>{{ __('Program') }}</flux:table.column>
+                    <flux:table.column>{{ __('Category') }}</flux:table.column>
+                    <flux:table.column>{{ __('Academic Session') }}</flux:table.column>
+                    <flux:table.column>{{ __('Linked Invoice') }}</flux:table.column>
+                    <flux:table.column>{{ __('Amount') }}</flux:table.column>
+                    <flux:table.column>{{ __('Status') }}</flux:table.column>
+                    <flux:table.column class="text-right">{{ __('Actions') }}</flux:table.column>
+                </flux:table.columns>
+                <flux:table.rows>
+                    @forelse ($forms as $form)
+                        <flux:table.row :key="$form->id">
+                            <flux:table.cell>
                                 <div class="flex flex-col">
-                                    <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ $form->invoice->title }}</span>
-                                    <span class="text-xs text-zinc-500">₦{{ number_format($form->invoice->total_amount, 2) }}</span>
+                                    <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ $form->name }}</span>
+                                    <span class="text-xs text-zinc-500 md:hidden">{{ $form->program?->name ?? __('All Programs') }}</span>
                                 </div>
-                            @else
-                                <flux:badge color="danger" size="sm" variant="outline">{{ __('Not linked') }}</flux:badge>
+                            </flux:table.cell>
+                            @if(Auth::user()->hasRole('Super Admin'))
+                                <flux:table.cell>{{ $form->institution?->acronym }}</flux:table.cell>
                             @endif
-                        </td>
-                        <td class="px-4 py-4 text-sm text-zinc-900 dark:text-zinc-100 font-medium">₦{{ number_format($form->amount, 2) }}</td>
-                        <td class="px-4 py-4">
-                             <flux:button variant="ghost" size="sm" wire:click="toggleStatus({{ $form->id }})">
-                                <flux:badge color="{{ $form->is_active ? 'success' : 'zinc' }}" class="cursor-pointer">
-                                    {{ $form->is_active ? __('Active') : __('Inactive') }}
+                            <flux:table.cell>
+                                <flux:badge color="zinc" size="sm" variant="outline">
+                                    {{ $form->program?->name ?? __('All Programs') }}
                                 </flux:badge>
-                            </flux:button>
-                        </td>
-                        <td class="px-4 py-4 text-right flex justify-end gap-2">
-                            <flux:button variant="ghost" icon="pencil-square" size="sm" href="{{ route('cms.admissions.forms.edit', $form) }}" wire:navigate />
-                            
-                            <flux:modal.trigger name="delete-form-{{ $form->id }}">
-                                <flux:button variant="ghost" icon="trash" size="sm" variant="danger" />
-                            </flux:modal.trigger>
-
-                            <flux:modal name="delete-form-{{ $form->id }}" class="md:w-[400px]">
-                                <div class="space-y-6">
-                                    <div>
-                                        <flux:heading size="lg">{{ __('Delete Application Form?') }}</flux:heading>
-                                        <flux:subheading>{{ __('This action cannot be undone. Are you sure you want to delete ') }} <strong>{{ $form->name }}</strong>?</flux:subheading>
+                            </flux:table.cell>
+                            <flux:table.cell>
+                                <flux:badge size="sm" color="{{ $form->category === 'fresh' ? 'blue' : 'orange' }}" variant="solid">
+                                    {{ $form->category === 'fresh' ? __('Fresh') : __('Retrainee') }}
+                                </flux:badge>
+                            </flux:table.cell>
+                            <flux:table.cell class="text-zinc-500">{{ $form->academicSession->name }}</flux:table.cell>
+                            <flux:table.cell>
+                                @if ($form->invoice)
+                                    <div class="flex flex-col">
+                                        <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ $form->invoice->title }}</span>
+                                        <span class="text-xs text-zinc-500">₦{{ number_format($form->invoice->total_amount, 2) }}</span>
                                     </div>
-                                    <div class="flex justify-end gap-2">
-                                        <flux:modal.close>
-                                            <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
-                                        </flux:modal.close>
-                                        <flux:button variant="danger" wire:click="delete({{ $form->id }})" wire:loading.attr="disabled">
-                                            {{ __('Delete Form') }}
-                                        </flux:button>
-                                    </div>
-                                </div>
-                            </flux:modal>
-                        </td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
+                                @else
+                                    <flux:badge color="danger" size="sm" variant="outline">{{ __('Not linked') }}</flux:badge>
+                                @endif
+                            </flux:table.cell>
+                            <flux:table.cell class="text-zinc-900 dark:text-zinc-100 font-medium">₦{{ number_format($form->amount, 2) }}</flux:table.cell>
+                            <flux:table.cell>
+                                <flux:button variant="ghost" size="sm" wire:click="toggleStatus({{ $form->id }})">
+                                    <flux:badge color="{{ $form->is_active ? 'success' : 'zinc' }}" class="cursor-pointer">
+                                        {{ $form->is_active ? __('Active') : __('Inactive') }}
+                                    </flux:badge>
+                                </flux:button>
+                            </flux:table.cell>
+                            <flux:table.cell class="text-right">
+                                <flux:dropdown position="bottom" align="end">
+                                    <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" />
+                                    <flux:menu>
+                                        <flux:menu.item icon="pencil-square" href="{{ route('cms.admissions.forms.edit', $form) }}" wire:navigate>
+                                            {{ __('Edit') }}
+                                        </flux:menu.item>
+                                        <flux:menu.separator />
+                                        <flux:menu.item icon="trash" variant="danger" x-on:click="$flux.modal('delete-form-{{ $form->id }}').show()">
+                                            {{ __('Delete') }}
+                                        </flux:menu.item>
+                                    </flux:menu>
+                                </flux:dropdown>
 
-        @if($forms->hasPages())
-        <div class="p-4 border-t border-zinc-100 dark:border-zinc-800">
-            {{ $forms->links() }}
+                                <flux:modal name="delete-form-{{ $form->id }}" class="md:w-[400px] text-left">
+                                    <div class="space-y-6">
+                                        <div>
+                                            <flux:heading size="lg">{{ __('Delete Application Form?') }}</flux:heading>
+                                            <flux:subheading>{{ __('This action cannot be undone. Are you sure you want to delete ') }} <strong>{{ $form->name }}</strong>?</flux:subheading>
+                                        </div>
+                                        <div class="flex justify-end gap-2">
+                                            <flux:modal.close>
+                                                <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                                            </flux:modal.close>
+                                            <flux:button variant="danger" wire:click="delete({{ $form->id }})" wire:loading.attr="disabled">
+                                                {{ __('Delete Form') }}
+                                            </flux:button>
+                                        </div>
+                                    </div>
+                                </flux:modal>
+                            </flux:table.cell>
+                        </flux:table.row>
+                    @empty
+                        <flux:table.row>
+                            <flux:table.cell :colspan="Auth::user()->hasRole('Super Admin') ? 9 : 8" class="py-12 text-center text-zinc-500">
+                                {{ __('No application forms found.') }}
+                            </flux:table.cell>
+                        </flux:table.row>
+                    @endforelse
+                </flux:table.rows>
+            </flux:table>
         </div>
-        @endif
-    </div>
+    </flux:card>
 </div>

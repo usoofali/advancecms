@@ -5,14 +5,18 @@ use App\Models\Institution;
 use App\Models\PayrollCategory;
 use App\Models\PayrollComponent;
 use App\Models\Staff;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Layout('layouts.app')] #[Title('Payroll Categories & Rules')] class extends Component
 {
+    use WithPagination;
+
     #[Url]
     public string $tab = 'categories';
 
@@ -111,7 +115,7 @@ new #[Layout('layouts.app')] #[Title('Payroll Categories & Rules')] class extend
             );
         }
 
-        $this->dispatch('notify', title: __('Default staff categories loaded.'));
+        $this->dispatch('notify', ['type' => 'success', 'message' => __('Default staff categories loaded.')]);
     }
 
     public function openCreateCategoryModal(): void
@@ -178,14 +182,14 @@ new #[Layout('layouts.app')] #[Title('Payroll Categories & Rules')] class extend
         }
 
         $this->showCategoryModal = false;
-        $this->dispatch('notify', title: __('Category saved successfully.'));
+        $this->dispatch('notify', ['type' => 'success', 'message' => __('Category saved successfully.')]);
     }
 
     public function deleteCategory(int $id): void
     {
         $instId = $this->resolveInstitutionId();
         PayrollCategory::where('institution_id', $instId)->findOrFail($id)->delete();
-        $this->dispatch('notify', title: __('Category deleted.'));
+        $this->dispatch('notify', ['type' => 'success', 'message' => __('Category deleted.')]);
     }
 
     public function openCreateComponentModal(): void
@@ -269,14 +273,14 @@ new #[Layout('layouts.app')] #[Title('Payroll Categories & Rules')] class extend
         }
 
         $this->showComponentModal = false;
-        $this->dispatch('notify', title: __('Rule saved successfully.'));
+        $this->dispatch('notify', ['type' => 'success', 'message' => __('Rule saved successfully.')]);
     }
 
     public function deleteComponent(int $id): void
     {
         $instId = $this->resolveInstitutionId();
         PayrollComponent::where('institution_id', $instId)->findOrFail($id)->delete();
-        $this->dispatch('notify', title: __('Rule deleted.'));
+        $this->dispatch('notify', ['type' => 'success', 'message' => __('Rule deleted.')]);
     }
 
     public function with(): array
@@ -290,8 +294,8 @@ new #[Layout('layouts.app')] #[Title('Payroll Categories & Rules')] class extend
                 ? PayrollCategory::withCount('staffProfiles')->where('institution_id', $instId)->orderByDesc('is_default')->orderBy('name')->get()
                 : collect(),
             'components' => $instId
-                ? PayrollComponent::with('applicable')->where('institution_id', $instId)->orderBy('type')->orderBy('name')->get()
-                : collect(),
+                ? PayrollComponent::with('applicable')->where('institution_id', $instId)->orderBy('type')->orderBy('name')->paginate(15, ['*'], 'componentsPage')
+                : new LengthAwarePaginator([], 0, 15, 1, ['pageName' => 'componentsPage']),
             'departments' => $instId ? Department::where('institution_id', $instId)->orderBy('name')->get() : collect(),
             'staffList' => $instId ? Staff::where('institution_id', $instId)->where('status', 'active')->orderBy('first_name')->get() : collect(),
             'formulas' => PayrollCategory::contactFormulaLabels(),
@@ -403,52 +407,64 @@ new #[Layout('layouts.app')] #[Title('Payroll Categories & Rules')] class extend
         </div>
     @else
         {{-- Desktop Table --}}
-        <div class="hidden md:block overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-xs">
-            <table class="w-full text-left border-collapse">
-                <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                    <tr>
-                        <th class="px-4 py-3">{{ __('Name') }}</th>
-                        <th class="px-4 py-3">{{ __('Type') }}</th>
-                        <th class="px-4 py-3">{{ __('Amount / Rate') }}</th>
-                        <th class="px-4 py-3">{{ __('Applies To') }}</th>
-                        <th class="px-4 py-3 text-center">{{ __('Status') }}</th>
-                        <th class="px-4 py-3 text-right">{{ __('Actions') }}</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
-                    @forelse($components as $comp)
-                        <tr wire:key="comp-row-{{ $comp->id }}" class="hover:bg-zinc-50/60 dark:hover:bg-zinc-900/20">
-                            <td class="px-4 py-3.5 font-semibold text-zinc-900 dark:text-zinc-100">{{ $comp->name }}</td>
-                            <td class="px-4 py-3.5">
-                                <flux:badge size="sm" :color="$comp->type === 'allowance' ? 'green' : 'red'">
-                                    {{ ucfirst($comp->type) }}
-                                </flux:badge>
-                            </td>
-                            <td class="px-4 py-3.5 font-mono text-xs">
-                                @if($comp->calculation_type === 'percentage')
-                                    {{ number_format((float) $comp->amount_or_rate, 2) }}% {{ __('of Base Pay') }}
-                                @else
-                                    ₦{{ number_format((float) $comp->amount_or_rate, 2) }}
-                                @endif
-                            </td>
-                            <td class="px-4 py-3.5 text-xs text-zinc-600 dark:text-zinc-300">{{ $comp->scope_label }}</td>
-                            <td class="px-4 py-3.5 text-center">
-                                <flux:badge size="sm" :color="$comp->is_active ? 'green' : 'zinc'">
-                                    {{ $comp->is_active ? __('Active') : __('Inactive') }}
-                                </flux:badge>
-                            </td>
-                            <td class="px-4 py-3.5 text-right">
-                                <flux:button size="xs" variant="ghost" icon="pencil-square" wire:click="openEditComponentModal({{ $comp->id }})" />
-                                <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteComponent({{ $comp->id }})" wire:confirm="{{ __('Delete this rule?') }}" />
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="px-4 py-10 text-center text-zinc-500">{{ __('No allowances or deductions defined yet.') }}</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+        <div class="hidden md:block">
+            <flux:card>
+                <div class="relative overflow-x-auto">
+                    <flux:table :paginate="$components">
+                        <flux:table.columns>
+                            <flux:table.column>{{ __('Name') }}</flux:table.column>
+                            <flux:table.column>{{ __('Type') }}</flux:table.column>
+                            <flux:table.column>{{ __('Amount / Rate') }}</flux:table.column>
+                            <flux:table.column>{{ __('Applies To') }}</flux:table.column>
+                            <flux:table.column class="text-center">{{ __('Status') }}</flux:table.column>
+                            <flux:table.column class="text-right">{{ __('Actions') }}</flux:table.column>
+                        </flux:table.columns>
+                        <flux:table.rows>
+                            @forelse($components as $comp)
+                                <flux:table.row :key="$comp->id">
+                                    <flux:table.cell class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $comp->name }}</flux:table.cell>
+                                    <flux:table.cell>
+                                        <flux:badge size="sm" :color="$comp->type === 'allowance' ? 'green' : 'red'">
+                                            {{ ucfirst($comp->type) }}
+                                        </flux:badge>
+                                    </flux:table.cell>
+                                    <flux:table.cell class="font-mono text-xs">
+                                        @if($comp->calculation_type === 'percentage')
+                                            {{ number_format((float) $comp->amount_or_rate, 2) }}% {{ __('of Base Pay') }}
+                                        @else
+                                            ₦{{ number_format((float) $comp->amount_or_rate, 2) }}
+                                        @endif
+                                    </flux:table.cell>
+                                    <flux:table.cell class="text-xs text-zinc-600 dark:text-zinc-300">{{ $comp->scope_label }}</flux:table.cell>
+                                    <flux:table.cell class="text-center">
+                                        <flux:badge size="sm" :color="$comp->is_active ? 'green' : 'zinc'">
+                                            {{ $comp->is_active ? __('Active') : __('Inactive') }}
+                                        </flux:badge>
+                                    </flux:table.cell>
+                                    <flux:table.cell class="text-right">
+                                        <flux:dropdown position="bottom" align="end">
+                                            <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" />
+                                            <flux:menu>
+                                                <flux:menu.item icon="pencil-square" wire:click="openEditComponentModal({{ $comp->id }})">
+                                                    {{ __('Edit') }}
+                                                </flux:menu.item>
+                                                <flux:menu.separator />
+                                                <flux:menu.item icon="trash" variant="danger" wire:click="deleteComponent({{ $comp->id }})" wire:confirm="{{ __('Delete this rule?') }}">
+                                                    {{ __('Delete') }}
+                                                </flux:menu.item>
+                                            </flux:menu>
+                                        </flux:dropdown>
+                                    </flux:table.cell>
+                                </flux:table.row>
+                            @empty
+                                <flux:table.row>
+                                    <flux:table.cell colspan="6" class="py-10 text-center text-zinc-500">{{ __('No allowances or deductions defined yet.') }}</flux:table.cell>
+                                </flux:table.row>
+                            @endforelse
+                        </flux:table.rows>
+                    </flux:table>
+                </div>
+            </flux:card>
         </div>
 
         {{-- Mobile Cards --}}
@@ -477,6 +493,7 @@ new #[Layout('layouts.app')] #[Title('Payroll Categories & Rules')] class extend
                     {{ __('No allowances or deductions defined yet.') }}
                 </div>
             @endforelse
+            <div>{{ $components->links() }}</div>
         </div>
     @endif
 

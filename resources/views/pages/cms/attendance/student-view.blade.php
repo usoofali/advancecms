@@ -5,15 +5,20 @@ use App\Models\AttendanceRecord;
 use App\Models\CourseRegistration;
 use App\Models\Semester;
 use App\Models\Student;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\View\View;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Layout('layouts.app')] #[Title('My Attendance')] class extends Component
 {
+    use WithPagination;
+
     #[Url]
     public string $session_id = '';
 
@@ -125,10 +130,20 @@ new #[Layout('layouts.app')] #[Title('My Attendance')] class extends Component
         $student = $this->student;
         $overallPercentage = $student ? $student->getAttendancePercentage(null, (int) $this->session_id, $this->semester_id ? (int) $this->semester_id : null) : 0;
 
+        $historyCollection = collect($this->history)->values();
+        $historyPage = Paginator::resolveCurrentPage('historyPage');
+        $paginatedHistory = new LengthAwarePaginator(
+            $historyCollection->forPage($historyPage, 15)->values(),
+            $historyCollection->count(),
+            15,
+            $historyPage,
+            ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'historyPage']
+        );
+
         return view('pages::cms.attendance.student-view', [
             'overallPercentage' => $overallPercentage,
             'stats' => $this->attendance_stats,
-            'history' => $this->history,
+            'history' => $paginatedHistory,
             'sessions' => AcademicSession::all(),
             'semesters' => $this->session_id ? Semester::where('academic_session_id', $this->session_id)->get() : [],
         ]);
@@ -247,10 +262,10 @@ new #[Layout('layouts.app')] #[Title('My Attendance')] class extends Component
     <flux:card>
         <div class="mb-4 flex items-center justify-between">
             <flux:heading size="md">{{ __('Attendance Log') }}</flux:heading>
-            <flux:badge variant="neutral" size="sm">{{ count($history) }} {{ __('Sessions') }}</flux:badge>
+            <flux:badge variant="neutral" size="sm">{{ $history->total() }} {{ __('Sessions') }}</flux:badge>
         </div>
         
-        <flux:table>
+        <flux:table :paginate="$history">
             <flux:table.columns>
                 <flux:table.column>{{ __('Date') }}</flux:table.column>
                 <flux:table.column>{{ __('Course') }}</flux:table.column>

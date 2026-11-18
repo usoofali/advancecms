@@ -8,8 +8,11 @@ use App\Models\GradingSystem;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Layout('layouts.app')] #[Title('Edit Department')] class extends Component {
+    use WithPagination;
+
     public Department $department;
     public int|string $institution_id = '';
     public int|string|null $hod_id = null;
@@ -121,7 +124,7 @@ new #[Layout('layouts.app')] #[Title('Edit Department')] class extends Component
                 ->where('model_type', $this->department->getMorphClass())
                 ->where('model_id', $this->department->id)
                 ->select('users.id as user_id', 'users.name as user_name', 'roles.role_id', 'roles.role_name')
-                ->get(),
+                ->paginate(10, ['*'], 'assignedUsersPage'),
         ];
     }
 }; ?>
@@ -210,7 +213,7 @@ new #[Layout('layouts.app')] #[Title('Edit Department')] class extends Component
             </form>
         </div>
 
-        <flux:table>
+        <flux:table :paginate="$assignedUsers">
             <flux:table.columns>
                 <flux:table.column>{{ __('User') }}</flux:table.column>
                 <flux:table.column>{{ __('Role') }}</flux:table.column>

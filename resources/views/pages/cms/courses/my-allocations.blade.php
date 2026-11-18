@@ -2,11 +2,16 @@
 
 use App\Models\CourseAllocation;
 use App\Models\CourseRegistration;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Layout('layouts.app')] #[Title('My Allocations')] class extends Component {
+    use WithPagination;
+
     public ?int $selectedAllocationId = null;
 
     public function mount(): void
@@ -50,10 +55,19 @@ new #[Layout('layouts.app')] #[Title('My Allocations')] class extends Component 
             }
         }
 
+        $studentsPage = Paginator::resolveCurrentPage('studentsPage');
+        $paginatedStudents = new LengthAwarePaginator(
+            $students->forPage($studentsPage, 15)->values(),
+            $students->count(),
+            15,
+            $studentsPage,
+            ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'studentsPage']
+        );
+
         return [
             'allocations' => $allocations,
             'selectedAllocation' => $selectedAllocation,
-            'students' => $students,
+            'students' => $paginatedStudents,
         ];
     }
 }; ?>
@@ -130,11 +144,11 @@ new #[Layout('layouts.app')] #[Title('My Allocations')] class extends Component 
 
                     <div class="flex items-center justify-between mb-4">
                         <flux:heading size="sm">{{ __('Registered Students') }}</flux:heading>
-                        <flux:badge size="sm" color="zinc">{{ count($students) }} {{ __('Total') }}</flux:badge>
+                        <flux:badge size="sm" color="zinc">{{ $students->total() }} {{ __('Total') }}</flux:badge>
                     </div>
                     
                     <div class="overflow-x-auto">
-                        <flux:table>
+                        <flux:table :paginate="$students">
                             <flux:table.columns>
                                 <flux:table.column>{{ __('Matric Number') }}</flux:table.column>
                                 <flux:table.column>{{ __('Student Name') }}</flux:table.column>

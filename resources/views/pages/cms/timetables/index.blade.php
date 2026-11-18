@@ -10,12 +10,17 @@ use App\Models\Semester;
 use App\Models\Staff;
 use App\Models\Timetable;
 use App\Models\User;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Layout('layouts.app')] #[Title('Lecture Timetables')] class extends Component {
+    use WithPagination;
+
     // Filters
     public int|string $session_id = '';
     public int|string $semester_id = '';
@@ -600,57 +605,78 @@ new #[Layout('layouts.app')] #[Title('Lecture Timetables')] class extends Compon
         </div>
     @else
         <!-- List View -->
-        <div class="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm text-zinc-600 dark:text-zinc-400">
-                    <thead class="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-zinc-800/50 dark:text-zinc-400">
-                        <tr>
-                            <th class="px-4 py-3">{{ __('Day') }}</th>
-                            <th class="px-4 py-3">{{ __('Period') }}</th>
-                            <th class="px-4 py-3">{{ __('Time Frame') }}</th>
-                            <th class="px-4 py-3">{{ __('Course') }}</th>
-                            <th class="px-4 py-3">{{ __('Lecturer') }}</th>
-                            <th class="px-4 py-3 text-right">{{ __('Actions') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-zinc-200 dark:divide-zinc-800">
-                        @forelse ($this->timetableEntries->sortBy(['day_of_week', 'period_number']) as $slot)
-                            <tr class="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/50">
-                                <td class="px-4 py-3 font-semibold text-zinc-900 dark:text-white">
+        @php
+            $sortedSlots = $this->timetableEntries->sortBy(['day_of_week', 'period_number'])->values();
+            $slotsPage = Paginator::resolveCurrentPage('slotsPage');
+            $paginatedSlots = new LengthAwarePaginator(
+                $sortedSlots->forPage($slotsPage, 15)->values(),
+                $sortedSlots->count(),
+                15,
+                $slotsPage,
+                ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'slotsPage']
+            );
+        @endphp
+        <flux:card>
+            <div class="relative overflow-x-auto">
+                <flux:table :paginate="$paginatedSlots">
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Day') }}</flux:table.column>
+                        <flux:table.column>{{ __('Period') }}</flux:table.column>
+                        <flux:table.column>{{ __('Time Frame') }}</flux:table.column>
+                        <flux:table.column>{{ __('Course') }}</flux:table.column>
+                        <flux:table.column>{{ __('Lecturer') }}</flux:table.column>
+                        <flux:table.column class="text-right">{{ __('Actions') }}</flux:table.column>
+                    </flux:table.columns>
+                    <flux:table.rows>
+                        @forelse ($paginatedSlots as $slot)
+                            <flux:table.row :key="$slot->id">
+                                <flux:table.cell class="font-semibold text-zinc-900 dark:text-white">
                                     {{ $slot->day_of_week }}
-                                </td>
-                                <td class="px-4 py-3 font-medium">
+                                </flux:table.cell>
+                                <flux:table.cell class="font-medium">
                                     Period {{ $slot->period_number }}
-                                </td>
-                                <td class="px-4 py-3">
+                                </flux:table.cell>
+                                <flux:table.cell>
                                     {{ $slot->start_time }} - {{ $slot->end_time }}
-                                </td>
-                                <td class="px-4 py-3 font-semibold text-indigo-600 dark:text-indigo-400">
+                                </flux:table.cell>
+                                <flux:table.cell class="font-semibold text-indigo-600 dark:text-indigo-400">
                                     {{ $slot->resolved_course?->course_code }} - {{ $slot->resolved_course?->title }}
-                                </td>
-                                <td class="px-4 py-3">
+                                </flux:table.cell>
+                                <flux:table.cell>
                                     {{ $slot->resolved_lecturer?->name ?? 'Unassigned' }}
-                                </td>
-                                <td class="px-4 py-3 text-right space-x-2">
-                                    @can('timetables.edit')
-                                        <flux:button variant="ghost" size="sm" icon="pencil-square" wire:click="openEditModal({{ $slot->id }})" />
-                                    @endcan
-                                    @can('timetables.delete')
-                                        <flux:button variant="ghost" size="sm" icon="trash" class="text-rose-600" wire:click="confirmDelete({{ $slot->id }})" />
-                                    @endcan
-                                </td>
-                            </tr>
+                                </flux:table.cell>
+                                <flux:table.cell class="text-right">
+                                    <flux:dropdown position="bottom" align="end">
+                                        <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" />
+                                        <flux:menu>
+                                            @can('timetables.edit')
+                                                <flux:menu.item icon="pencil-square" wire:click="openEditModal({{ $slot->id }})">
+                                                    {{ __('Edit') }}
+                                                </flux:menu.item>
+                                            @endcan
+                                            @can('timetables.delete')
+                                                @can('timetables.edit')
+                                                    <flux:menu.separator />
+                                                @endcan
+                                                <flux:menu.item icon="trash" variant="danger" wire:click="confirmDelete({{ $slot->id }})">
+                                                    {{ __('Delete') }}
+                                                </flux:menu.item>
+                                            @endcan
+                                        </flux:menu>
+                                    </flux:dropdown>
+                                </flux:table.cell>
+                            </flux:table.row>
                         @empty
-                            <tr>
-                                <td colspan="6" class="px-4 py-8 text-center text-zinc-500">
+                            <flux:table.row>
+                                <flux:table.cell colspan="6" class="py-8 text-center text-zinc-500">
                                     {{ __('No lecture timetable slots created yet.') }}
-                                </td>
-                            </tr>
+                                </flux:table.cell>
+                            </flux:table.row>
                         @endforelse
-                    </tbody>
-                </table>
+                    </flux:table.rows>
+                </flux:table>
             </div>
-        </div>
+        </flux:card>
     @endif
 
     <!-- Add/Edit Modal -->

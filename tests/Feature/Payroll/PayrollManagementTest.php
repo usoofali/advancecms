@@ -301,3 +301,200 @@ it('uses staff record as single source of truth for bank account details in payr
     expect($staff->account_number)->toBe('2233445566');
     expect($staff->account_name)->toBe('Updated Staff Name');
 });
+
+it('blocks overwriting under_review payroll runs and flags missing bank details or zero net pay', function () {
+    $institution = Institution::factory()->create();
+    $admin = User::factory()->create(['institution_id' => $institution->id]);
+    $admin->roles()->sync([Role::where('role_name', 'Institutional Admin')->value('role_id')]);
+
+    Staff::factory()->create([
+        'institution_id' => $institution->id,
+        'bank_name' => null,
+        'account_number' => null,
+        'status' => 'active',
+    ]);
+
+    Livewire::actingAs($admin)
+        ->test('pages::cms.payroll.runs')
+        ->set('gen_month', 9)
+        ->set('gen_year', 2026)
+        ->call('generateRun')
+        ->assertHasNoErrors()
+        ->assertSee('Missing Bank')
+        ->assertSee('₦0 Pay')
+        ->call('submitForReview')
+        ->set('gen_month', 9)
+        ->set('gen_year', 2026)
+        ->call('generateRun')
+        ->assertHasErrors(['gen_month']);
+});
+
+it('allows manual contact overrides that persist on recalculation and can be reset to attendance', function () {
+    $institution = Institution::factory()->create();
+    $admin = User::factory()->create(['institution_id' => $institution->id]);
+    $admin->roles()->sync([Role::where('role_name', 'Institutional Admin')->value('role_id')]);
+
+    $casualCat = PayrollCategory::factory()->create([
+        'institution_id' => $institution->id,
+        'name' => 'Casual Lecturer',
+        'pay_type' => 'contact_based',
+        'contact_formula' => 'per_contact',
+        'default_rate' => 5000,
+    ]);
+
+    $casualStaff = Staff::factory()->create([
+        'institution_id' => $institution->id,
+        'status' => 'active',
+    ]);
+
+    PayrollStaffProfile::factory()->create([
+        'institution_id' => $institution->id,
+        'staff_id' => $casualStaff->id,
+        'payroll_category_id' => $casualCat->id,
+    ]);
+
+    $component = Livewire::actingAs($admin)
+        ->test('pages::cms.payroll.runs')
+        ->set('gen_month', 8)
+        ->set('gen_year', 2026)
+        ->call('generateRun');
+
+    $run = PayrollRun::where('institution_id', $institution->id)->firstOrFail();
+    $item = $run->items()->where('staff_id', $casualStaff->id)->firstOrFail();
+    expect((float) $item->base_pay)->toBe(0.0);
+
+    $component->call('openContactModal', $item->id)
+        ->set('contact_count_input', 6)
+        ->set('contact_units_input', 12)
+        ->set('contact_hours_input', 9)
+        ->call('saveContactOverride')
+        ->assertHasNoErrors();
+
+    $item->refresh();
+    expect($item->is_contact_overridden)->toBeTrue();
+    expect($item->contacts_count)->toBe(6);
+    expect((float) $item->base_pay)->toBe(30000.0);
+    expect((float) $run->fresh()->total_net)->toBe(30000.0);
+
+    // Recalculate draft run -> manual contacts override must be preserved
+    $component->call('recalculateSelectedRun');
+    $recalcItem = $run->fresh()->items()->where('staff_id', $casualStaff->id)->firstOrFail();
+    expect($recalcItem->is_contact_overridden)->toBeTrue();
+    expect($recalcItem->contacts_count)->toBe(6);
+    expect((float) $recalcItem->base_pay)->toBe(30000.0);
+
+    // Reset back to Attendance (0 contacts)
+    $component->call('openContactModal', $recalcItem->id)
+        ->call('resetContactToAttendance');
+
+    $resetItem = $run->fresh()->items()->where('staff_id', $casualStaff->id)->firstOrFail();
+    expect($resetItem->is_contact_overridden)->toBeFalse();
+    expect($resetItem->contacts_count)->toBe(0);
+    expect((float) $resetItem->base_pay)->toBe(0.0);
+});
+
+it('allows authorized approvers to disapprove an approved payroll run back to draft with a reason', function () {
+    $institution = Institution::factory()->create();
+    $admin = User::factory()->create(['institution_id' => $institution->id]);
+    $admin->roles()->sync([Role::where('role_name', 'Institutional Admin')->value('role_id')]);
+
+    $payrollOfficer = User::factory()->create(['institution_id' => $institution->id]);
+    $payrollOfficer->roles()->sync([Role::where('role_name', 'Payroll Officer')->value('role_id')]);
+
+    $run = PayrollRun::create([
+        'institution_id' => $institution->id,
+        'title' => 'July 2026 Payroll',
+        'month' => 7,
+        'year' => 2026,
+        'status' => 'approved',
+        'total_gross' => 100000,
+        'total_deductions' => 0,
+        'total_net' => 100000,
+        'prepared_by' => $payrollOfficer->id,
+        'approved_by' => $admin->id,
+        'approved_at' => now(),
+    ]);
+
+    // Payroll Officer without payroll.approve cannot disapprove
+    Livewire::actingAs($payrollOfficer)
+        ->test('pages::cms.payroll.runs', ['run_id' => $run->id])
+        ->set('disapprove_reason', 'Attempt')
+        ->call('disapproveRun')
+        ->assertForbidden();
+
+    // Institutional Admin with payroll.approve can disapprove back to draft
+    Livewire::actingAs($admin)
+        ->test('pages::cms.payroll.runs', ['run_id' => $run->id])
+        ->call('openDisapproveModal')
+        ->set('disapprove_reason', 'Need to update casual lecturer contacts')
+        ->call('disapproveRun')
+        ->assertHasNoErrors();
+
+    $run->refresh();
+    expect($run->status)->toBe('draft');
+    expect($run->approved_by)->toBeNull();
+    expect($run->approved_at)->toBeNull();
+    expect($run->notes)->toBe('Need to update casual lecturer contacts');
+});
+
+it('displays actual computed payroll totals on overview cards and allows deleting unpaid runs only', function () {
+    $instWithoutRuns = Institution::factory()->create(['status' => 'active']);
+    $instWithRuns = Institution::factory()->create(['status' => 'active']);
+
+    $superAdmin = User::factory()->create(['institution_id' => null]);
+    $superAdmin->roles()->sync([Role::where('role_name', 'Super Admin')->value('role_id')]);
+
+    $staff = Staff::factory()->create(['institution_id' => $instWithRuns->id]);
+
+    $draftRun = PayrollRun::create([
+        'institution_id' => $instWithRuns->id,
+        'title' => 'October 2026 Payroll',
+        'month' => 10,
+        'year' => 2026,
+        'status' => 'draft',
+        'total_gross' => 0,
+        'total_deductions' => 0,
+        'total_net' => 0,
+        'prepared_by' => $superAdmin->id,
+    ]);
+
+    PayrollItem::create([
+        'payroll_run_id' => $draftRun->id,
+        'institution_id' => $instWithRuns->id,
+        'staff_id' => $staff->id,
+        'pay_type' => 'fixed',
+        'base_pay' => 125000,
+        'gross_pay' => 125000,
+        'total_deductions' => 5000,
+        'net_pay' => 120000,
+    ]);
+
+    $paidRun = PayrollRun::create([
+        'institution_id' => $instWithRuns->id,
+        'title' => 'September 2026 Payroll',
+        'month' => 9,
+        'year' => 2026,
+        'status' => 'paid',
+        'total_gross' => 90000,
+        'total_deductions' => 0,
+        'total_net' => 90000,
+        'prepared_by' => $superAdmin->id,
+        'paid_at' => now(),
+    ]);
+
+    Livewire::actingAs($superAdmin)
+        ->test('pages::cms.payroll.index')
+        ->assertSee('120,000.00')
+        ->assertSee('125,000.00')
+        ->call('confirmDeleteRun', $draftRun->id)
+        ->call('deleteRun');
+
+    expect(PayrollRun::find($draftRun->id))->toBeNull();
+
+    // Paid run cannot be deleted
+    Livewire::actingAs($superAdmin)
+        ->test('pages::cms.payroll.runs', ['run_id' => $paidRun->id])
+        ->call('deleteRun');
+
+    expect(PayrollRun::find($paidRun->id))->not->toBeNull();
+});

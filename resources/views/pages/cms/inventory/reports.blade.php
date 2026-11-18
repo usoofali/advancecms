@@ -300,67 +300,69 @@ new #[Layout('layouts.app')] #[Title('Stock Reports')] class extends Component
 
     @if($tab === 'holdings')
         {{-- Desktop Table --}}
-        <div class="hidden md:block overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-xs">
-            <table class="w-full text-left border-collapse">
-                <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                    <tr>
-                        <th class="px-4 py-3">{{ __('Item') }}</th>
-                        <th class="px-4 py-3">{{ __('Category') }}</th>
-                        <th class="px-4 py-3 text-center">{{ __('Min Level') }}</th>
-                        <th class="px-4 py-3 text-center">{{ __('Quantity') }}</th>
-                        <th class="px-4 py-3">{{ __('By Room') }}</th>
-                        <th class="px-4 py-3 text-right">{{ __('Status') }}</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
-                    @forelse($items as $item)
-                        @php
-                            $qty = (int) $item->stocks->sum('quantity');
-                            $isLow = $item->isBelowThreshold($qty);
-                        @endphp
-                        <tr wire:key="rep-item-{{ $item->id }}" class="hover:bg-zinc-50/60 dark:hover:bg-zinc-900/20">
-                            <td class="px-4 py-3.5">
-                                <div class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $item->name }}</div>
-                                <div class="text-xs font-mono text-zinc-500">{{ $item->code }} &bull; {{ $item->unit_of_measure }}</div>
-                            </td>
-                            <td class="px-4 py-3.5 text-xs">
-                                <div class="font-medium text-zinc-800 dark:text-zinc-200">{{ $item->category?->name }}</div>
-                                <div class="text-zinc-500 capitalize">{{ $item->category?->classification }}</div>
-                            </td>
-                            <td class="px-4 py-3.5 text-center font-mono text-xs text-zinc-600 dark:text-zinc-400">
-                                {{ number_format($item->min_stock_threshold) }}
-                            </td>
-                            <td class="px-4 py-3.5 text-center font-black text-zinc-900 dark:text-white">
-                                {{ number_format($qty) }}
-                            </td>
-                            <td class="px-4 py-3.5">
-                                <div class="flex flex-wrap gap-1">
-                                    @forelse($item->stocks->where('quantity', '>', 0) as $s)
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-700 text-[11px] text-zinc-700 dark:text-zinc-200">
-                                            {{ $s->location?->name }}: <strong class="ml-1">{{ $s->quantity }}</strong>
-                                        </span>
-                                    @empty
-                                        <span class="text-xs text-zinc-400 italic">{{ __('None in stock') }}</span>
-                                    @endforelse
-                                </div>
-                            </td>
-                            <td class="px-4 py-3.5 text-right">
-                                @if($isLow)
-                                    <flux:badge size="sm" color="red">{{ __('Low Stock') }}</flux:badge>
-                                @else
-                                    <flux:badge size="sm" color="green">{{ __('In Stock') }}</flux:badge>
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="px-4 py-12 text-center text-zinc-500">
-                                {{ __('No inventory records match the selected filters.') }}
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+        <div class="hidden md:block">
+            <flux:card>
+                <div class="relative overflow-x-auto">
+                    <flux:table :paginate="$items">
+                        <flux:table.columns>
+                            <flux:table.column>{{ __('Item') }}</flux:table.column>
+                            <flux:table.column>{{ __('Category') }}</flux:table.column>
+                            <flux:table.column class="text-center">{{ __('Min Level') }}</flux:table.column>
+                            <flux:table.column class="text-center">{{ __('Quantity') }}</flux:table.column>
+                            <flux:table.column>{{ __('By Room') }}</flux:table.column>
+                            <flux:table.column class="text-right">{{ __('Status') }}</flux:table.column>
+                        </flux:table.columns>
+                        <flux:table.rows>
+                            @forelse($items as $item)
+                                @php
+                                    $qty = (int) $item->stocks->sum('quantity');
+                                    $isLow = $item->isBelowThreshold($qty);
+                                @endphp
+                                <flux:table.row :key="$item->id">
+                                    <flux:table.cell>
+                                        <div class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $item->name }}</div>
+                                        <div class="text-xs font-mono text-zinc-500">{{ $item->code }} &bull; {{ $item->unit_of_measure }}</div>
+                                    </flux:table.cell>
+                                    <flux:table.cell class="text-xs">
+                                        <div class="font-medium text-zinc-800 dark:text-zinc-200">{{ $item->category?->name }}</div>
+                                        <div class="text-zinc-500 capitalize">{{ $item->category?->classification }}</div>
+                                    </flux:table.cell>
+                                    <flux:table.cell class="text-center font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                                        {{ number_format($item->min_stock_threshold) }}
+                                    </flux:table.cell>
+                                    <flux:table.cell class="text-center font-black text-zinc-900 dark:text-white">
+                                        {{ number_format($qty) }}
+                                    </flux:table.cell>
+                                    <flux:table.cell>
+                                        <div class="flex flex-wrap gap-1">
+                                            @forelse($item->stocks->where('quantity', '>', 0) as $s)
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-700 text-[11px] text-zinc-700 dark:text-zinc-200">
+                                                    {{ $s->location?->name }}: <strong class="ml-1">{{ $s->quantity }}</strong>
+                                                </span>
+                                            @empty
+                                                <span class="text-xs text-zinc-400 italic">{{ __('None in stock') }}</span>
+                                            @endforelse
+                                        </div>
+                                    </flux:table.cell>
+                                    <flux:table.cell class="text-right">
+                                        @if($isLow)
+                                            <flux:badge size="sm" color="red">{{ __('Low Stock') }}</flux:badge>
+                                        @else
+                                            <flux:badge size="sm" color="green">{{ __('In Stock') }}</flux:badge>
+                                        @endif
+                                    </flux:table.cell>
+                                </flux:table.row>
+                            @empty
+                                <flux:table.row>
+                                    <flux:table.cell colspan="6" class="py-12 text-center text-zinc-500">
+                                        {{ __('No inventory records match the selected filters.') }}
+                                    </flux:table.cell>
+                                </flux:table.row>
+                            @endforelse
+                        </flux:table.rows>
+                    </flux:table>
+                </div>
+            </flux:card>
         </div>
 
         {{-- Mobile Cards (< md) --}}
@@ -390,60 +392,57 @@ new #[Layout('layouts.app')] #[Title('Stock Reports')] class extends Component
                     {{ __('No inventory records match the selected filters.') }}
                 </div>
             @endforelse
+            <div>{{ $items->links() }}</div>
         </div>
-
-        <div>{{ $items->links() }}</div>
     @else
         {{-- Variance & Reconciliation Audit Log --}}
-        <div class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-xs">
-            <table class="w-full text-left border-collapse">
-                <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                    <tr>
-                        <th class="px-4 py-3">{{ __('Timestamp') }}</th>
-                        <th class="px-4 py-3">{{ __('Location / Item') }}</th>
-                        <th class="px-4 py-3">{{ __('Type / Notes') }}</th>
-                        <th class="px-4 py-3 text-center">{{ __('Change') }}</th>
-                        <th class="px-4 py-3 text-right">{{ __('Recorded By') }}</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
-                    @forelse($adjustments as $adj)
-                        <tr wire:key="adj-row-{{ $adj->id }}">
-                            <td class="px-4 py-3 text-xs text-zinc-500 whitespace-nowrap">
-                                {{ $adj->created_at?->format('M d, Y H:i') }}
-                            </td>
-                            <td class="px-4 py-3">
-                                <div class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $adj->item?->name }}</div>
-                                <div class="text-xs text-zinc-500">{{ $adj->location?->name }}</div>
-                            </td>
-                            <td class="px-4 py-3 text-xs">
-                                <div class="font-medium text-zinc-700 dark:text-zinc-300">{{ $adj->adjustment_type_label }}</div>
-                                @if($adj->notes)
-                                    <div class="text-zinc-500 italic">{{ $adj->notes }}</div>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3 text-center font-mono text-xs whitespace-nowrap">
-                                {{ $adj->previous_quantity }} &rarr; <strong>{{ $adj->new_quantity }}</strong>
-                                <flux:badge size="sm" class="ml-1" :color="$adj->variance > 0 ? 'green' : ($adj->variance < 0 ? 'red' : 'zinc')">
-                                    {{ $adj->variance > 0 ? '+'.$adj->variance : $adj->variance }}
-                                </flux:badge>
-                            </td>
-                            <td class="px-4 py-3 text-right text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                                {{ $adj->recorder?->name ?? __('System') }}
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="px-4 py-12 text-center text-zinc-500">
-                                {{ __('No stock updates recorded yet.') }}
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        <div>{{ $adjustments->links() }}</div>
+        <flux:card>
+            <div class="relative overflow-x-auto">
+                <flux:table :paginate="$adjustments">
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Timestamp') }}</flux:table.column>
+                        <flux:table.column>{{ __('Location / Item') }}</flux:table.column>
+                        <flux:table.column>{{ __('Type / Notes') }}</flux:table.column>
+                        <flux:table.column class="text-center">{{ __('Change') }}</flux:table.column>
+                        <flux:table.column class="text-right">{{ __('Recorded By') }}</flux:table.column>
+                    </flux:table.columns>
+                    <flux:table.rows>
+                        @forelse($adjustments as $adj)
+                            <flux:table.row :key="$adj->id">
+                                <flux:table.cell class="text-xs text-zinc-500 whitespace-nowrap">
+                                    {{ $adj->created_at?->format('M d, Y H:i') }}
+                                </flux:table.cell>
+                                <flux:table.cell>
+                                    <div class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $adj->item?->name }}</div>
+                                    <div class="text-xs text-zinc-500">{{ $adj->location?->name }}</div>
+                                </flux:table.cell>
+                                <flux:table.cell class="text-xs">
+                                    <div class="font-medium text-zinc-700 dark:text-zinc-300">{{ $adj->adjustment_type_label }}</div>
+                                    @if($adj->notes)
+                                        <div class="text-zinc-500 italic">{{ $adj->notes }}</div>
+                                    @endif
+                                </flux:table.cell>
+                                <flux:table.cell class="text-center font-mono text-xs whitespace-nowrap">
+                                    {{ $adj->previous_quantity }} &rarr; <strong>{{ $adj->new_quantity }}</strong>
+                                    <flux:badge size="sm" class="ml-1" :color="$adj->variance > 0 ? 'green' : ($adj->variance < 0 ? 'red' : 'zinc')">
+                                        {{ $adj->variance > 0 ? '+'.$adj->variance : $adj->variance }}
+                                    </flux:badge>
+                                </flux:table.cell>
+                                <flux:table.cell class="text-right text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                                    {{ $adj->recorder?->name ?? __('System') }}
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @empty
+                            <flux:table.row>
+                                <flux:table.cell colspan="5" class="py-12 text-center text-zinc-500">
+                                    {{ __('No stock updates recorded yet.') }}
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @endforelse
+                    </flux:table.rows>
+                </flux:table>
+            </div>
+        </flux:card>
     @endif
 </div>
 

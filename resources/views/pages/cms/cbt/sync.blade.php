@@ -69,7 +69,7 @@ new #[Layout('layouts.app')] #[Title('CBT Connectivity & Sync')] class extends C
                 ->paginate(20),
             'tokens' => auth()->user()->tokens()
                 ->where('name', 'like', 'cbt_lab_%')
-                ->get(),
+                ->paginate(10, ['*'], 'tokensPage'),
         ];
     }
 }; ?>
@@ -193,8 +193,8 @@ new #[Layout('layouts.app')] #[Title('CBT Connectivity & Sync')] class extends C
         </div>
     </div>
     <div class="p-0">
-        @if(count($tokens) > 0)
-            <flux:table>
+        @if($tokens->total() > 0)
+            <flux:table :paginate="$tokens">
                 <flux:table.columns>
                     <flux:table.column class="px-8">{{ __('Server / Label') }}</flux:table.column>
                     <flux:table.column class="px-8">{{ __('Last Used') }}</flux:table.column>

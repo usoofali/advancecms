@@ -123,6 +123,8 @@ class GradingService
         int $semesterId
     ): Collection {
         $targetSession = AcademicSession::find($sessionId);
+        $student->loadMissing(['program.department.gradingSystem', 'department.gradingSystem']);
+        $department = $student->program?->department ?? $student->department;
 
         $allResults = $student->results()
             ->whereHas('academicSession', function ($query) use ($targetSession) {
@@ -133,14 +135,26 @@ class GradingService
             ->with('course')
             ->get();
 
+        $evaluated = $allResults->map(function ($result) use ($department) {
+            $remark = $result->remark;
+            if ($department?->gradingSystem && $result->total_score !== null) {
+                $remark = $this->resolveGrade((float) $result->total_score, $department)['remark'];
+            }
+
+            return [
+                'course_id' => $result->course_id,
+                'remark' => $remark,
+            ];
+        });
+
         // Courses the student has failed at least once
-        $failedCourseIds = $allResults
+        $failedCourseIds = $evaluated
             ->where('remark', 'fail')
             ->pluck('course_id')
             ->unique();
 
         // Courses the student has already passed (remove from carryover list)
-        $passedCourseIds = $allResults
+        $passedCourseIds = $evaluated
             ->where('remark', 'pass')
             ->pluck('course_id')
             ->unique();

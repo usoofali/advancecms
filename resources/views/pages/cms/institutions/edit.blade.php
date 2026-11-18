@@ -7,9 +7,10 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 
 new #[Layout('layouts.app')] #[Title('Edit Institution')] class extends Component {
-    use WithFileUploads;
+    use WithFileUploads, WithPagination;
 
     public Institution $institution;
 
@@ -128,7 +129,7 @@ new #[Layout('layouts.app')] #[Title('Edit Institution')] class extends Componen
                 ->where('model_type', $this->institution->getMorphClass())
                 ->where('model_id', $this->institution->id)
                 ->select('users.id as user_id', 'users.name as user_name', 'roles.role_id', 'roles.role_name')
-                ->get(),
+                ->paginate(10, ['*'], 'assignedUsersPage'),
         ];
     }
 }; ?>
@@ -228,7 +229,7 @@ new #[Layout('layouts.app')] #[Title('Edit Institution')] class extends Componen
         </div>
 
         <div class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
-            <flux:table>
+            <flux:table :paginate="$assignedUsers">
                     <flux:table.columns>
                         <flux:table.column>{{ __('User') }}</flux:table.column>
                         <flux:table.column>{{ __('Role') }}</flux:table.column>

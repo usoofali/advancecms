@@ -1,11 +1,14 @@
 <?php
 
 use App\Imports\CoursesImport;
+use App\Models\AcademicSession;
 use App\Models\Course;
+use App\Models\CourseAllocation;
 use App\Models\Department;
 use App\Models\Institution;
 use App\Models\Program;
 use App\Models\Role;
+use App\Models\Semester;
 use App\Models\User;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -177,4 +180,40 @@ test('course import handles header variations and missing header columns gracefu
     expect($importer->imported)->toBe(0);
     expect($importer->failures)->not->toBeEmpty();
     expect($importer->failures[0])->toContain('Missing required fields: course_code');
+});
+
+test('course show page renders allocated lecturers and registered students in paginated flux tables', function () {
+    $this->seed(RbacSeeder::class);
+
+    $institution = Institution::factory()->create();
+    $department = Department::factory()->for($institution)->create();
+    $program = Program::factory()->create([
+        'institution_id' => $institution->id,
+        'department_id' => $department->id,
+    ]);
+    $course = Course::factory()->for($institution)->create([
+        'department_id' => $department->id,
+        'program_id' => $program->id,
+        'course_code' => 'CSC201',
+    ]);
+
+    $session = AcademicSession::factory()->create(['status' => 'active']);
+    $semester = Semester::factory()->create(['academic_session_id' => $session->id, 'name' => 'first']);
+
+    $user = User::factory()->create(['institution_id' => $institution->id, 'name' => 'Dr. Ada Lovelace']);
+    $user->roles()->sync([Role::where('role_name', 'Institutional Admin')->value('role_id')]);
+
+    CourseAllocation::create([
+        'institution_id' => $institution->id,
+        'user_id' => $user->id,
+        'course_id' => $course->id,
+        'academic_session_id' => $session->id,
+        'semester_id' => $semester->id,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('cms.courses.show', $course))
+        ->assertSuccessful()
+        ->assertSee('CSC201')
+        ->assertSee('Dr. Ada Lovelace');
 });

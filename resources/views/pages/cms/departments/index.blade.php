@@ -96,65 +96,73 @@ new #[Layout('layouts.app')] #[Title('Departments')] class extends Component {
 
         <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search departments...')" class="max-w-sm" />
 
-        <div class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
-            <table class="w-full text-left border-collapse">
-                <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700">
-                    <tr>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Department') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Faculty') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Institution') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Head Of Dept') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Status') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-right">{{ __('Actions') }}</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                    @forelse ($departments as $department)
-                        <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors" wire:key="{{ $department->id }}">
-                            <td class="px-4 py-4 font-medium text-zinc-900 dark:text-zinc-100">
-                                {{ $department->name }}
-                            </td>
-                            <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400">
-                                {{ $department->faculty ?? '—' }}
-                            </td>
-                            <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400">
-                                {{ $department->institution->name }}
-                            </td>
-                            <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400">
-                                @if ($department->hod)
-                                    <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $department->hod->first_name }} {{ $department->hod->last_name }}</div>
-                                @else
-                                    <span class="text-zinc-400 italic text-xs">{{ __('Not assigned') }}</span>
-                                @endif
-                            </td>
-                            <td class="px-4 py-4 text-sm">
-                                <flux:badge :color="$department->status === 'active' ? 'green' : 'zinc'" size="sm">
-                                    {{ ucfirst($department->status) }}
-                                </flux:badge>
-                            </td>
-                            <td class="px-4 py-4 text-right">
-                                <div class="flex items-center justify-end gap-2">
-                                    @can('departments.edit')
-                                    <flux:button size="sm" variant="ghost" icon="pencil" :href="route('cms.departments.edit', $department)" wire:navigate />
-                                    @endcan
-                                    @can('departments.delete')
-                                    <flux:button size="sm" variant="ghost" icon="trash" x-on:click="$wire.deletingId = {{ $department->id }}; $flux.modal('delete-department').show()" />
-                                    @endcan
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="px-4 py-12 text-center text-zinc-500 dark:text-zinc-400">
-                                {{ __('No departments found.') }}
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        <div class="mt-4">{{ $departments->links() }}</div>
+        <flux:card>
+            <div class="relative overflow-x-auto">
+                <flux:table :paginate="$departments">
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Department') }}</flux:table.column>
+                        <flux:table.column>{{ __('Faculty') }}</flux:table.column>
+                        <flux:table.column>{{ __('Institution') }}</flux:table.column>
+                        <flux:table.column>{{ __('Head Of Dept') }}</flux:table.column>
+                        <flux:table.column>{{ __('Status') }}</flux:table.column>
+                        <flux:table.column class="text-right">{{ __('Actions') }}</flux:table.column>
+                    </flux:table.columns>
+                    <flux:table.rows>
+                        @forelse ($departments as $department)
+                            <flux:table.row :key="$department->id">
+                                <flux:table.cell class="font-medium text-zinc-900 dark:text-zinc-100">
+                                    {{ $department->name }}
+                                </flux:table.cell>
+                                <flux:table.cell class="text-zinc-600 dark:text-zinc-400">
+                                    {{ $department->faculty ?? '—' }}
+                                </flux:table.cell>
+                                <flux:table.cell class="text-zinc-600 dark:text-zinc-400">
+                                    {{ $department->institution->name }}
+                                </flux:table.cell>
+                                <flux:table.cell class="text-zinc-600 dark:text-zinc-400">
+                                    @if ($department->hod)
+                                        <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $department->hod->first_name }} {{ $department->hod->last_name }}</div>
+                                    @else
+                                        <span class="text-zinc-400 italic text-xs">{{ __('Not assigned') }}</span>
+                                    @endif
+                                </flux:table.cell>
+                                <flux:table.cell>
+                                    <flux:badge :color="$department->status === 'active' ? 'green' : 'zinc'" size="sm">
+                                        {{ ucfirst($department->status) }}
+                                    </flux:badge>
+                                </flux:table.cell>
+                                <flux:table.cell class="text-right">
+                                    <flux:dropdown position="bottom" align="end">
+                                        <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" />
+                                        <flux:menu>
+                                            @can('departments.edit')
+                                                <flux:menu.item icon="pencil" :href="route('cms.departments.edit', $department)" wire:navigate>
+                                                    {{ __('Edit') }}
+                                                </flux:menu.item>
+                                            @endcan
+                                            @can('departments.delete')
+                                                @can('departments.edit')
+                                                    <flux:menu.separator />
+                                                @endcan
+                                                <flux:menu.item icon="trash" variant="danger" x-on:click="$wire.deletingId = {{ $department->id }}; $flux.modal('delete-department').show()">
+                                                    {{ __('Delete') }}
+                                                </flux:menu.item>
+                                            @endcan
+                                        </flux:menu>
+                                    </flux:dropdown>
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @empty
+                            <flux:table.row>
+                                <flux:table.cell colspan="6" class="py-12 text-center text-zinc-500 dark:text-zinc-400">
+                                    {{ __('No departments found.') }}
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @endforelse
+                    </flux:table.rows>
+                </flux:table>
+            </div>
+        </flux:card>
 
         <flux:modal name="delete-department" variant="filled" class="min-w-[22rem]">
             <form wire:submit="confirmDelete" class="space-y-6">

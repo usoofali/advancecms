@@ -204,27 +204,25 @@ new #[Layout('layouts.app')] class extends Component {
     </div>
 
     <!-- Table -->
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm">
-                <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 text-xs font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
-                    <tr>
-                        <th class="px-4 py-3">Student</th>
-                        <th class="px-4 py-3">Dept / Program / Level</th>
-                        <th class="px-4 py-3">Organization</th>
-                        <th class="px-4 py-3">Supervisor</th>
-                        <th class="px-4 py-3 text-center">Score Metrics</th>
-                        <th class="px-4 py-3 text-right">Total Score & Grade</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-200 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+    <flux:card>
+        <div class="relative overflow-x-auto">
+            <flux:table :paginate="$evaluations">
+                <flux:table.columns>
+                    <flux:table.column>Student</flux:table.column>
+                    <flux:table.column>Dept / Program / Level</flux:table.column>
+                    <flux:table.column>Organization</flux:table.column>
+                    <flux:table.column>Supervisor</flux:table.column>
+                    <flux:table.column class="text-center">Score Metrics</flux:table.column>
+                    <flux:table.column class="text-right">Total Score &amp; Grade</flux:table.column>
+                </flux:table.columns>
+                <flux:table.rows>
                     @forelse($evaluations as $eval)
-                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-                            <td class="px-4 py-3">
+                        <flux:table.row :key="$eval->id">
+                            <flux:table.cell>
                                 <div class="font-bold text-slate-900 dark:text-white">{{ $eval->student?->user?->name ?? 'N/A' }}</div>
                                 <div class="text-xs font-mono text-slate-500">{{ $eval->student?->matric_number }}</div>
-                            </td>
-                            <td class="px-4 py-3 text-xs space-y-0.5">
+                            </flux:table.cell>
+                            <flux:table.cell class="text-xs space-y-0.5">
                                 <div class="font-medium text-slate-800 dark:text-slate-200">{{ $eval->student?->department?->name ?? 'N/A' }}</div>
                                 <div class="text-slate-400">
                                     {{ $eval->student?->program?->name ?? 'N/A' }}
@@ -234,14 +232,14 @@ new #[Layout('layouts.app')] class extends Component {
                                         </span>
                                     @endif
                                 </div>
-                            </td>
-                            <td class="px-4 py-3 text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                            </flux:table.cell>
+                            <flux:table.cell class="text-xs font-medium text-indigo-600 dark:text-indigo-400">
                                 {{ $eval->placement?->organization_display_name ?? $eval->student?->studentPlacements?->first()?->organization_display_name ?? 'N/A' }}
-                            </td>
-                            <td class="px-4 py-3 text-xs font-medium text-slate-800 dark:text-slate-200">
+                            </flux:table.cell>
+                            <flux:table.cell class="text-xs font-medium text-slate-800 dark:text-slate-200">
                                 {{ $eval->supervisor?->name ?? 'N/A' }}
-                            </td>
-                            <td class="px-4 py-3 text-center">
+                            </flux:table.cell>
+                            <flux:table.cell class="text-center">
                                 <div class="inline-flex gap-1 text-[11px] font-medium text-slate-600 dark:text-slate-400">
                                     <span title="Punctuality">P:{{ $eval->punctuality_rating }}</span> |
                                     <span title="Attendance">A:{{ $eval->attendance_rating }}</span> |
@@ -249,25 +247,22 @@ new #[Layout('layouts.app')] class extends Component {
                                     <span title="Technical">T:{{ $eval->technical_skills_rating }}</span> |
                                     <span title="Logbook">L:{{ $eval->logbook_maintenance_rating }}</span>
                                 </div>
-                            </td>
-                            <td class="px-4 py-3 text-right">
+                            </flux:table.cell>
+                            <flux:table.cell class="text-right">
                                 <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-300">
                                     {{ number_format($eval->total_score, 1) }}% (Grade {{ $eval->performance_grade }})
                                 </span>
-                            </td>
-                        </tr>
+                            </flux:table.cell>
+                        </flux:table.row>
                     @empty
-                        <tr>
-                            <td colspan="6" class="px-4 py-8 text-center text-slate-500 dark:text-slate-400 text-sm">
+                        <flux:table.row>
+                            <flux:table.cell colspan="6" class="py-8 text-center text-slate-500 dark:text-slate-400 text-sm">
                                 No evaluations found matching the selected filters.
-                            </td>
-                        </tr>
+                            </flux:table.cell>
+                        </flux:table.row>
                     @endforelse
-                </tbody>
-            </table>
+                </flux:table.rows>
+            </flux:table>
         </div>
-        <div class="p-4 border-t border-slate-200 dark:border-slate-800">
-            {{ $evaluations->links() }}
-        </div>
-    </div>
+    </flux:card>
 </div>

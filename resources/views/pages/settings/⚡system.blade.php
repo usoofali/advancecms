@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\SystemSetting;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
@@ -8,10 +10,11 @@ use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Title;
 use Livewire\Component;
 use Livewire\WithFileUploads;
+use Livewire\WithPagination;
 use App\Services\ActivityLogger;
 
 new #[Title('System Configuration')] class extends Component {
-    use WithFileUploads;
+    use WithFileUploads, WithPagination;
 
     public $system_logo;
 
@@ -674,8 +677,19 @@ new #[Title('System Configuration')] class extends Component {
                         {{ __('Create New Backup') }}</flux:button>
                 </div>
 
+                @php
+                    $backupsCollection = collect($backups)->values();
+                    $backupsPage = Paginator::resolveCurrentPage('backupsPage');
+                    $paginatedBackups = new LengthAwarePaginator(
+                        $backupsCollection->forPage($backupsPage, 10)->values(),
+                        $backupsCollection->count(),
+                        10,
+                        $backupsPage,
+                        ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'backupsPage']
+                    );
+                @endphp
                 <flux:card class="p-0 border-zinc-100 dark:border-zinc-800 overflow-hidden">
-                    <flux:table>
+                    <flux:table :paginate="$paginatedBackups">
                         <flux:table.columns>
                             <flux:table.column>{{ __('Filename') }}</flux:table.column>
                             <flux:table.column>{{ __('Size') }}</flux:table.column>
@@ -684,46 +698,46 @@ new #[Title('System Configuration')] class extends Component {
                         </flux:table.columns>
 
                         <flux:table.rows>
-                            @forelse($backups as $backup)
+                            @forelse($paginatedBackups as $backup)
                                 <flux:table.row :key="$backup['name']">
                                     <flux:table.cell class="font-mono text-xs">{{ $backup['name'] }}</flux:table.cell>
                                     <flux:table.cell>{{ $backup['size'] }}</flux:table.cell>
                                     <flux:table.cell>{{ $backup['created_at'] }}</flux:table.cell>
-                                    <flux:table.cell>
-                                        <div class="flex items-center justify-end gap-2">
-                                            <flux:button wire:click="downloadBackup('{{ $backup['name'] }}')" size="xs"
-                                                variant="ghost" icon="arrow-down-tray" tooltip="{{ __('Download') }}" />
+                                    <flux:table.cell class="text-right">
+                                        <flux:dropdown position="bottom" align="end">
+                                            <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" />
+                                            <flux:menu>
+                                                <flux:menu.item icon="arrow-down-tray" wire:click="downloadBackup('{{ $backup['name'] }}')">
+                                                    {{ __('Download') }}
+                                                </flux:menu.item>
+                                                <flux:menu.item icon="arrow-path" x-on:click="$flux.modal('confirm-restore-{{ str_replace('.', '-', $backup['name']) }}').show()">
+                                                    {{ __('Restore') }}
+                                                </flux:menu.item>
+                                                <flux:menu.separator />
+                                                <flux:menu.item icon="trash" variant="danger" wire:click="deleteBackup('{{ $backup['name'] }}')" wire:confirm="{{ __('Are you sure you want to delete this backup?') }}">
+                                                    {{ __('Delete') }}
+                                                </flux:menu.item>
+                                            </flux:menu>
+                                        </flux:dropdown>
 
-                                            <flux:modal.trigger
-                                                name="confirm-restore-{{ str_replace('.', '-', $backup['name']) }}">
-                                                <flux:button size="xs" variant="subtle" icon="arrow-path"
-                                                    tooltip="{{ __('Restore') }}" />
-                                            </flux:modal.trigger>
+                                        <flux:modal name="confirm-restore-{{ str_replace('.', '-', $backup['name']) }}"
+                                            class="min-w-[22rem] space-y-6 text-left">
+                                            <div class="space-y-2">
+                                                <flux:heading size="lg">{{ __('Confirm Restoration') }}</flux:heading>
+                                                <flux:subheading>
+                                                    {{ __('Are you sure you want to restore the database from :name? This will overwrite all current data.', ['name' => $backup['name']]) }}
+                                                </flux:subheading>
+                                            </div>
 
-                                            <flux:button wire:click="deleteBackup('{{ $backup['name'] }}')"
-                                                wire:confirm="{{ __('Are you sure you want to delete this backup?') }}"
-                                                size="xs" variant="ghost" icon="trash" color="red"
-                                                tooltip="{{ __('Delete') }}" />
-
-                                            <flux:modal name="confirm-restore-{{ str_replace('.', '-', $backup['name']) }}"
-                                                class="min-w-[22rem] space-y-6">
-                                                <div class="space-y-2">
-                                                    <flux:heading size="lg">{{ __('Confirm Restoration') }}</flux:heading>
-                                                    <flux:subheading>
-                                                        {{ __('Are you sure you want to restore the database from :name? This will overwrite all current data.', ['name' => $backup['name']]) }}
-                                                    </flux:subheading>
-                                                </div>
-
-                                                <div class="flex gap-2">
-                                                    <flux:spacer />
-                                                    <flux:modal.close>
-                                                        <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
-                                                    </flux:modal.close>
-                                                    <flux:button wire:click="restoreBackup('{{ $backup['name'] }}')"
-                                                        variant="danger">{{ __('Yes, Restore Now') }}</flux:button>
-                                                </div>
-                                            </flux:modal>
-                                        </div>
+                                            <div class="flex gap-2">
+                                                <flux:spacer />
+                                                <flux:modal.close>
+                                                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                                                </flux:modal.close>
+                                                <flux:button wire:click="restoreBackup('{{ $backup['name'] }}')"
+                                                    variant="danger">{{ __('Yes, Restore Now') }}</flux:button>
+                                            </div>
+                                        </flux:modal>
                                     </flux:table.cell>
                                 </flux:table.row>
                             @empty

@@ -6,8 +6,11 @@ use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Component {
+    use WithPagination;
+
     public string $new_session_name = '';
     public string $start_date = '';
     public string $end_date = '';
@@ -212,7 +215,7 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
             'sessions' => AcademicSession::query()
                 ->with('semesters')
                 ->latest()
-                ->get(),
+                ->paginate(15),
         ];
     }
 }; ?>
@@ -271,7 +274,7 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
                 
                 <!-- Desktop Table View -->
                 <div class="hidden sm:block">
-                    <flux:table>
+                    <flux:table :paginate="$sessions">
                         <flux:table.columns>
                             <flux:table.column>{{ __('Session') }}</flux:table.column>
                             <flux:table.column>{{ __('Dates') }}</flux:table.column>
@@ -308,18 +311,27 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
                                     </flux:table.cell>
                                     @if (!auth()->user()->institution_id)
                                         <flux:table.cell align="right">
-                                            <div class="flex items-center justify-end gap-2">
-                                                @can('academic_sessions.edit')
-                                                <flux:button size="sm" variant="ghost" icon="squares-2x2" title="{{ __('Configure Batches') }}"
-                                                    x-on:click="$wire.openEditBatches({{ $session->id }}); $flux.modal('edit-session-batches').show()" />
-                                                <flux:button size="sm" variant="ghost" :icon="$session->status === 'active' ? 'lock-closed' : 'lock-open'" 
-                                                    x-on:click="$wire.togglingId = {{ $session->id }}; $flux.modal('toggle-session-status').show()" />
-                                                @endcan
-                                                @can('academic_sessions.delete')
-                                                <flux:button size="sm" variant="ghost" icon="trash" 
-                                                    x-on:click="$wire.deletingId = {{ $session->id }}; $flux.modal('delete-session').show()" />
-                                                @endcan
-                                            </div>
+                                            <flux:dropdown position="bottom" align="end">
+                                                <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" />
+                                                <flux:menu>
+                                                    @can('academic_sessions.edit')
+                                                        <flux:menu.item icon="squares-2x2" x-on:click="$wire.openEditBatches({{ $session->id }}); $flux.modal('edit-session-batches').show()">
+                                                            {{ __('Configure Batches') }}
+                                                        </flux:menu.item>
+                                                        <flux:menu.item :icon="$session->status === 'active' ? 'lock-closed' : 'lock-open'" x-on:click="$wire.togglingId = {{ $session->id }}; $flux.modal('toggle-session-status').show()">
+                                                            {{ $session->status === 'active' ? __('Deactivate') : __('Activate') }}
+                                                        </flux:menu.item>
+                                                    @endcan
+                                                    @can('academic_sessions.delete')
+                                                        @can('academic_sessions.edit')
+                                                            <flux:menu.separator />
+                                                        @endcan
+                                                        <flux:menu.item icon="trash" variant="danger" x-on:click="$wire.deletingId = {{ $session->id }}; $flux.modal('delete-session').show()">
+                                                            {{ __('Delete') }}
+                                                        </flux:menu.item>
+                                                    @endcan
+                                                </flux:menu>
+                                            </flux:dropdown>
                                         </flux:table.cell>
                                     @endif
                                 </flux:table.row>

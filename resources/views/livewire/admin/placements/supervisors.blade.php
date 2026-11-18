@@ -276,30 +276,28 @@ new #[Layout('layouts.app')] class extends Component {
     </div>
 
     <!-- Table -->
-    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm">
-                <thead class="bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 text-xs font-semibold uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
-                    <tr>
-                        <th class="px-4 py-3">Supervisor</th>
-                        <th class="px-4 py-3">Organization</th>
-                        <th class="px-4 py-3">Scope Tier</th>
-                        <th class="px-4 py-3">Session</th>
-                        <th class="px-4 py-3">Assigned By</th>
-                        <th class="px-4 py-3 text-right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-200 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+    <flux:card>
+        <div class="relative overflow-x-auto">
+            <flux:table :paginate="$supervisors">
+                <flux:table.columns>
+                    <flux:table.column>Supervisor</flux:table.column>
+                    <flux:table.column>Organization</flux:table.column>
+                    <flux:table.column>Scope Tier</flux:table.column>
+                    <flux:table.column>Session</flux:table.column>
+                    <flux:table.column>Assigned By</flux:table.column>
+                    <flux:table.column class="text-right">Actions</flux:table.column>
+                </flux:table.columns>
+                <flux:table.rows>
                     @forelse($supervisors as $sup)
-                        <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-                            <td class="px-4 py-3">
+                        <flux:table.row :key="$sup->id">
+                            <flux:table.cell>
                                 <div class="font-medium text-slate-900 dark:text-white">{{ $sup->supervisor?->name ?? 'N/A' }}</div>
                                 <div class="text-xs text-slate-500 dark:text-slate-400">{{ $sup->supervisor?->email }}</div>
-                            </td>
-                            <td class="px-4 py-3 font-medium text-indigo-600 dark:text-indigo-400">
+                            </flux:table.cell>
+                            <flux:table.cell class="font-medium text-indigo-600 dark:text-indigo-400">
                                 {{ $sup->organization?->name ?? 'N/A' }}
-                            </td>
-                            <td class="px-4 py-3 space-y-1">
+                            </flux:table.cell>
+                            <flux:table.cell class="space-y-1">
                                 <div class="flex flex-wrap gap-1">
                                     @if($sup->department)
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300">
@@ -323,32 +321,39 @@ new #[Layout('layouts.app')] class extends Component {
                                         </span>
                                     @endif
                                 </div>
-                            </td>
-                            <td class="px-4 py-3 text-xs text-slate-600 dark:text-slate-400">
+                            </flux:table.cell>
+                            <flux:table.cell class="text-xs text-slate-600 dark:text-slate-400">
                                 {{ $sup->academicSession?->name ?? 'N/A' }}
-                            </td>
-                            <td class="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
+                            </flux:table.cell>
+                            <flux:table.cell class="text-xs text-slate-500 dark:text-slate-400">
                                 {{ $sup->assigner?->name ?? 'System' }}
-                            </td>
-                            <td class="px-4 py-3 text-right flex items-center justify-end gap-2">
-                                <flux:button wire:click="openAssignModal({{ $sup->id }})" variant="ghost" size="sm" icon="pencil">Edit</flux:button>
-                                <flux:button wire:click="deleteSupervisor({{ $sup->id }})" wire:confirm="Are you sure you want to remove this supervisor assignment?" variant="danger" size="sm" icon="trash">Remove</flux:button>
-                            </td>
-                        </tr>
+                            </flux:table.cell>
+                            <flux:table.cell class="text-right">
+                                <flux:dropdown position="bottom" align="end">
+                                    <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" />
+                                    <flux:menu>
+                                        <flux:menu.item icon="pencil" wire:click="openAssignModal({{ $sup->id }})">
+                                            Edit
+                                        </flux:menu.item>
+                                        <flux:menu.separator />
+                                        <flux:menu.item icon="trash" variant="danger" wire:click="deleteSupervisor({{ $sup->id }})" wire:confirm="Are you sure you want to remove this supervisor assignment?">
+                                            Remove
+                                        </flux:menu.item>
+                                    </flux:menu>
+                                </flux:dropdown>
+                            </flux:table.cell>
+                        </flux:table.row>
                     @empty
-                        <tr>
-                            <td colspan="6" class="px-4 py-8 text-center text-slate-500 dark:text-slate-400 text-sm">
+                        <flux:table.row>
+                            <flux:table.cell colspan="6" class="py-8 text-center text-slate-500 dark:text-slate-400 text-sm">
                                 No supervisor assignments found. Click "Assign Supervisor" to add one.
-                            </td>
-                        </tr>
+                            </flux:table.cell>
+                        </flux:table.row>
                     @endforelse
-                </tbody>
-            </table>
+                </flux:table.rows>
+            </flux:table>
         </div>
-        <div class="px-4 py-3 border-t border-slate-200 dark:border-slate-800">
-            {{ $supervisors->links() }}
-        </div>
-    </div>
+    </flux:card>
 
     <!-- Assignment Modal -->
     @if($showAssignModal)

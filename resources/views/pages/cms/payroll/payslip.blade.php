@@ -79,33 +79,41 @@ new #[Layout('layouts.app')] #[Title('Payslips')] class extends Component
         </div>
 
         {{-- Printable Payslip Card --}}
-        <div class="max-w-3xl mx-auto w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 sm:p-8 shadow-xs space-y-6 print:border-none print:shadow-none print:p-0">
+        <div class="max-w-3xl mx-auto w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-6 sm:p-8 shadow-xs space-y-6 print:max-w-none print:border-none print:shadow-none print:p-0 print:bg-white print:text-black">
             {{-- Institution Header --}}
-            <div class="text-center border-b border-zinc-200 dark:border-zinc-700 pb-4">
-                <h1 class="text-xl font-bold uppercase tracking-wide text-zinc-900 dark:text-white">
+            <div class="text-center border-b border-zinc-200 dark:border-zinc-700 print:border-gray-300 pb-4">
+                @if($selectedItem->run?->institution?->logo_url)
+                    <img src="{{ $selectedItem->run->institution->logo_url }}" alt="Logo" class="mx-auto mb-2 h-14 w-auto object-contain" />
+                @endif
+                <h1 class="text-xl font-bold uppercase tracking-wide text-zinc-900 dark:text-white print:text-black">
                     {{ $selectedItem->run?->institution?->name ?? config('app.name') }}
                 </h1>
-                <p class="text-xs text-zinc-500 mt-0.5">{{ $selectedItem->run?->institution?->address }}</p>
-                <div class="mt-2 inline-block px-3 py-1 rounded bg-zinc-100 dark:bg-zinc-800 text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-200">
-                    {{ __('Employee Payslip') }} &mdash; {{ $selectedItem->run?->title }}
+                @if($selectedItem->run?->institution?->address)
+                    <p class="text-xs text-zinc-500 print:text-gray-600 mt-0.5">{{ $selectedItem->run->institution->address }}</p>
+                @endif
+                <div class="mt-2 inline-block px-3 py-1 rounded bg-zinc-100 dark:bg-zinc-800 print:bg-gray-100 text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-200 print:text-gray-800">
+                    {{ __('Official Employee Payslip') }} &mdash; {{ $selectedItem->run?->title }}
                 </div>
+                <p class="hidden print:block text-[10px] text-gray-500 mt-1">
+                    {{ __('Printed:') }} {{ now()->format('F d, Y h:i A') }}
+                </p>
             </div>
 
             {{-- Staff Metadata --}}
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs bg-zinc-50 dark:bg-zinc-800/60 p-4 rounded-lg border border-zinc-200 dark:border-zinc-700">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs bg-zinc-50 dark:bg-zinc-800/60 print:bg-gray-50 p-4 rounded-lg border border-zinc-200 dark:border-zinc-700 print:border-gray-300">
                 <div class="space-y-1">
-                    <div><span class="text-zinc-500">{{ __('Employee Name:') }}</span> <strong class="text-zinc-900 dark:text-white">{{ $selectedItem->staff?->first_name }} {{ $selectedItem->staff?->last_name }}</strong></div>
-                    <div><span class="text-zinc-500">{{ __('Staff ID:') }}</span> <strong class="font-mono">{{ $selectedItem->staff?->staff_number }}</strong></div>
-                    <div><span class="text-zinc-500">{{ __('Category:') }}</span> <strong>{{ $selectedItem->category?->name ?? __('Standard') }}</strong></div>
-                    <div><span class="text-zinc-500">{{ __('Department:') }}</span> <strong>{{ $selectedItem->department?->name ?? '—' }}</strong></div>
+                    <div><span class="text-zinc-500 print:text-gray-600">{{ __('Employee Name:') }}</span> <strong class="text-zinc-900 dark:text-white print:text-black">{{ $selectedItem->staff?->first_name }} {{ $selectedItem->staff?->last_name }}</strong></div>
+                    <div><span class="text-zinc-500 print:text-gray-600">{{ __('Staff ID:') }}</span> <strong class="font-mono print:text-black">{{ $selectedItem->staff?->staff_number }}</strong></div>
+                    <div><span class="text-zinc-500 print:text-gray-600">{{ __('Category:') }}</span> <strong class="print:text-black">{{ $selectedItem->category?->name ?? __('Standard') }}</strong></div>
+                    <div><span class="text-zinc-500 print:text-gray-600">{{ __('Department:') }}</span> <strong class="print:text-black">{{ $selectedItem->department?->name ?? '—' }}</strong></div>
                 </div>
                 <div class="space-y-1">
-                    <div><span class="text-zinc-500">{{ __('Pay Basis:') }}</span> <strong>{{ $selectedItem->pay_type === 'fixed' ? __('Fixed Monthly Salary') : __('Contact / Credit Unit') }}</strong></div>
+                    <div><span class="text-zinc-500 print:text-gray-600">{{ __('Pay Basis:') }}</span> <strong class="print:text-black">{{ $selectedItem->pay_type === 'fixed' ? __('Fixed Monthly Salary') : __('Contact / Credit Unit') }}</strong></div>
                     @if($selectedItem->pay_type !== 'fixed')
-                        <div><span class="text-zinc-500">{{ __('Contacts / Units:') }}</span> <strong>{{ $selectedItem->contacts_count }} contacts &bull; {{ (float) $selectedItem->credit_units_total }} units</strong></div>
+                        <div><span class="text-zinc-500 print:text-gray-600">{{ __('Contacts / Units:') }}</span> <strong class="print:text-black">{{ $selectedItem->contacts_count }} contacts &bull; {{ (float) $selectedItem->credit_units_total }} units</strong></div>
                     @endif
-                    <div><span class="text-zinc-500">{{ __('Bank:') }}</span> <strong>{{ $selectedItem->bank_name ?: '—' }}</strong></div>
-                    <div><span class="text-zinc-500">{{ __('Account No:') }}</span> <strong class="font-mono">{{ $selectedItem->account_number ?: '—' }}</strong></div>
+                    <div><span class="text-zinc-500 print:text-gray-600">{{ __('Bank:') }}</span> <strong class="print:text-black">{{ $selectedItem->bank_name ?: '—' }}</strong></div>
+                    <div><span class="text-zinc-500 print:text-gray-600">{{ __('Account No:') }}</span> <strong class="font-mono print:text-black">{{ $selectedItem->account_number ?: '—' }}</strong></div>
                 </div>
             </div>
 

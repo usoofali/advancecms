@@ -147,7 +147,7 @@ new #[Layout('layouts.app')] #[Title('Staff Pay Setup')] class extends Component
         );
 
         $this->showProfileModal = false;
-        $this->dispatch('notify', title: __('Staff pay profile saved.'));
+        $this->dispatch('notify', ['type' => 'success', 'message' => __('Staff pay profile saved.')]);
     }
 
     public function with(): array
@@ -216,79 +216,81 @@ new #[Layout('layouts.app')] #[Title('Staff Pay Setup')] class extends Component
     </div>
 
     {{-- Desktop Table --}}
-    <div class="hidden md:block overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-xs">
-        <table class="w-full text-left border-collapse">
-            <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                <tr>
-                    <th class="px-4 py-3">{{ __('Staff Member') }}</th>
-                    <th class="px-4 py-3">{{ __('Category / Dept') }}</th>
-                    <th class="px-4 py-3">{{ __('Pay Method') }}</th>
-                    <th class="px-4 py-3 text-right">{{ __('Salary / Rate') }}</th>
-                    <th class="px-4 py-3">{{ __('Bank Details') }}</th>
-                    <th class="px-4 py-3 text-right">{{ __('Action') }}</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
-                @forelse($staffList as $staff)
-                    @php
-                        $profile = $staff->payrollProfile;
-                        $effType = $profile ? $profile->effectivePayType($defaultCategory) : ($defaultCategory?->pay_type ?? 'fixed');
-                        $effRate = $profile ? $profile->effectiveRate($defaultCategory) : (float) ($defaultCategory?->default_rate ?? $staff->attendance_allowance ?? 0);
-                        $isCustom = $profile?->hasCustomOverride() ?? false;
-                        $bankName = $staff->bank_name;
-                        $acctNo = $staff->account_number;
-                    @endphp
-                    <tr wire:key="pay-staff-{{ $staff->id }}" class="hover:bg-zinc-50/60 dark:hover:bg-zinc-900/20">
-                        <td class="px-4 py-3.5">
-                            <div class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $staff->first_name }} {{ $staff->last_name }}</div>
-                            <div class="text-xs font-mono text-zinc-500">{{ $staff->staff_number }} &bull; {{ $staff->role?->role_name ?? __('Staff') }}</div>
-                        </td>
-                        <td class="px-4 py-3.5 text-xs">
-                            <div class="font-medium text-zinc-800 dark:text-zinc-200">
-                                {{ $profile?->category?->name ?? ($defaultCategory?->name ? $defaultCategory->name.' (Default)' : '—') }}
-                            </div>
-                            @if($profile?->department)
-                                <div class="text-zinc-500">{{ $profile->department->name }}</div>
-                            @endif
-                        </td>
-                        <td class="px-4 py-3.5">
-                            <div class="flex items-center gap-1.5 flex-wrap">
-                                <flux:badge size="sm" :color="$effType === 'fixed' ? 'emerald' : 'amber'">
-                                    {{ $effType === 'fixed' ? __('Fixed Salary') : __('Per Contact / Unit') }}
-                                </flux:badge>
-                                @if($isCustom)
-                                    <flux:badge size="sm" color="indigo">{{ __('Custom') }}</flux:badge>
-                                @endif
-                            </div>
-                        </td>
-                        <td class="px-4 py-3.5 text-right font-mono text-xs font-bold">
-                            @if($effType === 'fixed')
-                                ₦{{ number_format((float) ($profile?->base_salary ?? 0), 2) }} <span class="font-normal text-zinc-400">/mo</span>
-                            @else
-                                ₦{{ number_format($effRate, 2) }} <span class="font-normal text-zinc-400">/rate</span>
-                            @endif
-                        </td>
-                        <td class="px-4 py-3.5 text-xs text-zinc-600 dark:text-zinc-400">
-                            @if($acctNo)
-                                <div>{{ $bankName }}</div>
-                                <div class="font-mono">{{ $acctNo }}</div>
-                            @else
-                                <span class="text-zinc-400 italic">{{ __('Not set') }}</span>
-                            @endif
-                        </td>
-                        <td class="px-4 py-3.5 text-right">
-                            <flux:button size="xs" variant="ghost" icon="pencil-square" wire:click="openEditProfileModal({{ $staff->id }})">
-                                {{ __('Configure') }}
-                            </flux:button>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="6" class="px-4 py-10 text-center text-zinc-500">{{ __('No active staff found.') }}</td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
+    <div class="hidden md:block">
+        <flux:card>
+            <div class="relative overflow-x-auto">
+                <flux:table :paginate="$staffList">
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Staff Member') }}</flux:table.column>
+                        <flux:table.column>{{ __('Category / Dept') }}</flux:table.column>
+                        <flux:table.column>{{ __('Pay Method') }}</flux:table.column>
+                        <flux:table.column class="text-right">{{ __('Salary / Rate') }}</flux:table.column>
+                        <flux:table.column>{{ __('Bank Details') }}</flux:table.column>
+                        <flux:table.column class="text-right">{{ __('Action') }}</flux:table.column>
+                    </flux:table.columns>
+                    <flux:table.rows>
+                        @forelse($staffList as $staff)
+                            @php
+                                $profile = $staff->payrollProfile;
+                                $effType = $profile ? $profile->effectivePayType($defaultCategory) : ($defaultCategory?->pay_type ?? 'fixed');
+                                $effRate = $profile ? $profile->effectiveRate($defaultCategory) : (float) ($defaultCategory?->default_rate ?? $staff->attendance_allowance ?? 0);
+                                $isCustom = $profile?->hasCustomOverride() ?? false;
+                                $bankName = $staff->bank_name;
+                                $acctNo = $staff->account_number;
+                            @endphp
+                            <flux:table.row :key="$staff->id">
+                                <flux:table.cell>
+                                    <div class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $staff->first_name }} {{ $staff->last_name }}</div>
+                                    <div class="text-xs font-mono text-zinc-500">{{ $staff->staff_number }} &bull; {{ $staff->role?->role_name ?? __('Staff') }}</div>
+                                </flux:table.cell>
+                                <flux:table.cell class="text-xs">
+                                    <div class="font-medium text-zinc-800 dark:text-zinc-200">
+                                        {{ $profile?->category?->name ?? ($defaultCategory?->name ? $defaultCategory->name.' (Default)' : '—') }}
+                                    </div>
+                                    @if($profile?->department)
+                                        <div class="text-zinc-500">{{ $profile->department->name }}</div>
+                                    @endif
+                                </flux:table.cell>
+                                <flux:table.cell>
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <flux:badge size="sm" :color="$effType === 'fixed' ? 'emerald' : 'amber'">
+                                            {{ $effType === 'fixed' ? __('Fixed Salary') : __('Per Contact / Unit') }}
+                                        </flux:badge>
+                                        @if($isCustom)
+                                            <flux:badge size="sm" color="indigo">{{ __('Custom') }}</flux:badge>
+                                        @endif
+                                    </div>
+                                </flux:table.cell>
+                                <flux:table.cell class="text-right font-mono text-xs font-bold">
+                                    @if($effType === 'fixed')
+                                        ₦{{ number_format((float) ($profile?->base_salary ?? 0), 2) }} <span class="font-normal text-zinc-400">/mo</span>
+                                    @else
+                                        ₦{{ number_format($effRate, 2) }} <span class="font-normal text-zinc-400">/rate</span>
+                                    @endif
+                                </flux:table.cell>
+                                <flux:table.cell class="text-xs text-zinc-600 dark:text-zinc-400">
+                                    @if($acctNo)
+                                        <div>{{ $bankName }}</div>
+                                        <div class="font-mono">{{ $acctNo }}</div>
+                                    @else
+                                        <span class="text-zinc-400 italic">{{ __('Not set') }}</span>
+                                    @endif
+                                </flux:table.cell>
+                                <flux:table.cell class="text-right">
+                                    <flux:button size="xs" variant="ghost" icon="pencil-square" wire:click="openEditProfileModal({{ $staff->id }})">
+                                        {{ __('Configure') }}
+                                    </flux:button>
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @empty
+                            <flux:table.row>
+                                <flux:table.cell colspan="6" class="py-10 text-center text-zinc-500">{{ __('No active staff found.') }}</flux:table.cell>
+                            </flux:table.row>
+                        @endforelse
+                    </flux:table.rows>
+                </flux:table>
+            </div>
+        </flux:card>
     </div>
 
     {{-- Mobile Cards --}}
@@ -325,7 +327,7 @@ new #[Layout('layouts.app')] #[Title('Staff Pay Setup')] class extends Component
         @endforelse
     </div>
 
-    <div>{{ $staffList->links() }}</div>
+    <div class="md:hidden">{{ $staffList->links() }}</div>
 
     {{-- Staff Profile Modal --}}
     <flux:modal wire:model.self="showProfileModal" class="max-w-lg w-full">

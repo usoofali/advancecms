@@ -3,10 +3,15 @@
 use App\Models\AcademicSession;
 use App\Models\Course;
 use App\Models\CourseRegistration;
+use App\Models\Department;
+use App\Models\Program;
+use App\Models\RegistrationStatus;
 use App\Models\Semester;
 use App\Models\Student;
+use App\Services\ActivityLogger;
+use App\Services\BatchCourseRegistrationService;
 use App\Services\GradingService;
-use App\Models\RegistrationStatus;
+use Illuminate\Support\Collection;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -19,6 +24,27 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
     public $courses_to_drop = [];
     public int|string $institution_id = '';
     public ?int $department_id = null;
+
+    // Batch Registration Modal & Chunked Progress State
+    public bool $showBatchModal = false;
+    public int|string $batch_session_id = '';
+    public int|string $batch_semester_id = '';
+    public int|string $batch_department_id = '';
+    public int|string $batch_program_id = '';
+    public string $batch_level = '';
+    public string $batch_student_search = '';
+    public array $batch_selected_student_ids = [];
+    public bool $batch_select_all = true;
+    public bool $batch_include_level = true;
+    public bool $batch_include_carryovers = true;
+    public bool $batchRunning = false;
+    public bool $batchCompleted = false;
+    public array $batchQueueIds = [];
+    public int $batchTotalStudents = 0;
+    public int $batchProcessedCount = 0;
+    public int $batchLevelCreated = 0;
+    public int $batchCarryoverCreated = 0;
+    public int $batchSkipped = 0;
 
     public function mount(): void
     {
@@ -212,6 +238,206 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
         }
     }
 
+    public function openBatchModal(): void
+    {
+        Gate::authorize('registrations.create');
+
+        if (! $this->institution_id || $this->institution_id === 'null') {
+            $this->institution_id = auth()->user()->institution_id
+                ?: (\App\Models\Institution::query()->where('status', 'active')->orderBy('name')->value('id') ?? '');
+        }
+
+        $activeSession = AcademicSession::where('status', 'active')->first()
+            ?? AcademicSession::latest('id')->first();
+
+        $this->batch_session_id = $activeSession?->id ?? '';
+        $this->batch_semester_id = $this->batch_session_id
+            ? (Semester::where('academic_session_id', $this->batch_session_id)->value('id') ?? '')
+            : '';
+        $this->batch_department_id = $this->department_id ?? '';
+        $this->batch_program_id = '';
+        $this->batch_level = '';
+        $this->batch_student_search = '';
+        $this->batch_select_all = true;
+        $this->batch_include_level = true;
+        $this->batch_include_carryovers = true;
+        $this->batchRunning = false;
+        $this->batchCompleted = false;
+        $this->batchQueueIds = [];
+        $this->batchTotalStudents = 0;
+        $this->batchProcessedCount = 0;
+        $this->batchLevelCreated = 0;
+        $this->batchCarryoverCreated = 0;
+        $this->batchSkipped = 0;
+
+        $this->syncBatchSelection();
+        $this->showBatchModal = true;
+    }
+
+    public function updatedInstitutionId(): void
+    {
+        $this->batch_department_id = $this->department_id ?? '';
+        $this->batch_program_id = '';
+        if ($this->showBatchModal) {
+            $this->syncBatchSelection();
+        }
+    }
+
+    public function updatedBatchSessionId(): void
+    {
+        $this->batch_semester_id = $this->batch_session_id
+            ? (Semester::where('academic_session_id', $this->batch_session_id)->value('id') ?? '')
+            : '';
+        $this->syncBatchSelection();
+    }
+
+    public function updatedBatchDepartmentId(): void
+    {
+        $this->batch_program_id = '';
+        $this->syncBatchSelection();
+    }
+
+    public function updatedBatchProgramId(): void
+    {
+        $this->syncBatchSelection();
+    }
+
+    public function updatedBatchLevel(): void
+    {
+        $this->syncBatchSelection();
+    }
+
+    public function updatedBatchSelectAll(bool $value): void
+    {
+        if ($value) {
+            $this->batch_selected_student_ids = $this->getBatchMatchingStudents()
+                ->pluck('id')
+                ->map(fn ($id) => (string) $id)
+                ->toArray();
+        } else {
+            $this->batch_selected_student_ids = [];
+        }
+    }
+
+    protected function syncBatchSelection(): void
+    {
+        $students = $this->getBatchMatchingStudents();
+        if ($this->batch_select_all) {
+            $this->batch_selected_student_ids = $students
+                ->pluck('id')
+                ->map(fn ($id) => (string) $id)
+                ->toArray();
+        } else {
+            $this->batch_selected_student_ids = [];
+        }
+    }
+
+    protected function getBatchMatchingStudents(): Collection
+    {
+        $instId = $this->institution_id && $this->institution_id !== 'null' ? (int) $this->institution_id : null;
+        if (! $instId || ! $this->batch_session_id) {
+            return collect();
+        }
+
+        $session = AcademicSession::find($this->batch_session_id);
+        if (! $session) {
+            return collect();
+        }
+
+        $deptId = $this->department_id ?: ($this->batch_department_id ?: null);
+
+        return Student::query()
+            ->with('program.department')
+            ->where('institution_id', $instId)
+            ->where('status', 'active')
+            ->when($deptId, fn ($q) => $q->whereHas('program', fn ($pq) => $pq->where('department_id', $deptId)))
+            ->when($this->batch_program_id, fn ($q) => $q->where('program_id', $this->batch_program_id))
+            ->when($this->batch_level, fn ($q) => $q->atLevel($this->batch_level, $session))
+            ->orderBy('last_name')
+            ->get();
+    }
+
+    public function startBatchRegistration(BatchCourseRegistrationService $service): void
+    {
+        Gate::authorize('registrations.create');
+
+        $this->validate([
+            'batch_session_id' => ['required', 'exists:academic_sessions,id'],
+            'batch_semester_id' => ['required', 'exists:semesters,id'],
+            'batch_selected_student_ids' => ['required', 'array', 'min:1'],
+        ], [
+            'batch_selected_student_ids.required' => __('Please select at least one student.'),
+            'batch_selected_student_ids.min' => __('Please select at least one student.'),
+        ]);
+
+        if (! $this->batch_include_level && ! $this->batch_include_carryovers) {
+            $this->addError('batch_include_level', __('Select at least one registration option (level courses or carryovers).'));
+
+            return;
+        }
+
+        $this->batchQueueIds = array_values(array_map('intval', $this->batch_selected_student_ids));
+        $this->batchTotalStudents = count($this->batchQueueIds);
+        $this->batchProcessedCount = 0;
+        $this->batchLevelCreated = 0;
+        $this->batchCarryoverCreated = 0;
+        $this->batchSkipped = 0;
+        $this->batchRunning = true;
+        $this->batchCompleted = false;
+
+        $this->processBatchChunk($service);
+    }
+
+    public function processBatchChunk(BatchCourseRegistrationService $service): void
+    {
+        if (! $this->batchRunning || empty($this->batchQueueIds)) {
+            $this->batchRunning = false;
+
+            return;
+        }
+
+        $instId = $this->institution_id && $this->institution_id !== 'null'
+            ? (int) $this->institution_id
+            : (int) auth()->user()->institution_id;
+
+        $chunk = array_splice($this->batchQueueIds, 0, 15);
+        $result = $service->registerChunk(
+            $chunk,
+            $instId,
+            (int) $this->batch_session_id,
+            (int) $this->batch_semester_id,
+            $this->batch_include_level,
+            $this->batch_include_carryovers
+        );
+
+        $this->batchProcessedCount += $result['students_processed'];
+        $this->batchLevelCreated += $result['level_created'];
+        $this->batchCarryoverCreated += $result['carryover_created'];
+        $this->batchSkipped += $result['skipped'];
+
+        if (empty($this->batchQueueIds)) {
+            $this->batchRunning = false;
+            $this->batchCompleted = true;
+
+            ActivityLogger::log(
+                action: 'batch_registered',
+                module: 'CourseRegistration',
+                description: "Batch registered {$this->batchTotalStudents} student(s): {$this->batchLevelCreated} level courses, {$this->batchCarryoverCreated} carryovers, {$this->batchSkipped} skipped.",
+                institutionId: $instId
+            );
+
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'message' => __('Batch complete: :level level & :carry carryover course(s) registered.', [
+                    'level' => $this->batchLevelCreated,
+                    'carry' => $this->batchCarryoverCreated,
+                ]),
+            ]);
+        } else {
+            $this->dispatch('batch-reg-next-chunk');
+        }
+    }
+
     public function render(): \Illuminate\View\View
     {
         $student = $this->student_id ? Student::with('program')->find($this->student_id) : null;
@@ -294,6 +520,16 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
                 ->get(),
             'sessions'          => AcademicSession::query()->orderByDesc('name')->get(),
             'semesters'         => $this->session_id ? Semester::where('academic_session_id', $this->session_id)->get() : [],
+            'batchSemesters'    => $this->batch_session_id ? Semester::where('academic_session_id', $this->batch_session_id)->get() : collect(),
+            'batchDepartments'  => Department::query()
+                                    ->when($this->institution_id && $this->institution_id !== 'null', fn ($q) => $q->where('institution_id', $this->institution_id))
+                                    ->when($this->department_id, fn ($q) => $q->where('id', $this->department_id))
+                                    ->orderBy('name')->get(),
+            'batchPrograms'     => Program::query()
+                                    ->when($this->institution_id && $this->institution_id !== 'null', fn ($q) => $q->where('institution_id', $this->institution_id))
+                                    ->when($this->department_id ?: $this->batch_department_id, fn ($q, $d) => $q->where('department_id', $d))
+                                    ->orderBy('name')->get(),
+            'batchStudents'     => $this->showBatchModal ? $this->getBatchMatchingStudents() : collect(),
             'carryoverCourses'  => $carryoverCourses,
             'availableCourses'  => $availableCourses,
             'registeredCourses' => $registeredCourses,
@@ -311,14 +547,21 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
 
 
 <div class="mx-auto max-w-4xl">
-    <div class="mb-8 items-center justify-between flex">
+    <div class="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
         <div>
             <flux:heading size="xl">{{ __('Course Registration') }}</flux:heading>
             <flux:subheading>{{ __('Enroll students into courses for a semester') }}</flux:subheading>
         </div>
-        <x-action-message on="registration-success">
-            <flux:badge color="green">{{ __('Registration successful!') }}</flux:badge>
-        </x-action-message>
+        <div class="flex flex-wrap items-center gap-2">
+            <x-action-message on="registration-success">
+                <flux:badge color="green">{{ __('Registration successful!') }}</flux:badge>
+            </x-action-message>
+            @can('registrations.create')
+                <flux:button variant="primary" icon="user-group" wire:click="openBatchModal" class="w-full sm:w-auto">
+                    {{ __('Batch Register') }}
+                </flux:button>
+            @endcan
+        </div>
     </div>
 
     <flux:card class="space-y-8">
@@ -485,4 +728,222 @@ new #[Layout('layouts.app')] #[Title('Course Registration')] class extends Compo
         </div>
         @endif
     </flux:card>
+
+    {{-- Batch Course Registration Modal --}}
+    <flux:modal
+        wire:model.self="showBatchModal"
+        class="w-full max-w-3xl"
+        x-data
+        x-on:batch-reg-next-chunk.window="$wire.processBatchChunk()"
+    >
+        <div class="space-y-5">
+            <div>
+                <flux:heading size="lg">{{ __('Batch Course Registration') }}</flux:heading>
+                <flux:subheading>
+                    {{ __('Register level courses and failed carryover courses for a department, program, or selected students.') }}
+                </flux:subheading>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                @if (!auth()->user()->institution_id)
+                    <div class="sm:col-span-2">
+                        <flux:select wire:model.live="institution_id" :label="__('Institution')" :disabled="$batchRunning">
+                            <flux:select.option value="">{{ __('All Institutions') }}</flux:select.option>
+                            @foreach ($institutions as $inst)
+                                <flux:select.option :value="$inst->id">{{ $inst->name }}</flux:select.option>
+                            @endforeach
+                        </flux:select>
+                    </div>
+                @endif
+
+                <flux:select wire:model.live="batch_session_id" :label="__('Academic Session')" :disabled="$batchRunning">
+                    <flux:select.option value="">{{ __('Select session...') }}</flux:select.option>
+                    @foreach ($sessions as $s)
+                        <flux:select.option :value="$s->id">{{ $s->name }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+
+                <flux:select wire:model.live="batch_semester_id" :label="__('Semester')" :disabled="!$batch_session_id || $batchRunning">
+                    <flux:select.option value="">{{ __('Select semester...') }}</flux:select.option>
+                    @foreach ($batchSemesters as $sem)
+                        <flux:select.option :value="$sem->id">{{ ucfirst($sem->name) }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+
+                @if (!$this->department_id)
+                    <flux:select wire:model.live="batch_department_id" :label="__('Department')" :disabled="$batchRunning">
+                        <flux:select.option value="">{{ __('All Departments') }}</flux:select.option>
+                        @foreach ($batchDepartments as $dept)
+                            <flux:select.option :value="$dept->id">{{ $dept->name }}</flux:select.option>
+                        @endforeach
+                    </flux:select>
+                @endif
+
+                <flux:select wire:model.live="batch_program_id" :label="__('Program')" :disabled="$batchRunning">
+                    <flux:select.option value="">{{ __('All Programs') }}</flux:select.option>
+                    @foreach ($batchPrograms as $prog)
+                        <flux:select.option :value="$prog->id">{{ $prog->acronym ?: $prog->name }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+
+                <flux:select wire:model.live="batch_level" :label="__('Class Level')" :disabled="$batchRunning">
+                    <flux:select.option value="">{{ __('All Levels (Auto-detect per student)') }}</flux:select.option>
+                    @foreach ([100, 200, 300, 400, 500] as $lvl)
+                        <flux:select.option value="{{ $lvl }}">{{ $lvl }}L</flux:select.option>
+                    @endforeach
+                </flux:select>
+            </div>
+
+            {{-- Registration Options --}}
+            <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                <label class="flex cursor-pointer items-start gap-2.5 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
+                    <flux:checkbox wire:model="batch_include_level" :disabled="$batchRunning" class="mt-0.5" />
+                    <div class="text-xs">
+                        <div class="font-semibold text-zinc-900 dark:text-zinc-100">{{ __('Register Current-Level Courses') }}</div>
+                        <div class="text-zinc-500 dark:text-zinc-400">{{ __('100L gets 100L courses, 200L gets 200L, etc.') }}</div>
+                    </div>
+                </label>
+
+                <label class="flex cursor-pointer items-start gap-2.5 rounded-xl border border-zinc-200 p-3 dark:border-zinc-700">
+                    <flux:checkbox wire:model="batch_include_carryovers" :disabled="$batchRunning" class="mt-0.5" />
+                    <div class="text-xs">
+                        <div class="font-semibold text-zinc-900 dark:text-zinc-100">{{ __('Include Failed Carryovers') }}</div>
+                        <div class="text-zinc-500 dark:text-zinc-400">{{ __('Evaluated using each department\'s grading system') }}</div>
+                    </div>
+                </label>
+            </div>
+            <flux:error name="batch_include_level" />
+
+            {{-- Student Selection --}}
+            <div class="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50/60 p-3.5 dark:border-zinc-700 dark:bg-zinc-900/40">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-semibold text-zinc-900 dark:text-white">{{ __('Select Students') }}</span>
+                        <flux:badge size="sm" color="indigo">
+                            {{ count($batch_selected_student_ids) }} / {{ $batchStudents->count() }}
+                        </flux:badge>
+                    </div>
+                    @if ($batchStudents->isNotEmpty())
+                        <flux:checkbox wire:model.live="batch_select_all" :label="__('Select all')" :disabled="$batchRunning" />
+                    @endif
+                </div>
+
+                @if ($batchStudents->isNotEmpty())
+                    <flux:input
+                        wire:model.live.debounce.200ms="batch_student_search"
+                        icon="magnifying-glass"
+                        size="sm"
+                        :placeholder="__('Filter by name or matric number...')"
+                        :disabled="$batchRunning"
+                    />
+
+                    @php
+                        $batchSessionObj = $batch_session_id ? $sessions->firstWhere('id', (int) $batch_session_id) : null;
+                        $filteredBatchStudents = $batchStudents->filter(function ($s) {
+                            if (trim($this->batch_student_search) === '') {
+                                return true;
+                            }
+                            $term = strtolower(trim($this->batch_student_search));
+
+                            return str_contains(strtolower($s->full_name), $term)
+                                || str_contains(strtolower((string) $s->matric_number), $term);
+                        });
+                    @endphp
+
+                    <div class="max-h-48 overflow-y-auto custom-scrollbar divide-y divide-zinc-200/70 rounded-lg border border-zinc-200 bg-white dark:divide-zinc-700/70 dark:border-zinc-700 dark:bg-zinc-900">
+                        @forelse ($filteredBatchStudents as $stu)
+                            <label class="flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800/60">
+                                <div class="flex min-w-0 items-center gap-2.5">
+                                    <input
+                                        type="checkbox"
+                                        wire:model.live="batch_selected_student_ids"
+                                        value="{{ $stu->id }}"
+                                        @disabled($batchRunning)
+                                        class="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500 dark:border-zinc-600 dark:bg-zinc-800"
+                                    />
+                                    <div class="min-w-0">
+                                        <div class="truncate text-xs font-semibold text-zinc-900 dark:text-zinc-100 sm:text-sm">{{ $stu->full_name }}</div>
+                                        <div class="font-mono text-[11px] text-zinc-500">{{ $stu->matric_number }}</div>
+                                    </div>
+                                </div>
+                                <div class="flex shrink-0 items-center gap-1.5">
+                                    @if ($stu->program?->acronym)
+                                        <flux:badge size="xs" color="zinc">{{ $stu->program->acronym }}</flux:badge>
+                                    @endif
+                                    @if ($batchSessionObj)
+                                        <flux:badge size="xs" color="sky">{{ $stu->currentLevel($batchSessionObj) }}L</flux:badge>
+                                    @endif
+                                </div>
+                            </label>
+                        @empty
+                            <div class="px-3 py-4 text-center text-xs text-zinc-500">
+                                {{ __('No students match ":search".', ['search' => $batch_student_search]) }}
+                            </div>
+                        @endforelse
+                    </div>
+                @else
+                    <p class="py-2 text-xs text-zinc-500 dark:text-zinc-400">
+                        {{ __('No active students found for the selected filters.') }}
+                    </p>
+                @endif
+                <flux:error name="batch_selected_student_ids" />
+            </div>
+
+            {{-- Live Progress Indicator & Metrics --}}
+            @if ($batchRunning || $batchCompleted)
+                @php
+                    $pct = $batchTotalStudents > 0 ? min(100, round(($batchProcessedCount / $batchTotalStudents) * 100)) : 0;
+                @endphp
+                <div class="space-y-3 rounded-xl border border-indigo-200 bg-indigo-50/50 p-4 dark:border-indigo-800/60 dark:bg-indigo-950/20">
+                    <div class="flex items-center justify-between text-xs font-semibold">
+                        <span class="text-indigo-900 dark:text-indigo-200">
+                            {{ $batchRunning ? __('Registering courses...') : __('Batch Registration Complete') }}
+                        </span>
+                        <span class="text-indigo-700 dark:text-indigo-300">
+                            {{ $batchProcessedCount }} / {{ $batchTotalStudents }} ({{ $pct }}%)
+                        </span>
+                    </div>
+
+                    <div class="h-2.5 w-full overflow-hidden rounded-full bg-indigo-100 dark:bg-indigo-950">
+                        <div class="h-full rounded-full bg-indigo-600 transition-all duration-300" style="width: {{ $pct }}%"></div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                        <div class="rounded-lg bg-white p-2.5 text-center shadow-2xs dark:bg-zinc-900">
+                            <div class="text-lg font-bold text-zinc-900 dark:text-white">{{ $batchProcessedCount }}</div>
+                            <div class="text-[11px] text-zinc-500">{{ __('Students') }}</div>
+                        </div>
+                        <div class="rounded-lg bg-white p-2.5 text-center shadow-2xs dark:bg-zinc-900">
+                            <div class="text-lg font-bold text-emerald-600 dark:text-emerald-400">{{ $batchLevelCreated }}</div>
+                            <div class="text-[11px] text-zinc-500">{{ __('Level Courses') }}</div>
+                        </div>
+                        <div class="rounded-lg bg-white p-2.5 text-center shadow-2xs dark:bg-zinc-900">
+                            <div class="text-lg font-bold text-amber-600 dark:text-amber-400">{{ $batchCarryoverCreated }}</div>
+                            <div class="text-[11px] text-zinc-500">{{ __('Carryovers') }}</div>
+                        </div>
+                        <div class="rounded-lg bg-white p-2.5 text-center shadow-2xs dark:bg-zinc-900">
+                            <div class="text-lg font-bold text-zinc-500">{{ $batchSkipped }}</div>
+                            <div class="text-[11px] text-zinc-500">{{ __('Skipped') }}</div>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            <div class="flex flex-col-reverse gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-700 sm:flex-row sm:justify-end">
+                <flux:modal.close>
+                    <flux:button variant="ghost" class="w-full sm:w-auto" :disabled="$batchRunning">{{ __('Close') }}</flux:button>
+                </flux:modal.close>
+                <flux:button
+                    variant="primary"
+                    icon="check"
+                    wire:click="startBatchRegistration"
+                    wire:loading.attr="disabled"
+                    :disabled="$batchRunning || empty($batch_selected_student_ids)"
+                    class="w-full sm:w-auto"
+                >
+                    {{ $batchRunning ? __('Processing...') : __('Register Selected Students') }}
+                </flux:button>
+            </div>
+        </div>
+    </flux:modal>
 </div>

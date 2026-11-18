@@ -68,125 +68,131 @@
             @endif
         </div>
 
-        <div class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
-            <table class="w-full text-left border-collapse">
-                <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700">
-                    <tr>
-                        <th class="px-4 py-3 w-10">
-                            {{-- We handle select all manually for now as flux checkbox inside row might conflict --}}
-                        </th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('ID / Name') }}</th>
+        <flux:card>
+            <div class="relative overflow-x-auto">
+                <flux:table :paginate="$results">
+                    <flux:table.columns>
+                        <flux:table.column class="w-10"></flux:table.column>
+                        <flux:table.column>{{ __('ID / Name') }}</flux:table.column>
                         @if($view_mode === 'requests')
-                            <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Reason') }}</th>
-                            <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Invoice Status') }}</th>
+                            <flux:table.column>{{ __('Reason') }}</flux:table.column>
+                            <flux:table.column>{{ __('Invoice Status') }}</flux:table.column>
                         @else
-                            <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ $type === 'student' ? __('Program') : __('Designation') }}</th>
+                            <flux:table.column>{{ $type === 'student' ? __('Program') : __('Designation') }}</flux:table.column>
                         @endif
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Photo Status') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-right">{{ __('Actions') }}</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                    @forelse($results as $item)
-                        @php
-                            // Determine user and profile based on view mode
-                            if ($view_mode === 'requests') {
-                                $user = $item->user;
-                                $profile = $type === 'student' ? $user?->student : $user?->staff;
-                            } else {
-                                $profile = $item;
-                                $user = $item?->user;
-                            }
-                            
-                            $displayName = $user?->name ?? ($profile ? trim(($profile->first_name ?? '').' '.($profile->last_name ?? '')) : 'Unknown');
-                            if (empty(trim($displayName))) {
-                                $displayName = 'Unknown';
-                            }
-                            $displayId = $type === 'student' ? ($profile?->matric_number ?? 'N/A') : ($profile?->staff_number ?? 'N/A');
-                        @endphp
-                        <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors">
-                            <td class="px-4 py-4">
-                                <flux:checkbox wire:model="selected_ids" value="{{ $item->id }}" />
-                            </td>
-                            <td class="px-4 py-4">
-                                <div class="flex flex-col">
-                                    <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ $displayName }}</span>
-                                    <span class="text-xs text-zinc-500 dark:text-zinc-400 font-mono mt-0.5">{{ $displayId }}</span>
-                                </div>
-                            </td>
-                            @if($view_mode === 'requests')
-                                <td class="px-4 py-4">
-                                    <flux:badge size="sm" color="zinc" variant="neutral">{{ ucfirst(str_replace('_', ' ', $item->reason)) }}</flux:badge>
-                                </td>
-                                <td class="px-4 py-4">
-                                    @if($item->studentInvoice)
-                                        <div class="flex items-center gap-1 text-green-600 font-bold text-xs">
-                                            <flux:icon.check-circle class="size-3" />
-                                            <span>Paid</span>
-                                        </div>
-                                    @else
-                                        @if($item->reason !== 'first_issue' && $type === 'student')
-                                            <span class="text-[10px] text-red-500 font-bold uppercase tracking-widest">No Invoice</span>
-                                        @else
-                                            <span class="text-[10px] text-zinc-400 uppercase tracking-widest italic">Free</span>
-                                        @endif
-                                    @endif
-                                </td>
-                            @else
-                                <td class="px-4 py-4">
-                                    <span class="text-xs text-zinc-600 dark:text-zinc-400">
-                                        {{ $type === 'student' ? ($profile?->program?->name ?? 'N/A') : ($profile?->designation ?? 'N/A') }}
-                                    </span>
-                                </td>
-                            @endif
-                            <td class="px-4 py-4">
-                                <div class="flex items-center gap-3">
-                                    <div class="size-10 rounded-lg overflow-hidden border-2 border-zinc-100 dark:border-zinc-800 shadow-sm bg-zinc-200 dark:bg-zinc-900">
-                                        @if($profile?->photo_path)
-                                            <img src="{{ asset('storage/'.$profile->photo_path) }}" class="w-full h-full object-cover">
-                                        @else
-                                            <div class="w-full h-full flex items-center justify-center text-zinc-400">
-                                                <flux:icon.camera class="size-4" />
-                                            </div>
-                                        @endif
-                                    </div>
-                                    @if(!$profile?->photo_path)
-                                        <flux:badge size="sm" color="red" variant="neutral">{{ __('Missing') }}</flux:badge>
-                                    @else
-                                        <flux:badge size="sm" color="green" variant="neutral">{{ __('Ready') }}</flux:badge>
-                                    @endif
-                                </div>
-                            </td>
-                            <td class="px-4 py-4 text-right">
-                                <div class="flex items-center justify-end gap-2">
-                                    @if($view_mode === 'requests' && $item->status === 'pending')
-                                        <flux:button variant="ghost" size="xs" color="green" icon="check" wire:click="approveRequest({{ $item->id }})" title="{{ __('Approve Request') }}" />
-                                        <flux:button variant="ghost" size="xs" color="red" icon="x-mark" wire:click="rejectRequest({{ $item->id }})" title="{{ __('Reject Request') }}" />
-                                    @endif
-                                    
-                                    <flux:button :disabled="!$profile?->photo_path" icon="printer" variant="ghost" size="xs" wire:click="$set('selected_ids', [{{ $item->id }}]); bulkGenerate()" />
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="6" class="py-16 text-center text-zinc-500">
-                                <div class="flex flex-col items-center">
-                                    <div class="p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-full mb-4">
-                                        <flux:icon.identification class="size-12 opacity-20" />
-                                    </div>
-                                    <p class="font-medium">{{ __('No ID card records found.') }}</p>
-                                    <p class="text-xs text-zinc-400 mt-1">{{ __('Try adjusting your filters or search terms.') }}</p>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+                        <flux:table.column>{{ __('Photo Status') }}</flux:table.column>
+                        <flux:table.column class="text-right">{{ __('Actions') }}</flux:table.column>
+                    </flux:table.columns>
+                    <flux:table.rows>
+                        @forelse($results as $item)
+                            @php
+                                if ($view_mode === 'requests') {
+                                    $user = $item->user;
+                                    $profile = $type === 'student' ? $user?->student : $user?->staff;
+                                } else {
+                                    $profile = $item;
+                                    $user = $item?->user;
+                                }
 
-        <div class="mt-4">
-            {{ $results->links() }}
-        </div>
+                                $displayName = $user?->name ?? ($profile ? trim(($profile->first_name ?? '').' '.($profile->last_name ?? '')) : 'Unknown');
+                                if (empty(trim($displayName))) {
+                                    $displayName = 'Unknown';
+                                }
+                                $displayId = $type === 'student' ? ($profile?->matric_number ?? 'N/A') : ($profile?->staff_number ?? 'N/A');
+                            @endphp
+                            <flux:table.row :key="$item->id">
+                                <flux:table.cell>
+                                    <flux:checkbox wire:model="selected_ids" value="{{ $item->id }}" />
+                                </flux:table.cell>
+                                <flux:table.cell>
+                                    <div class="flex flex-col">
+                                        <span class="font-medium text-zinc-900 dark:text-zinc-100">{{ $displayName }}</span>
+                                        <span class="text-xs text-zinc-500 dark:text-zinc-400 font-mono mt-0.5">{{ $displayId }}</span>
+                                    </div>
+                                </flux:table.cell>
+                                @if($view_mode === 'requests')
+                                    <flux:table.cell>
+                                        <flux:badge size="sm" color="zinc" variant="neutral">{{ ucfirst(str_replace('_', ' ', $item->reason)) }}</flux:badge>
+                                    </flux:table.cell>
+                                    <flux:table.cell>
+                                        @if($item->studentInvoice)
+                                            <div class="flex items-center gap-1 text-green-600 font-bold text-xs">
+                                                <flux:icon.check-circle class="size-3" />
+                                                <span>Paid</span>
+                                            </div>
+                                        @else
+                                            @if($item->reason !== 'first_issue' && $type === 'student')
+                                                <span class="text-[10px] text-red-500 font-bold uppercase tracking-widest">No Invoice</span>
+                                            @else
+                                                <span class="text-[10px] text-zinc-400 uppercase tracking-widest italic">Free</span>
+                                            @endif
+                                        @endif
+                                    </flux:table.cell>
+                                @else
+                                    <flux:table.cell>
+                                        <span class="text-xs text-zinc-600 dark:text-zinc-400">
+                                            {{ $type === 'student' ? ($profile?->program?->name ?? 'N/A') : ($profile?->designation ?? 'N/A') }}
+                                        </span>
+                                    </flux:table.cell>
+                                @endif
+                                <flux:table.cell>
+                                    <div class="flex items-center gap-3">
+                                        <div class="size-10 rounded-lg overflow-hidden border-2 border-zinc-100 dark:border-zinc-800 shadow-sm bg-zinc-200 dark:bg-zinc-900">
+                                            @if($profile?->photo_path)
+                                                <img src="{{ asset('storage/'.$profile->photo_path) }}" class="w-full h-full object-cover">
+                                            @else
+                                                <div class="w-full h-full flex items-center justify-center text-zinc-400">
+                                                    <flux:icon.camera class="size-4" />
+                                                </div>
+                                            @endif
+                                        </div>
+                                        @if(!$profile?->photo_path)
+                                            <flux:badge size="sm" color="red" variant="neutral">{{ __('Missing') }}</flux:badge>
+                                        @else
+                                            <flux:badge size="sm" color="green" variant="neutral">{{ __('Ready') }}</flux:badge>
+                                        @endif
+                                    </div>
+                                </flux:table.cell>
+                                <flux:table.cell class="text-right">
+                                    @if($view_mode === 'requests' && $item->status === 'pending')
+                                        <flux:dropdown position="bottom" align="end">
+                                            <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" />
+                                            <flux:menu>
+                                                <flux:menu.item icon="check" wire:click="approveRequest({{ $item->id }})">
+                                                    {{ __('Approve Request') }}
+                                                </flux:menu.item>
+                                                <flux:menu.item icon="x-mark" variant="danger" wire:click="rejectRequest({{ $item->id }})">
+                                                    {{ __('Reject Request') }}
+                                                </flux:menu.item>
+                                                @if($profile?->photo_path)
+                                                    <flux:menu.separator />
+                                                    <flux:menu.item icon="printer" wire:click="$set('selected_ids', [{{ $item->id }}]); bulkGenerate()">
+                                                        {{ __('Generate Card') }}
+                                                    </flux:menu.item>
+                                                @endif
+                                            </flux:menu>
+                                        </flux:dropdown>
+                                    @else
+                                        <flux:button :disabled="!$profile?->photo_path" icon="printer" variant="ghost" size="xs" wire:click="$set('selected_ids', [{{ $item->id }}]); bulkGenerate()" />
+                                    @endif
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @empty
+                            <flux:table.row>
+                                <flux:table.cell colspan="6" class="py-16 text-center text-zinc-500">
+                                    <div class="flex flex-col items-center">
+                                        <div class="p-4 bg-zinc-100 dark:bg-zinc-800/50 rounded-full mb-4">
+                                            <flux:icon.identification class="size-12 opacity-20" />
+                                        </div>
+                                        <p class="font-medium">{{ __('No ID card records found.') }}</p>
+                                        <p class="text-xs text-zinc-400 mt-1">{{ __('Try adjusting your filters or search terms.') }}</p>
+                                    </div>
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @endforelse
+                    </flux:table.rows>
+                </flux:table>
+            </div>
+        </flux:card>
     </div>
 </div>

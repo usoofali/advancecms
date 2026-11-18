@@ -299,96 +299,94 @@ new #[Layout('layouts.app')] #[Title('Verify Payments')] class extends Component
             </flux:select>
         </div>
     </div>
-    <div class="overflow-x-auto">
-        <table class="w-full text-left">
-            <thead>
-                <tr class="border-b border-zinc-200 dark:border-zinc-700">
-                    <th
-                        class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider">
-                        Student</th>
-                    <th
-                        class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider">
-                        Invoice / Ref</th>
-                    <th
-                        class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider text-right">
-                        Amount</th>
-                    <th
-                        class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider">
-                        Status</th>
-                    <th
-                        class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider">
-                        Date</th>
-                    <th class="py-3 px-4"></th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                @php $paginatedPayments = $this->payments(); @endphp
-                @if($paginatedPayments->count() > 0)
-                    @foreach ($paginatedPayments as $payment)
-                        <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                            <td class="py-4 px-4">
+    @php $paginatedPayments = $this->payments(); @endphp
+    <flux:card>
+        <div class="relative overflow-x-auto">
+            <flux:table :paginate="$paginatedPayments">
+                <flux:table.columns>
+                    <flux:table.column>Student</flux:table.column>
+                    <flux:table.column>Invoice / Ref</flux:table.column>
+                    <flux:table.column class="text-right">Amount</flux:table.column>
+                    <flux:table.column>Status</flux:table.column>
+                    <flux:table.column>Date</flux:table.column>
+                    <flux:table.column class="text-right"></flux:table.column>
+                </flux:table.columns>
+                <flux:table.rows>
+                    @forelse ($paginatedPayments as $payment)
+                        <flux:table.row :key="$payment->id">
+                            <flux:table.cell>
                                 <flux:text weight="medium" class="text-zinc-900 dark:text-white">
                                     {{ $payment->studentInvoice?->student?->full_name ?? $payment->studentInvoice?->applicant?->full_name }}
                                 </flux:text>
                                 <flux:text size="sm" class="text-zinc-500">
                                     {{ $payment->studentInvoice?->student?->matric_number ?? $payment->studentInvoice?->applicant?->application_number }}
                                 </flux:text>
-                            </td>
-                            <td class="py-4 px-4">
+                            </flux:table.cell>
+                            <flux:table.cell>
                                 <flux:text size="sm">{{ $payment->studentInvoice?->invoice?->title }}</flux:text>
                                 <flux:text size="xs" class="text-zinc-500">Ref: {{ $payment->reference }}</flux:text>
-                            </td>
-                            <td class="py-4 px-4 text-right font-semibold">
+                            </flux:table.cell>
+                            <flux:table.cell class="text-right font-semibold">
                                 ₦{{ number_format($payment->amount_paid, 2) }}
-                            </td>
-                            <td class="py-4 px-4">
+                            </flux:table.cell>
+                            <flux:table.cell>
                                 <flux:badge
                                     :variant="$payment->status === 'success' ? 'success' : ($payment->status === 'pending' ? 'warning' : 'danger')"
                                     size="sm">
                                     {{ ucfirst($payment->status) }}
                                 </flux:badge>
-                            </td>
-                            <td class="py-4 px-4">
+                            </flux:table.cell>
+                            <flux:table.cell>
                                 <flux:text size="sm">{{ $payment->created_at?->format('M d, Y') }}</flux:text>
-                            </td>
-                            <td class="py-4 px-4 text-right">
-                                @if($payment->status === 'pending')
-                                    <div class="flex items-center justify-end gap-2">
-                                        @can('payments.verify')
-                                            <flux:button variant="subtle" size="sm" wire:click="confirmApprove({{ $payment->id }})"
-                                                class="text-green-600 hover:text-green-700">Approve</flux:button>
-                                            <flux:button variant="ghost" size="sm" wire:click="confirmReject({{ $payment->id }})"
-                                                class="text-red-600 hover:text-red-700">Reject</flux:button>
-                                        @endcan
-                                    </div>
-                                @elseif($payment->status === 'success')
-                                    <div class="flex items-center justify-end gap-2">
-                                        @if($payment->receipt)
-                                            <flux:button variant="ghost" size="sm" icon="printer"
-                                                href="{{ route('cms.invoices.receipt.print', $payment->receipt->receipt_number) }}"
-                                                target="_blank" class="text-blue-600 hover:text-blue-700">Print Receipt</flux:button>
-                                        @endif
-                                        @can('payments.verify')
-                                            <flux:button variant="subtle" size="sm" wire:click="confirmCancel({{ $payment->id }})"
-                                                class="text-amber-600 hover:text-amber-700">Cancel</flux:button>
-                                        @endcan
-                                    </div>
+                            </flux:table.cell>
+                            <flux:table.cell class="text-right">
+                                @if($payment->status === 'pending' && auth()->user()->can('payments.verify'))
+                                    <flux:dropdown position="bottom" align="end">
+                                        <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" />
+                                        <flux:menu>
+                                            <flux:menu.item icon="check" wire:click="confirmApprove({{ $payment->id }})">
+                                                Approve
+                                            </flux:menu.item>
+                                            <flux:menu.separator />
+                                            <flux:menu.item icon="x-mark" variant="danger" wire:click="confirmReject({{ $payment->id }})">
+                                                Reject
+                                            </flux:menu.item>
+                                        </flux:menu>
+                                    </flux:dropdown>
+                                @elseif($payment->status === 'success' && ($payment->receipt || auth()->user()->can('payments.verify')))
+                                    @if($payment->receipt && auth()->user()->can('payments.verify'))
+                                        <flux:dropdown position="bottom" align="end">
+                                            <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" />
+                                            <flux:menu>
+                                                <flux:menu.item icon="printer" href="{{ route('cms.invoices.receipt.print', $payment->receipt->receipt_number) }}" target="_blank">
+                                                    Print Receipt
+                                                </flux:menu.item>
+                                                <flux:menu.separator />
+                                                <flux:menu.item icon="x-circle" variant="danger" wire:click="confirmCancel({{ $payment->id }})">
+                                                    Cancel
+                                                </flux:menu.item>
+                                            </flux:menu>
+                                        </flux:dropdown>
+                                    @elseif($payment->receipt)
+                                        <flux:button variant="ghost" size="sm" icon="printer"
+                                            href="{{ route('cms.invoices.receipt.print', $payment->receipt->receipt_number) }}"
+                                            target="_blank" class="text-blue-600 hover:text-blue-700">Print Receipt</flux:button>
+                                    @elseif(auth()->user()->can('payments.verify'))
+                                        <flux:button variant="subtle" size="sm" wire:click="confirmCancel({{ $payment->id }})"
+                                            class="text-amber-600 hover:text-amber-700">Cancel</flux:button>
+                                    @endif
                                 @endif
-                            </td>
-                        </tr>
-                    @endforeach
-                @else
-                    <tr>
-                        <td colspan="6" class="py-12 text-center text-zinc-500">No payments found.</td>
-                    </tr>
-                @endif
-            </tbody>
-        </table>
-    </div>
-
-    <div class="py-4">
-        {{ $paginatedPayments->links() }}
-    </div>
+                            </flux:table.cell>
+                        </flux:table.row>
+                    @empty
+                        <flux:table.row>
+                            <flux:table.cell colspan="6" class="py-12 text-center text-zinc-500">No payments found.</flux:table.cell>
+                        </flux:table.row>
+                    @endforelse
+                </flux:table.rows>
+            </flux:table>
+        </div>
+    </flux:card>
 
     <!-- Approval Confirmation Modal -->
     <flux:modal name="confirm-approval" class="min-w-[400px]">

@@ -492,84 +492,96 @@ new #[Layout('layouts.app')] #[Title('Items & Categories')] class extends Compon
         </div>
 
         {{-- Desktop Table View (md and up) --}}
-        <div class="hidden md:block overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-xs">
-            <table class="w-full text-left border-collapse">
-                <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                    <tr>
-                        <th class="px-4 py-3">{{ __('Item / Code') }}</th>
-                        <th class="px-4 py-3">{{ __('Type & Category') }}</th>
-                        <th class="px-4 py-3 text-center">{{ __('Unit') }}</th>
-                        <th class="px-4 py-3 text-center">{{ __('Min Level') }}</th>
-                        <th class="px-4 py-3 text-center">{{ __('Total Stock') }}</th>
-                        <th class="px-4 py-3 text-center">{{ __('Status') }}</th>
-                        <th class="px-4 py-3 text-right">{{ __('Actions') }}</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
-                    @forelse($items as $item)
-                        @php
-                            $totalStock = (int) $item->stocks->sum('quantity');
-                            $isLow = $item->isBelowThreshold($totalStock);
-                        @endphp
-                        <tr wire:key="item-row-{{ $item->id }}" class="hover:bg-zinc-50/60 dark:hover:bg-zinc-900/20 transition-colors">
-                            <td class="px-4 py-3.5">
-                                <div class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $item->name }}</div>
-                                <div class="text-xs font-mono text-zinc-500">{{ $item->code }}</div>
-                            </td>
-                            <td class="px-4 py-3.5">
-                                <div class="flex items-center gap-2">
-                                    <flux:badge size="sm" :color="$item->category?->classification === 'durable' ? 'indigo' : 'teal'">
-                                        {{ $item->category?->classification === 'durable' ? __('Durable') : __('Consumable') }}
-                                    </flux:badge>
-                                </div>
-                                <div class="text-xs text-zinc-600 dark:text-zinc-400 mt-1">{{ $item->category?->name ?? '—' }}</div>
-                            </td>
-                            <td class="px-4 py-3.5 text-center text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                                {{ $item->unit_of_measure }}
-                            </td>
-                            <td class="px-4 py-3.5 text-center font-mono text-xs text-zinc-600 dark:text-zinc-400">
-                                {{ number_format($item->min_stock_threshold) }}
-                            </td>
-                            <td class="px-4 py-3.5 text-center">
-                                <button type="button" wire:click="openBreakdownModal({{ $item->id }})"
-                                    class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition-colors {{ $isLow ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-950/50 dark:border-red-800 dark:text-red-300' : 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/50 dark:border-emerald-800 dark:text-emerald-300' }}">
-                                    <span>{{ number_format($totalStock) }}</span>
-                                    @if($isLow)
-                                        <flux:icon.exclamation-triangle class="size-3.5 text-red-600 dark:text-red-400" />
-                                    @endif
-                                </button>
-                                <div class="text-[10px] text-zinc-400 mt-0.5">{{ $item->stocks->count() }} {{ Str::plural('room', $item->stocks->count()) }}</div>
-                            </td>
-                            <td class="px-4 py-3.5 text-center">
-                                @if($isLow)
-                                    <flux:badge size="sm" color="amber">{{ __('Low Stock') }}</flux:badge>
-                                @else
-                                    <flux:badge size="sm" :color="$item->status === 'active' ? 'green' : 'zinc'">
-                                        {{ ucfirst($item->status) }}
-                                    </flux:badge>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3.5 text-right">
-                                <div class="flex items-center justify-end gap-1">
-                                    <flux:button size="xs" variant="ghost" icon="eye" wire:click="openBreakdownModal({{ $item->id }})" title="{{ __('Room Breakdown') }}" />
-                                    @can('inventory_items.edit')
-                                        <flux:button size="xs" variant="ghost" icon="pencil-square" wire:click="openEditItemModal({{ $item->id }})" title="{{ __('Edit Item') }}" />
-                                    @endcan
-                                    @can('inventory_items.delete')
-                                        <flux:button size="xs" variant="ghost" icon="trash" wire:click="deleteItem({{ $item->id }})" wire:confirm="{{ __('Delete this catalogue item and all its room balances?') }}" title="{{ __('Delete') }}" />
-                                    @endcan
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="px-4 py-12 text-center text-zinc-500 dark:text-zinc-400">
-                                {{ __('No inventory catalogue items match your current filters.') }}
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+        <div class="hidden md:block">
+            <flux:card>
+                <div class="relative overflow-x-auto">
+                    <flux:table :paginate="$items">
+                        <flux:table.columns>
+                            <flux:table.column>{{ __('Item / Code') }}</flux:table.column>
+                            <flux:table.column>{{ __('Type & Category') }}</flux:table.column>
+                            <flux:table.column class="text-center">{{ __('Unit') }}</flux:table.column>
+                            <flux:table.column class="text-center">{{ __('Min Level') }}</flux:table.column>
+                            <flux:table.column class="text-center">{{ __('Total Stock') }}</flux:table.column>
+                            <flux:table.column class="text-center">{{ __('Status') }}</flux:table.column>
+                            <flux:table.column class="text-right">{{ __('Actions') }}</flux:table.column>
+                        </flux:table.columns>
+                        <flux:table.rows>
+                            @forelse($items as $item)
+                                @php
+                                    $totalStock = (int) $item->stocks->sum('quantity');
+                                    $isLow = $item->isBelowThreshold($totalStock);
+                                @endphp
+                                <flux:table.row :key="$item->id">
+                                    <flux:table.cell>
+                                        <div class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $item->name }}</div>
+                                        <div class="text-xs font-mono text-zinc-500">{{ $item->code }}</div>
+                                    </flux:table.cell>
+                                    <flux:table.cell>
+                                        <div class="flex items-center gap-2">
+                                            <flux:badge size="sm" :color="$item->category?->classification === 'durable' ? 'indigo' : 'teal'">
+                                                {{ $item->category?->classification === 'durable' ? __('Durable') : __('Consumable') }}
+                                            </flux:badge>
+                                        </div>
+                                        <div class="text-xs text-zinc-600 dark:text-zinc-400 mt-1">{{ $item->category?->name ?? '—' }}</div>
+                                    </flux:table.cell>
+                                    <flux:table.cell class="text-center text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                                        {{ $item->unit_of_measure }}
+                                    </flux:table.cell>
+                                    <flux:table.cell class="text-center font-mono text-xs text-zinc-600 dark:text-zinc-400">
+                                        {{ number_format($item->min_stock_threshold) }}
+                                    </flux:table.cell>
+                                    <flux:table.cell class="text-center">
+                                        <button type="button" wire:click="openBreakdownModal({{ $item->id }})"
+                                            class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold transition-colors {{ $isLow ? 'bg-red-50 border-red-200 text-red-700 dark:bg-red-950/50 dark:border-red-800 dark:text-red-300' : 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/50 dark:border-emerald-800 dark:text-emerald-300' }}">
+                                            <span>{{ number_format($totalStock) }}</span>
+                                            @if($isLow)
+                                                <flux:icon.exclamation-triangle class="size-3.5 text-red-600 dark:text-red-400" />
+                                            @endif
+                                        </button>
+                                        <div class="text-[10px] text-zinc-400 mt-0.5">{{ $item->stocks->count() }} {{ Str::plural('room', $item->stocks->count()) }}</div>
+                                    </flux:table.cell>
+                                    <flux:table.cell class="text-center">
+                                        @if($isLow)
+                                            <flux:badge size="sm" color="amber">{{ __('Low Stock') }}</flux:badge>
+                                        @else
+                                            <flux:badge size="sm" :color="$item->status === 'active' ? 'green' : 'zinc'">
+                                                {{ ucfirst($item->status) }}
+                                            </flux:badge>
+                                        @endif
+                                    </flux:table.cell>
+                                    <flux:table.cell class="text-right">
+                                        <flux:dropdown position="bottom" align="end">
+                                            <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" />
+                                            <flux:menu>
+                                                <flux:menu.item icon="eye" wire:click="openBreakdownModal({{ $item->id }})">
+                                                    {{ __('Room Breakdown') }}
+                                                </flux:menu.item>
+                                                @can('inventory_items.edit')
+                                                    <flux:menu.item icon="pencil-square" wire:click="openEditItemModal({{ $item->id }})">
+                                                        {{ __('Edit Item') }}
+                                                    </flux:menu.item>
+                                                @endcan
+                                                @can('inventory_items.delete')
+                                                    <flux:menu.separator />
+                                                    <flux:menu.item icon="trash" variant="danger" wire:click="deleteItem({{ $item->id }})" wire:confirm="{{ __('Delete this catalogue item and all its room balances?') }}">
+                                                        {{ __('Delete') }}
+                                                    </flux:menu.item>
+                                                @endcan
+                                            </flux:menu>
+                                        </flux:dropdown>
+                                    </flux:table.cell>
+                                </flux:table.row>
+                            @empty
+                                <flux:table.row>
+                                    <flux:table.cell colspan="7" class="py-12 text-center text-zinc-500 dark:text-zinc-400">
+                                        {{ __('No inventory catalogue items match your current filters.') }}
+                                    </flux:table.cell>
+                                </flux:table.row>
+                            @endforelse
+                        </flux:table.rows>
+                    </flux:table>
+                </div>
+            </flux:card>
         </div>
 
         {{-- Mobile Stacked Cards View (< md) --}}
@@ -626,7 +638,7 @@ new #[Layout('layouts.app')] #[Title('Items & Categories')] class extends Compon
             @endforelse
         </div>
 
-        <div>{{ $items->links() }}</div>
+        <div class="md:hidden">{{ $items->links() }}</div>
     @endif
 
     {{-- TAB 2: CATEGORIES & CLASSIFICATION FRAMEWORK (INV-02) --}}

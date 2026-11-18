@@ -79,73 +79,79 @@ new #[Layout('layouts.app')] #[Title('Institutions')] class extends Component
             <flux:input wire:model.live.debounce.300ms="search" icon="magnifying-glass" :placeholder="__('Search institutions...')" class="max-w-sm" />
         </div>
 
-        <div class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
-            <table class="w-full text-left border-collapse">
-                <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700">
-                    <tr>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Name') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Acronym') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Email') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">{{ __('Status') }}</th>
-                        <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-right">{{ __('Actions') }}</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                    @forelse ($institutions as $institution)
-                        <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors" wire:key="{{ $institution->id }}">
-                            <td class="px-4 py-4">
-                                <div class="flex items-center gap-3">
-                                    <div class="h-10 w-10 flex-shrink-0 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 overflow-hidden flex items-center justify-center">
-                                        @if ($institution->logo_path)
-                                            <img src="{{ $institution->logo_url }}" class="h-full w-full object-cover">
-                                        @else
-                                            <flux:icon icon="building-library" class="h-5 w-5 text-zinc-400" />
-                                        @endif
+        <flux:card>
+            <div class="relative overflow-x-auto">
+                <flux:table :paginate="$institutions">
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Name') }}</flux:table.column>
+                        <flux:table.column>{{ __('Acronym') }}</flux:table.column>
+                        <flux:table.column>{{ __('Email') }}</flux:table.column>
+                        <flux:table.column>{{ __('Status') }}</flux:table.column>
+                        <flux:table.column class="text-right">{{ __('Actions') }}</flux:table.column>
+                    </flux:table.columns>
+                    <flux:table.rows>
+                        @forelse ($institutions as $institution)
+                            <flux:table.row :key="$institution->id">
+                                <flux:table.cell>
+                                    <div class="flex items-center gap-3">
+                                        <div class="h-10 w-10 flex-shrink-0 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 overflow-hidden flex items-center justify-center">
+                                            @if ($institution->logo_path)
+                                                <img src="{{ $institution->logo_url }}" class="h-full w-full object-cover">
+                                            @else
+                                                <flux:icon icon="building-library" class="h-5 w-5 text-zinc-400" />
+                                            @endif
+                                        </div>
+                                        <div>
+                                            <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $institution->name }}</div>
+                                            @if ($institution->address)
+                                                <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{{ $institution->address }}</div>
+                                            @endif
+                                        </div>
                                     </div>
-                                    <div>
-                                        <div class="font-medium text-zinc-900 dark:text-zinc-100">{{ $institution->name }}</div>
-                                        @if ($institution->address)
-                                            <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{{ $institution->address }}</div>
-                                        @endif
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400">
-                                {{ $institution->acronym ?? '—' }}
-                            </td>
-                            <td class="px-4 py-4 text-sm text-zinc-600 dark:text-zinc-400">
-                                {{ $institution->email ?? '—' }}
-                            </td>
-                            <td class="px-4 py-4 text-sm">
-                                <flux:badge :color="$institution->status === 'active' ? 'green' : 'zinc'" size="sm">
-                                    {{ ucfirst($institution->status) }}
-                                </flux:badge>
-                            </td>
-                            <td class="px-4 py-4 text-right">
-                                <div class="flex items-center justify-end gap-2">
-                                    @can('institutions.edit')
-                                    <flux:button size="sm" variant="ghost" icon="pencil" :href="route('cms.institutions.edit', $institution)" wire:navigate />
-                                    @endcan
-                                    @can('institutions.delete')
-                                    <flux:button size="sm" variant="ghost" icon="trash" x-on:click="$wire.deletingId = {{ $institution->id }}; $flux.modal('delete-institution').show()" />
-                                    @endcan
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="px-4 py-12 text-center text-zinc-500 dark:text-zinc-400">
-                                {{ $search ? __('No institutions found matching your search.') : __('No institutions yet. Add one to get started.') }}
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
-
-        <div class="mt-4">
-            {{ $institutions->links() }}
-        </div>
+                                </flux:table.cell>
+                                <flux:table.cell class="text-zinc-600 dark:text-zinc-400">
+                                    {{ $institution->acronym ?? '—' }}
+                                </flux:table.cell>
+                                <flux:table.cell class="text-zinc-600 dark:text-zinc-400">
+                                    {{ $institution->email ?? '—' }}
+                                </flux:table.cell>
+                                <flux:table.cell>
+                                    <flux:badge :color="$institution->status === 'active' ? 'green' : 'zinc'" size="sm">
+                                        {{ ucfirst($institution->status) }}
+                                    </flux:badge>
+                                </flux:table.cell>
+                                <flux:table.cell class="text-right">
+                                    <flux:dropdown position="bottom" align="end">
+                                        <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" />
+                                        <flux:menu>
+                                            @can('institutions.edit')
+                                                <flux:menu.item icon="pencil" :href="route('cms.institutions.edit', $institution)" wire:navigate>
+                                                    {{ __('Edit') }}
+                                                </flux:menu.item>
+                                            @endcan
+                                            @can('institutions.delete')
+                                                @can('institutions.edit')
+                                                    <flux:menu.separator />
+                                                @endcan
+                                                <flux:menu.item icon="trash" variant="danger" x-on:click="$wire.deletingId = {{ $institution->id }}; $flux.modal('delete-institution').show()">
+                                                    {{ __('Delete') }}
+                                                </flux:menu.item>
+                                            @endcan
+                                        </flux:menu>
+                                    </flux:dropdown>
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @empty
+                            <flux:table.row>
+                                <flux:table.cell colspan="5" class="py-12 text-center text-zinc-500 dark:text-zinc-400">
+                                    {{ $search ? __('No institutions found matching your search.') : __('No institutions yet. Add one to get started.') }}
+                                </flux:table.cell>
+                            </flux:table.row>
+                        @endforelse
+                    </flux:table.rows>
+                </flux:table>
+            </div>
+        </flux:card>
 
         <flux:modal name="delete-institution" variant="filled" class="min-w-[22rem]">
             <form wire:submit="confirmDelete" class="space-y-6">

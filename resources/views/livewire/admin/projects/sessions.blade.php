@@ -2,6 +2,7 @@
 
 use Livewire\Attributes\Layout;
 use Livewire\Component;
+use Livewire\WithPagination;
 use App\Models\ProjectSession;
 use App\Models\ProjectSessionStage;
 use App\Models\AcademicSession;
@@ -9,6 +10,8 @@ use App\Models\Staff;
 use Flux\Flux;
 
 new #[Layout('layouts.app')] class extends Component {
+    use WithPagination;
+
     public ?int $selectedSessionId = null;
     public bool $showSessionModal = false;
     public bool $showStageModal = false;
@@ -238,7 +241,7 @@ new #[Layout('layouts.app')] class extends Component {
         $sessions = ProjectSession::with(['academicSession', 'coordinator', 'stages'])
             ->where('institution_id', $institutionId)
             ->latest()
-            ->get();
+            ->paginate(15);
 
         $selectedSession = $this->selectedSessionId
             ? ProjectSession::with(['stages', 'coordinator', 'academicSession'])->find($this->selectedSessionId)
@@ -267,7 +270,7 @@ new #[Layout('layouts.app')] class extends Component {
 
     <!-- Project Sessions Full-Width Table View -->
     <div class="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-xs mb-6">
-        <flux:table class="[&_td:first-child]:!ps-6 [&_td:last-child]:!pe-6 [&_th:first-child]:!ps-6 [&_th:last-child]:!pe-6 [&_td]:!px-6 [&_th]:!px-6 [&_td]:!py-4 [&_th]:!py-3.5">
+        <flux:table :paginate="$sessions" class="[&_td:first-child]:!ps-6 [&_td:last-child]:!pe-6 [&_th:first-child]:!ps-6 [&_th:last-child]:!pe-6 [&_td]:!px-6 [&_th]:!px-6 [&_td]:!py-4 [&_th]:!py-3.5">
             <flux:table.columns>
                 <flux:table.column>Session & Academic Year</flux:table.column>
                 <flux:table.column>Coordinator Staff</flux:table.column>

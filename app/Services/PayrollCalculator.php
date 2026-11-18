@@ -49,13 +49,17 @@ class PayrollCalculator
                 $run->title = $title;
             }
 
-            // Preserve any manual adjustments already entered on this draft run
-            $existingAdjustments = $run->items()
+            // Preserve any manual adjustments and manual contact overrides already entered on this draft run
+            $existingOverrides = $run->items()
                 ->get()
                 ->keyBy('staff_id')
                 ->map(fn (PayrollItem $item) => [
                     'manual_adjustment' => (float) $item->manual_adjustment,
                     'adjustment_note' => $item->adjustment_note,
+                    'is_contact_overridden' => (bool) $item->is_contact_overridden,
+                    'contacts_count' => (int) $item->contacts_count,
+                    'credit_units_total' => (float) $item->credit_units_total,
+                    'hours_total' => (float) $item->hours_total,
                 ]);
 
             $defaultCategory = PayrollCategory::query()
@@ -108,24 +112,35 @@ class PayrollCalculator
                 $rateUsed = $effectiveProfile->effectiveRate($defaultCategory);
 
                 $contactsCount = 0;
+                $isContactOverridden = false;
                 $creditUnitsTotal = 0.0;
                 $hoursTotal = 0.0;
                 $basePay = 0.0;
+                $prior = $existingOverrides->get($staff->id);
 
                 if ($payType === 'fixed') {
                     $basePay = (float) $effectiveProfile->base_salary;
+                } elseif ($prior && $prior['is_contact_overridden']) {
+                    $isContactOverridden = true;
+                    $contactsCount = $prior['contacts_count'];
+                    $creditUnitsTotal = $prior['credit_units_total'];
+                    $hoursTotal = $prior['hours_total'];
+                    $basePay = $this->computeContactBasePay($formula, $rateUsed, $contactsCount, $creditUnitsTotal, $hoursTotal);
                 } else {
                     $contactStats = $this->computeContactMetrics($staff, $institution->id, $month, $year);
                     $contactsCount = $contactStats['contacts_count'];
                     $creditUnitsTotal = $contactStats['credit_units_total'];
                     $hoursTotal = $contactStats['hours_total'];
 
-                    $basePay = match ($formula) {
-                        'contact_x_credit_unit' => $contactStats['weighted_contact_units'] * $rateUsed,
-                        'hour_x_credit_unit' => $contactStats['weighted_hour_units'] * $rateUsed,
-                        'per_hour' => $hoursTotal * $rateUsed,
-                        default => $contactsCount * $rateUsed, // per_contact
-                    };
+                    $basePay = $this->computeContactBasePay(
+                        $formula,
+                        $rateUsed,
+                        $contactsCount,
+                        $creditUnitsTotal,
+                        $hoursTotal,
+                        $contactStats['weighted_contact_units'],
+                        $contactStats['weighted_hour_units']
+                    );
                 }
 
                 $basePay = round($basePay, 2);
@@ -162,9 +177,8 @@ class PayrollCalculator
                     }
                 }
 
-                $adj = $existingAdjustments->get($staff->id);
-                $manualAdjustment = $adj ? (float) $adj['manual_adjustment'] : 0.0;
-                $adjustmentNote = $adj ? $adj['adjustment_note'] : null;
+                $manualAdjustment = $prior ? (float) $prior['manual_adjustment'] : 0.0;
+                $adjustmentNote = $prior ? $prior['adjustment_note'] : null;
 
                 $grossPay = round($basePay + $itemAllowancesTotal + max(0, $manualAdjustment), 2);
                 $effectiveDeductions = round($itemDeductionsTotal + ($manualAdjustment < 0 ? abs($manualAdjustment) : 0), 2);
@@ -179,6 +193,7 @@ class PayrollCalculator
                     'pay_type' => $payType,
                     'base_pay' => $basePay,
                     'contacts_count' => $contactsCount,
+                    'is_contact_overridden' => $isContactOverridden,
                     'credit_units_total' => round($creditUnitsTotal, 2),
                     'hours_total' => round($hoursTotal, 2),
                     'rate_used' => $rateUsed,
@@ -224,6 +239,121 @@ class PayrollCalculator
 
             return $run->fresh(['items.staff', 'items.category', 'items.department']);
         });
+    }
+
+    /**
+     * Compute contact-based base pay from a formula, rate, and contact metrics.
+     */
+    public function computeContactBasePay(
+        string $formula,
+        float $rateUsed,
+        int $contactsCount,
+        float $creditUnitsTotal,
+        float $hoursTotal,
+        ?float $weightedContactUnits = null,
+        ?float $weightedHourUnits = null
+    ): float {
+        return round(match ($formula) {
+            'contact_x_credit_unit' => ($weightedContactUnits ?? $creditUnitsTotal) * $rateUsed,
+            'hour_x_credit_unit' => ($weightedHourUnits ?? ($hoursTotal * $creditUnitsTotal)) * $rateUsed,
+            'per_hour' => $hoursTotal * $rateUsed,
+            default => $contactsCount * $rateUsed,
+        }, 2);
+    }
+
+    /**
+     * Overwrite (or reset) contact metrics on an existing contact-based PayrollItem and recompute totals.
+     */
+    public function applyContactOverride(
+        PayrollItem $item,
+        int $contactsCount,
+        float $creditUnitsTotal,
+        float $hoursTotal,
+        bool $isOverridden = true,
+        ?float $weightedContactUnits = null,
+        ?float $weightedHourUnits = null
+    ): PayrollItem {
+        $item->loadMissing(['run', 'staff.payrollProfile.category']);
+
+        $defaultCategory = PayrollCategory::query()
+            ->where('institution_id', $item->institution_id)
+            ->where('is_default', true)
+            ->where('status', 'active')
+            ->first();
+
+        $profile = $item->staff?->payrollProfile;
+        $formula = $profile
+            ? $profile->effectiveContactFormula($defaultCategory)
+            : ($item->category?->contact_formula ?? $defaultCategory?->contact_formula ?? 'contact_x_credit_unit');
+
+        $rateUsed = (float) $item->rate_used;
+        $basePay = $this->computeContactBasePay(
+            $formula,
+            $rateUsed,
+            $contactsCount,
+            $creditUnitsTotal,
+            $hoursTotal,
+            $weightedContactUnits,
+            $weightedHourUnits
+        );
+
+        $activeComponents = PayrollComponent::query()
+            ->where('institution_id', $item->institution_id)
+            ->where('is_active', true)
+            ->get();
+
+        $matchingComponents = $this->filterApplicableComponents(
+            $activeComponents,
+            $item->staff,
+            $item->payroll_category_id,
+            $item->department_id
+        );
+
+        $allowancesBreakdown = [];
+        $itemAllowancesTotal = 0.0;
+        $deductionsBreakdown = [];
+        $itemDeductionsTotal = 0.0;
+
+        foreach ($matchingComponents as $comp) {
+            $amount = $comp->calculation_type === 'percentage'
+                ? round($basePay * ((float) $comp->amount_or_rate / 100), 2)
+                : round((float) $comp->amount_or_rate, 2);
+
+            if ($amount <= 0) {
+                continue;
+            }
+
+            if ($comp->type === 'allowance') {
+                $allowancesBreakdown[] = ['name' => $comp->name, 'amount' => $amount];
+                $itemAllowancesTotal += $amount;
+            } else {
+                $deductionsBreakdown[] = ['name' => $comp->name, 'amount' => $amount];
+                $itemDeductionsTotal += $amount;
+            }
+        }
+
+        $manualAdjustment = (float) $item->manual_adjustment;
+        $grossPay = round($basePay + $itemAllowancesTotal + max(0, $manualAdjustment), 2);
+        $effectiveDeductions = round($itemDeductionsTotal + ($manualAdjustment < 0 ? abs($manualAdjustment) : 0), 2);
+        $netPay = round(max(0, $grossPay - $effectiveDeductions), 2);
+
+        $item->update([
+            'contacts_count' => $contactsCount,
+            'is_contact_overridden' => $isOverridden,
+            'credit_units_total' => round($creditUnitsTotal, 2),
+            'hours_total' => round($hoursTotal, 2),
+            'base_pay' => $basePay,
+            'allowances_breakdown' => $allowancesBreakdown,
+            'total_allowances' => round($itemAllowancesTotal, 2),
+            'deductions_breakdown' => $deductionsBreakdown,
+            'total_deductions' => $effectiveDeductions,
+            'gross_pay' => $grossPay,
+            'net_pay' => $netPay,
+        ]);
+
+        $this->syncRunTotals($item->run);
+
+        return $item->fresh();
     }
 
     /**

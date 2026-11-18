@@ -395,14 +395,25 @@ new #[Layout('layouts.app')] #[Title('Manage Attendance')] class extends Compone
                 @endif
             @endif
 
+            @php
+                $modalStudentsCollection = collect($modalStudents);
+                $modalPage = \Illuminate\Pagination\Paginator::resolveCurrentPage('modalStudentsPage');
+                $paginatedModalStudents = new \Illuminate\Pagination\LengthAwarePaginator(
+                    $modalStudentsCollection->forPage($modalPage, 10)->values(),
+                    $modalStudentsCollection->count(),
+                    10,
+                    $modalPage,
+                    ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath(), 'pageName' => 'modalStudentsPage']
+                );
+            @endphp
             <div class="max-h-[350px] overflow-y-auto pr-2">
-                <flux:table>
+                <flux:table :paginate="$paginatedModalStudents">
                     <flux:table.columns>
                         <flux:table.column>{{ __('Student') }}</flux:table.column>
                         <flux:table.column align="right">{{ __('Status') }}</flux:table.column>
                     </flux:table.columns>
                     <flux:table.rows>
-                        @forelse ($modalStudents as $record)
+                        @forelse ($paginatedModalStudents as $record)
                             <flux:table.row :key="$record['id']">
                                 <flux:table.cell>
                                     <div class="font-bold text-sm text-zinc-900 dark:text-white leading-tight">

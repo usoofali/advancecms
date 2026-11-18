@@ -222,121 +222,103 @@ new #[Layout('layouts.app')] #[Title('Invoices')] class extends Component
         </div>
     </div>
 
-    <div class="overflow-x-auto">
-        <table class="w-full text-left">
-            <thead>
-                <tr class="border-b border-zinc-200 dark:border-zinc-700">
-                    <th
-                        class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider">
-                        Title / Session</th>
+    @php $paginatedInvoices = $this->invoices(); @endphp
+    <flux:card>
+        <div class="relative overflow-x-auto">
+            <flux:table :paginate="$paginatedInvoices">
+                <flux:table.columns>
+                    <flux:table.column>Title / Session</flux:table.column>
                     @if(auth()->user()->hasRole('Super Admin'))
-                    <th
-                        class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider">
-                        Institution</th>
+                        <flux:table.column>Institution</flux:table.column>
                     @endif
-                    <th
-                        class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider text-center">
-                        Items</th>
-                    <th
-                        class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider text-center">
-                        Amount</th>
-                    <th
-                        class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider">
-                        Target</th>
-                    <th
-                        class="py-3 px-4 font-semibold text-zinc-900 dark:text-zinc-100 uppercase text-xs tracking-wider">
-                        Status</th>
-                    <th class="py-3 px-4"></th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
-                @php $paginatedInvoices = $this->invoices(); @endphp
-                @if($paginatedInvoices->count() > 0)
-                @foreach ($paginatedInvoices as $invoice)
-                <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
-                    <td class="py-4 px-4">
-                        <flux:text weight="medium" class="text-zinc-900 dark:text-white">{{ $invoice->title }}
-                        </flux:text>
-                        <flux:text size="sm" class="text-zinc-500">{{ $invoice->academicSession?->name }}</flux:text>
-                        @if($invoice->account_number)
-                        <div class="mt-1 flex items-center gap-2">
-                            <flux:badge size="xs" variant="neutral" icon="credit-card" class="text-[9px]">
-                                {{ $invoice->bank_name }}: {{ $invoice->account_number }}
-                            </flux:badge>
-                        </div>
-                        @endif
-                    </td>
-                    @if(auth()->user()->hasRole('Super Admin'))
-                    <td class="py-4 px-4">
-                        <flux:text size="sm">{{ $invoice->institution?->acronym ?? $invoice->institution?->name }}
-                        </flux:text>
-                    </td>
-                    @endif
-                    <td class="py-4 px-4 text-center">
-                        <flux:badge size="sm" inset="top bottom">{{ $invoice->items_count }} items</flux:badge>
-                    </td>
-                    <td class="py-4 px-4 text-center">
-                        <flux:text weight="semibold">₦{{ number_format($invoice->total_amount, 2) }}</flux:text>
-                    </td>
-                    <td class="py-4 px-4">
-                        <flux:text size="sm">
-                            @if($invoice->target_type === 'dept')
-                            Dept: {{ $invoice->department?->name ?? 'N/A' }}
-                            @elseif($invoice->target_type === 'program')
-                            Prog: {{ $invoice->program?->name ?? 'N/A' }}
-                            @elseif($invoice->target_type === 'level')
-                            Level: {{ $invoice->level }}
-                            @else
-                            Global
+                    <flux:table.column class="text-center">Items</flux:table.column>
+                    <flux:table.column class="text-center">Amount</flux:table.column>
+                    <flux:table.column>Target</flux:table.column>
+                    <flux:table.column>Status</flux:table.column>
+                    <flux:table.column class="text-right"></flux:table.column>
+                </flux:table.columns>
+                <flux:table.rows>
+                    @forelse ($paginatedInvoices as $invoice)
+                        <flux:table.row :key="$invoice->id">
+                            <flux:table.cell>
+                                <flux:text weight="medium" class="text-zinc-900 dark:text-white">{{ $invoice->title }}
+                                </flux:text>
+                                <flux:text size="sm" class="text-zinc-500">{{ $invoice->academicSession?->name }}</flux:text>
+                                @if($invoice->account_number)
+                                    <div class="mt-1 flex items-center gap-2">
+                                        <flux:badge size="xs" variant="neutral" icon="credit-card" class="text-[9px]">
+                                            {{ $invoice->bank_name }}: {{ $invoice->account_number }}
+                                        </flux:badge>
+                                    </div>
+                                @endif
+                            </flux:table.cell>
+                            @if(auth()->user()->hasRole('Super Admin'))
+                                <flux:table.cell>
+                                    <flux:text size="sm">{{ $invoice->institution?->acronym ?? $invoice->institution?->name }}
+                                    </flux:text>
+                                </flux:table.cell>
                             @endif
-                        </flux:text>
-                    </td>
-                    <td class="py-4 px-4">
-                        <flux:badge
-                            :variant="$invoice->status === 'published' ? 'success' : ($invoice->status === 'draft' ? 'neutral' : 'warning')"
-                            size="sm">
-                            {{ ucfirst($invoice->status) }}
-                        </flux:badge>
-                    </td>
-                    <td class="py-4 px-4 text-right">
-                        <flux:dropdown>
-                            <flux:button variant="ghost" icon="ellipsis-horizontal" size="sm" />
+                            <flux:table.cell class="text-center">
+                                <flux:badge size="sm" inset="top bottom">{{ $invoice->items_count }} items</flux:badge>
+                            </flux:table.cell>
+                            <flux:table.cell class="text-center">
+                                <flux:text weight="semibold">₦{{ number_format($invoice->total_amount, 2) }}</flux:text>
+                            </flux:table.cell>
+                            <flux:table.cell>
+                                <flux:text size="sm">
+                                    @if($invoice->target_type === 'dept')
+                                        Dept: {{ $invoice->department?->name ?? 'N/A' }}
+                                    @elseif($invoice->target_type === 'program')
+                                        Prog: {{ $invoice->program?->name ?? 'N/A' }}
+                                    @elseif($invoice->target_type === 'level')
+                                        Level: {{ $invoice->level }}
+                                    @else
+                                        Global
+                                    @endif
+                                </flux:text>
+                            </flux:table.cell>
+                            <flux:table.cell>
+                                <flux:badge
+                                    :variant="$invoice->status === 'published' ? 'success' : ($invoice->status === 'draft' ? 'neutral' : 'warning')"
+                                    size="sm">
+                                    {{ ucfirst($invoice->status) }}
+                                </flux:badge>
+                            </flux:table.cell>
+                            <flux:table.cell class="text-right">
+                                <flux:dropdown>
+                                    <flux:button variant="ghost" icon="ellipsis-horizontal" size="sm" />
 
-                            <flux:menu>
-                                @can('invoices.edit')
-                                <flux:menu.item icon="pencil-square" :href="route('cms.invoices.edit', $invoice->id)"
-                                    wire:navigate>Edit Template</flux:menu.item>
-                                @endcan
-                                @can('invoices.manage_students')
-                                <flux:menu.item icon="users" :href="route('cms.invoices.students', $invoice->id)"
-                                    wire:navigate>Manage Student Invoices</flux:menu.item>
-                                @endcan
-                                <flux:menu.separator />
-                                @can('invoices.delete')
-                                <flux:menu.item variant="danger" icon="trash"
-                                    wire:click="confirmDelete({{ $invoice->id }})">
-                                    Delete
-                                </flux:menu.item>
-                                @endcan
-                            </flux:menu>
-                        </flux:dropdown>
-                    </td>
-                </tr>
-                @endforeach
-                @else
-                <tr>
-                    <td colspan="6" class="py-12 text-center">
-                        <flux:text class="text-zinc-500">No invoices found matching your criteria.</flux:text>
-                    </td>
-                </tr>
-                @endif
-            </tbody>
-        </table>
-    </div>
-
-    <div class="py-4 text-zinc-500 italic text-sm">
-        {{ $paginatedInvoices->links() }}
-    </div>
+                                    <flux:menu>
+                                        @can('invoices.edit')
+                                            <flux:menu.item icon="pencil-square" :href="route('cms.invoices.edit', $invoice->id)"
+                                                wire:navigate>Edit Template</flux:menu.item>
+                                        @endcan
+                                        @can('invoices.manage_students')
+                                            <flux:menu.item icon="users" :href="route('cms.invoices.students', $invoice->id)"
+                                                wire:navigate>Manage Student Invoices</flux:menu.item>
+                                        @endcan
+                                        <flux:menu.separator />
+                                        @can('invoices.delete')
+                                            <flux:menu.item variant="danger" icon="trash"
+                                                wire:click="confirmDelete({{ $invoice->id }})">
+                                                Delete
+                                            </flux:menu.item>
+                                        @endcan
+                                    </flux:menu>
+                                </flux:dropdown>
+                            </flux:table.cell>
+                        </flux:table.row>
+                    @empty
+                        <flux:table.row>
+                            <flux:table.cell :colspan="auth()->user()->hasRole('Super Admin') ? 7 : 6" class="py-12 text-center">
+                                <flux:text class="text-zinc-500">No invoices found matching your criteria.</flux:text>
+                            </flux:table.cell>
+                        </flux:table.row>
+                    @endforelse
+                </flux:table.rows>
+            </flux:table>
+        </div>
+    </flux:card>
 
     <flux:modal name="delete-invoice" class="min-w-[400px]">
         @php

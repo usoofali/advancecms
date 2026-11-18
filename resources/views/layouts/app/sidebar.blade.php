@@ -7,13 +7,13 @@
 
 <body class="min-h-screen theme-textured-bg antialiased text-zinc-900 dark:text-zinc-100">
     <flux:sidebar sticky collapsible="mobile"
-        class="border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 print:hidden">
-        <flux:sidebar.header>
+        class="max-h-dvh overflow-hidden border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 print:hidden">
+        <flux:sidebar.header class="shrink-0">
             <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
             <flux:sidebar.collapse class="lg:hidden" />
         </flux:sidebar.header>
 
-        <flux:sidebar.nav>
+        <flux:sidebar.nav class="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
             @canany(['dashboard.view'])
                 <flux:sidebar.group :heading="__('Overview')" class="grid">
                     @can('dashboard.view')
@@ -631,10 +631,9 @@
             @endcanany
         </flux:sidebar.nav>
 
-        <flux:spacer />
-
-
-        <x-desktop-user-menu class="hidden lg:block" :name="auth()->user()->name" />
+        <div class="hidden lg:block shrink-0 border-t border-zinc-200/70 pt-2 dark:border-zinc-800">
+            <x-desktop-user-menu :name="auth()->user()->name" />
+        </div>
     </flux:sidebar>
 
     <!-- Topbar & Mobile User Menu -->

@@ -110,28 +110,26 @@
             </div>
         </div>
 
-        <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm text-slate-700">
-                <thead class="bg-slate-50/90 text-slate-600 uppercase text-[11px] font-bold tracking-wider border-b border-slate-200">
-                    <tr>
-                        <th class="px-6 py-4">Campus Name</th>
-                        <th class="px-6 py-4">Campus Code</th>
-                        <th class="px-6 py-4">Direct DB Connection</th>
-                        <th class="px-6 py-4">Status</th>
-                        <th class="px-6 py-4 text-right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
+        <div class="relative overflow-x-auto">
+            <flux:table :paginate="$tenants">
+                <flux:table.columns>
+                    <flux:table.column>Campus Name</flux:table.column>
+                    <flux:table.column>Campus Code</flux:table.column>
+                    <flux:table.column>Direct DB Connection</flux:table.column>
+                    <flux:table.column>Status</flux:table.column>
+                    <flux:table.column class="text-right">Actions</flux:table.column>
+                </flux:table.columns>
+                <flux:table.rows>
                     @forelse ($tenants as $tenant)
-                        <tr class="hover:bg-slate-50/80 transition duration-150">
-                            <td class="px-6 py-4 font-bold text-slate-900">{{ $tenant->name }}</td>
-                            <td class="px-6 py-4">
+                        <flux:table.row :key="$tenant->id">
+                            <flux:table.cell class="font-bold text-slate-900">{{ $tenant->name }}</flux:table.cell>
+                            <flux:table.cell>
                                 <span class="px-3 py-1 text-xs font-mono font-bold bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg inline-block">{{ $tenant->code }}</span>
-                            </td>
-                            <td class="px-6 py-4 text-xs font-mono text-slate-600 truncate max-w-xs">
+                            </flux:table.cell>
+                            <flux:table.cell class="text-xs font-mono text-slate-600 truncate max-w-xs">
                                 <span class="font-semibold text-slate-900">{{ $tenant->db_username ?: 'root' }}</span>@<span class="text-slate-700">{{ $tenant->db_host }}:{{ $tenant->db_port }}</span>/<span class="font-semibold text-emerald-800">{{ $tenant->db_database }}</span>
-                            </td>
-                            <td class="px-6 py-4">
+                            </flux:table.cell>
+                            <flux:table.cell>
                                 @if ($tenant->status === 'active')
                                     <span class="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300/60">
                                         <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Active
@@ -145,25 +143,25 @@
                                         <span class="w-2 h-2 rounded-full bg-amber-500"></span> Maintenance
                                     </span>
                                 @endif
-                            </td>
-                            <td class="px-6 py-4 text-right">
+                            </flux:table.cell>
+                            <flux:table.cell class="text-right">
                                 <button wire:click="editTenant({{ $tenant->id }})" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-emerald-50 text-emerald-700 hover:text-emerald-900 border border-slate-200 hover:border-emerald-300 text-xs font-bold rounded-xl transition cursor-pointer">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                                     </svg>
                                     <span>Edit Config</span>
                                 </button>
-                            </td>
-                        </tr>
+                            </flux:table.cell>
+                        </flux:table.row>
                     @empty
-                        <tr>
-                            <td colspan="5" class="px-6 py-10 text-center text-slate-500 text-sm">
+                        <flux:table.row>
+                            <flux:table.cell colspan="5" class="py-10 text-center text-slate-500 text-sm">
                                 No registered campuses found. Click <strong class="text-emerald-700">"Add Spoke Campus"</strong> above to register your first tenant DB.
-                            </td>
-                        </tr>
+                            </flux:table.cell>
+                        </flux:table.row>
                     @endforelse
-                </tbody>
-            </table>
+                </flux:table.rows>
+            </flux:table>
         </div>
     </div>
 

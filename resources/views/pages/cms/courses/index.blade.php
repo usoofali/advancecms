@@ -282,9 +282,7 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
             <flux:table.column class="text-center">{{ __('Level') }}</flux:table.column>
             <flux:table.column class="text-center">{{ __('Semester') }}</flux:table.column>
             <flux:table.column class="hidden lg:table-cell">{{ __('Department') }}</flux:table.column>
-            @canany(['courses.edit', 'courses.delete'])
-                <flux:table.column class="text-right">{{ __('Actions') }}</flux:table.column>
-            @endcanany
+            <flux:table.column class="text-right">{{ __('Actions') }}</flux:table.column>
         </flux:table.columns>
 
         <flux:table.rows>
@@ -321,16 +319,27 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
                         <div class="text-xs text-zinc-500 mt-0.5">{{ $course->department->institution->acronym }}</div>
                     </flux:table.cell>
                     <flux:table.cell class="text-right">
-                        <div class="flex items-center justify-end gap-2">
-                            @can('courses.edit')
-                                <flux:button size="sm" variant="ghost" icon="pencil"
-                                    :href="route('cms.courses.edit', $course)" wire:navigate />
-                            @endcan
-                            @can('courses.delete')
-                                <flux:button size="sm" variant="ghost" icon="trash"
-                                    x-on:click="$wire.deletingId = {{ $course->id }}; $flux.modal('delete-course').show()" />
-                            @endcan
-                        </div>
+                        <flux:dropdown position="bottom" align="end">
+                            <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" aria-label="{{ __('Actions') }}" />
+
+                            <flux:menu>
+                                <flux:menu.item icon="eye" :href="route('cms.courses.show', $course)" wire:navigate>
+                                    {{ __('View Course') }}
+                                </flux:menu.item>
+                                @can('courses.edit')
+                                    <flux:menu.item icon="pencil" :href="route('cms.courses.edit', $course)" wire:navigate>
+                                        {{ __('Edit Course') }}
+                                    </flux:menu.item>
+                                @endcan
+                                @can('courses.delete')
+                                    <flux:menu.separator />
+                                    <flux:menu.item icon="trash" variant="danger"
+                                        x-on:click="$wire.deletingId = {{ $course->id }}; $flux.modal('delete-course').show()">
+                                        {{ __('Delete Course') }}
+                                    </flux:menu.item>
+                                @endcan
+                            </flux:menu>
+                        </flux:dropdown>
                     </flux:table.cell>
                 </flux:table.row>
             @empty

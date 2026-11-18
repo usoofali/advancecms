@@ -417,69 +417,71 @@ new #[Layout('layouts.app')] #[Title('Stock Count & Updates')] class extends Com
         </div>
     @else
         {{-- Desktop Table (md+) --}}
-        <div class="hidden md:block overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-xs">
-            <table class="w-full text-left border-collapse">
-                <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                    <tr>
-                        <th class="px-4 py-3">{{ __('Item') }}</th>
-                        <th class="px-4 py-3">{{ __('Category') }}</th>
-                        <th class="px-4 py-3 text-center">{{ __('Current Balance') }}</th>
-                        <th class="px-4 py-3 text-center">{{ __('New Quantity') }}</th>
-                        <th class="px-4 py-3 text-right">{{ __('Action') }}</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700 text-sm">
-                    @forelse($items as $item)
-                        @php
-                            $currentStock = $item->stocks->first();
-                            $currentQty = $currentStock ? (int) $currentStock->quantity : 0;
-                            $enteredQty = (int) ($counts[$item->id] ?? $currentQty);
-                            $isDirty = $enteredQty !== $currentQty;
-                        @endphp
-                        <tr wire:key="reconcile-row-{{ $item->id }}" class="{{ $isDirty ? 'bg-amber-50/40 dark:bg-amber-950/10' : 'hover:bg-zinc-50/60 dark:hover:bg-zinc-900/20' }}">
-                            <td class="px-4 py-3.5">
-                                <div class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $item->name }}</div>
-                                <div class="text-xs font-mono text-zinc-500">{{ $item->code }} &bull; {{ $item->unit_of_measure }}</div>
-                            </td>
-                            <td class="px-4 py-3.5">
-                                <flux:badge size="sm" :color="$item->category?->classification === 'durable' ? 'indigo' : 'teal'">
-                                    {{ $item->category?->name }}
-                                </flux:badge>
-                            </td>
-                            <td class="px-4 py-3.5 text-center font-bold text-zinc-700 dark:text-zinc-300">
-                                {{ number_format($currentQty) }}
-                                @if($currentStock?->last_counted_at)
-                                    <div class="text-[10px] font-normal text-zinc-400">
-                                        {{ $currentStock->last_counted_at->diffForHumans() }}
-                                    </div>
-                                @endif
-                            </td>
-                            <td class="px-4 py-3.5">
-                                <div class="flex items-center justify-center gap-1.5">
-                                    <flux:button size="xs" variant="ghost" icon="minus" wire:click="adjustQuickCount({{ $item->id }}, -1)" />
-                                    <input type="number" min="0" step="1" wire:model="counts.{{ $item->id }}"
-                                        class="w-24 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-center text-sm font-bold text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                                    <flux:button size="xs" variant="ghost" icon="plus" wire:click="adjustQuickCount({{ $item->id }}, 1)" />
-                                </div>
-                                @error("counts.{$item->id}")
-                                    <div class="text-[11px] text-red-600 text-center mt-1">{{ $message }}</div>
-                                @enderror
-                            </td>
-                            <td class="px-4 py-3.5 text-right">
-                                <flux:button size="xs" :variant="$isDirty ? 'primary' : 'ghost'" wire:click="saveItemCount({{ $item->id }})">
-                                    {{ $isDirty ? __('Update') : __('Verify') }}
-                                </flux:button>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="px-4 py-10 text-center text-zinc-500">
-                                {{ __('No active catalogue items found matching your filter.') }}
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
+        <div class="hidden md:block">
+            <flux:card>
+                <div class="relative overflow-x-auto">
+                    <flux:table>
+                        <flux:table.columns>
+                            <flux:table.column>{{ __('Item') }}</flux:table.column>
+                            <flux:table.column>{{ __('Category') }}</flux:table.column>
+                            <flux:table.column class="text-center">{{ __('Current Balance') }}</flux:table.column>
+                            <flux:table.column class="text-center">{{ __('New Quantity') }}</flux:table.column>
+                            <flux:table.column class="text-right">{{ __('Action') }}</flux:table.column>
+                        </flux:table.columns>
+                        <flux:table.rows>
+                            @forelse($items as $item)
+                                @php
+                                    $currentStock = $item->stocks->first();
+                                    $currentQty = $currentStock ? (int) $currentStock->quantity : 0;
+                                    $enteredQty = (int) ($counts[$item->id] ?? $currentQty);
+                                    $isDirty = $enteredQty !== $currentQty;
+                                @endphp
+                                <flux:table.row :key="$item->id" class="{{ $isDirty ? 'bg-amber-50/40 dark:bg-amber-950/10' : '' }}">
+                                    <flux:table.cell>
+                                        <div class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $item->name }}</div>
+                                        <div class="text-xs font-mono text-zinc-500">{{ $item->code }} &bull; {{ $item->unit_of_measure }}</div>
+                                    </flux:table.cell>
+                                    <flux:table.cell>
+                                        <flux:badge size="sm" :color="$item->category?->classification === 'durable' ? 'indigo' : 'teal'">
+                                            {{ $item->category?->name }}
+                                        </flux:badge>
+                                    </flux:table.cell>
+                                    <flux:table.cell class="text-center font-bold text-zinc-700 dark:text-zinc-300">
+                                        {{ number_format($currentQty) }}
+                                        @if($currentStock?->last_counted_at)
+                                            <div class="text-[10px] font-normal text-zinc-400">
+                                                {{ $currentStock->last_counted_at->diffForHumans() }}
+                                            </div>
+                                        @endif
+                                    </flux:table.cell>
+                                    <flux:table.cell>
+                                        <div class="flex items-center justify-center gap-1.5">
+                                            <flux:button size="xs" variant="ghost" icon="minus" wire:click="adjustQuickCount({{ $item->id }}, -1)" />
+                                            <input type="number" min="0" step="1" wire:model="counts.{{ $item->id }}"
+                                                class="w-24 rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-center text-sm font-bold text-zinc-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                            <flux:button size="xs" variant="ghost" icon="plus" wire:click="adjustQuickCount({{ $item->id }}, 1)" />
+                                        </div>
+                                        @error("counts.{$item->id}")
+                                            <div class="text-[11px] text-red-600 text-center mt-1">{{ $message }}</div>
+                                        @enderror
+                                    </flux:table.cell>
+                                    <flux:table.cell class="text-right">
+                                        <flux:button size="xs" :variant="$isDirty ? 'primary' : 'ghost'" wire:click="saveItemCount({{ $item->id }})">
+                                            {{ $isDirty ? __('Update') : __('Verify') }}
+                                        </flux:button>
+                                    </flux:table.cell>
+                                </flux:table.row>
+                            @empty
+                                <flux:table.row>
+                                    <flux:table.cell colspan="5" class="py-10 text-center text-zinc-500">
+                                        {{ __('No active catalogue items found matching your filter.') }}
+                                    </flux:table.cell>
+                                </flux:table.row>
+                            @endforelse
+                        </flux:table.rows>
+                    </flux:table>
+                </div>
+            </flux:card>
         </div>
 
         {{-- Mobile Touch-Friendly Card List (< md) --}}

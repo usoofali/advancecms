@@ -16,6 +16,7 @@ class PayrollItem extends Model
         'pay_type',
         'base_pay',
         'contacts_count',
+        'is_contact_overridden',
         'credit_units_total',
         'hours_total',
         'rate_used',
@@ -38,6 +39,7 @@ class PayrollItem extends Model
     protected function casts(): array
     {
         return [
+            'is_contact_overridden' => 'boolean',
             'base_pay' => 'decimal:2',
             'credit_units_total' => 'decimal:2',
             'hours_total' => 'decimal:2',

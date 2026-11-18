@@ -423,27 +423,17 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
     @if ($course_id && $course_id !== 'null' && count($students) > 0)
         <div class="space-y-6">
             <flux:card>
-                <div
-                    class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
-                    <table class="w-full text-left border-collapse whitespace-nowrap">
-                        <thead class="bg-zinc-50 dark:bg-zinc-900/50 border-b border-zinc-200 dark:border-zinc-700">
-                            <tr>
-                                <th class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100">
-                                    {{ __('Student') }}</th>
-                                <th
-                                    class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 w-32 min-w-[100px]">
-                                    {{ __('CA (30)') }}</th>
-                                <th
-                                    class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 w-32 min-w-[100px]">
-                                    {{ __('Exam (70)') }}</th>
-                                <th
-                                    class="px-4 py-3 font-semibold text-sm text-zinc-900 dark:text-zinc-100 text-center w-24 min-w-[80px]">
-                                    {{ __('Total') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
+                <div class="relative overflow-x-auto">
+                    <flux:table>
+                        <flux:table.columns>
+                            <flux:table.column>{{ __('Student') }}</flux:table.column>
+                            <flux:table.column class="w-32 min-w-[100px]">{{ __('CA (30)') }}</flux:table.column>
+                            <flux:table.column class="w-32 min-w-[100px]">{{ __('Exam (70)') }}</flux:table.column>
+                            <flux:table.column class="text-center w-24 min-w-[80px]">{{ __('Total') }}</flux:table.column>
+                        </flux:table.columns>
+                        <flux:table.rows>
                             @foreach ($students as $stu)
-                                <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-900/20 transition-colors"
+                                <flux:table.row
                                     wire:key="{{ $session_id }}-{{ $semester_id }}-{{ $course_id }}-{{ $stu->id }}-{{ $scoreVersion }}"
                                     x-data="{
                                         ca: {{ (float) (($scores[$stu->id]['ca'] ?? 0) ?: 0) }},
@@ -452,29 +442,27 @@ new #[Layout('layouts.app')] #[Title('Result Entry')] class extends Component {
                                             return ((parseFloat(this.ca) || 0) + (parseFloat(this.exam) || 0));
                                         }
                                     }">
-                                    <td class="px-4 py-3">
-                                        <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ $stu->full_name }}
-                                        </div>
-                                        <div class="font-mono text-xs text-zinc-500 dark:text-zinc-400 uppercase mt-0.5">
-                                            {{ $stu->matric_number }}</div>
-                                    </td>
-                                    <td class="px-4 py-3">
+                                    <flux:table.cell>
+                                        <div class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ $stu->full_name }}</div>
+                                        <div class="font-mono text-xs text-zinc-500 dark:text-zinc-400 uppercase mt-0.5">{{ $stu->matric_number }}</div>
+                                    </flux:table.cell>
+                                    <flux:table.cell>
                                         <flux:input type="number" step="0.5" x-model.number="ca" wire:model.blur="scores.{{ $stu->id }}.ca"
                                             wire:change="saveSingleResult({{ $stu->id }})" size="sm" class="w-24" />
-                                    </td>
-                                    <td class="px-4 py-3">
+                                    </flux:table.cell>
+                                    <flux:table.cell>
                                         <flux:input type="number" step="0.5" x-model.number="exam" wire:model.blur="scores.{{ $stu->id }}.exam"
                                             wire:change="saveSingleResult({{ $stu->id }})" size="sm" class="w-24" />
-                                    </td>
-                                    <td class="px-4 py-3">
+                                    </flux:table.cell>
+                                    <flux:table.cell>
                                         <div class="font-bold text-center text-zinc-900 dark:text-zinc-100" x-text="total">
                                             {{ (float) (($scores[$stu->id]['ca'] ?? 0) ?: 0) + (float) (($scores[$stu->id]['exam'] ?? 0) ?: 0) }}
                                         </div>
-                                    </td>
-                                </tr>
+                                    </flux:table.cell>
+                                </flux:table.row>
                             @endforeach
-                        </tbody>
-                    </table>
+                        </flux:table.rows>
+                    </flux:table>
                 </div>
             </flux:card>
 

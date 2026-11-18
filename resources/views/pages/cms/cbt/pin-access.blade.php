@@ -8,8 +8,11 @@ use App\Models\Semester;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new #[Layout('layouts.app')] #[Title('CBT PIN Access Control')] class extends Component {
+    use WithPagination;
+
     public $institution_id = '';
 
     public $session_id = '';
@@ -174,6 +177,11 @@ new #[Layout('layouts.app')] #[Title('CBT PIN Access Control')] class extends Co
         ]);
     }
 
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
     public function with(): array
     {
         $instId = $this->resolveInstitutionId();
@@ -192,7 +200,7 @@ new #[Layout('layouts.app')] #[Title('CBT PIN Access Control')] class extends Co
                   ->orWhere('acronym', 'like', '%' . $this->search . '%');
             });
         }
-        $programs = $programsQuery->get();
+        $programs = $programsQuery->paginate(15);
 
         $isGlobalUnlocked = false;
         $unlockedProgramIds = [];
@@ -337,32 +345,30 @@ new #[Layout('layouts.app')] #[Title('CBT PIN Access Control')] class extends Co
                 </div>
             </div>
 
-            <div class="overflow-x-auto">
-                <table class="w-full text-left text-sm border-collapse">
-                    <thead>
-                        <tr class="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
-                            <th class="py-3 px-4 font-bold text-xs uppercase text-zinc-500">{{ __('Program Code & Name') }}</th>
-                            <th class="py-3 px-4 font-bold text-xs uppercase text-zinc-500">{{ __('Department') }}</th>
-                            <th class="py-3 px-4 font-bold text-xs uppercase text-zinc-500 text-center">{{ __('PIN Status') }}</th>
-                            <th class="py-3 px-4 font-bold text-xs uppercase text-zinc-500 text-right">{{ __('Action') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <div class="relative overflow-x-auto">
+                <flux:table :paginate="$programs">
+                    <flux:table.columns>
+                        <flux:table.column>{{ __('Program Code & Name') }}</flux:table.column>
+                        <flux:table.column>{{ __('Department') }}</flux:table.column>
+                        <flux:table.column class="text-center">{{ __('PIN Status') }}</flux:table.column>
+                        <flux:table.column class="text-right">{{ __('Action') }}</flux:table.column>
+                    </flux:table.columns>
+                    <flux:table.rows>
                         @forelse ($programs as $prog)
                             @php
                                 $isProgUnlocked = in_array($prog->id, $unlockedProgramIds);
                             @endphp
-                            <tr class="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors">
-                                <td class="py-3.5 px-4 font-medium text-zinc-900 dark:text-white">
+                            <flux:table.row :key="$prog->id">
+                                <flux:table.cell class="font-medium text-zinc-900 dark:text-white">
                                     <div class="flex items-center gap-2">
                                         <flux:badge size="sm" variant="subtle" class="font-mono font-bold">{{ $prog->acronym }}</flux:badge>
                                         <span class="font-bold">{{ $prog->name }}</span>
                                     </div>
-                                </td>
-                                <td class="py-3.5 px-4 text-zinc-600 dark:text-zinc-400">
+                                </flux:table.cell>
+                                <flux:table.cell class="text-zinc-600 dark:text-zinc-400">
                                     {{ $prog->department?->name ?? 'N/A' }}
-                                </td>
-                                <td class="py-3.5 px-4 text-center">
+                                </flux:table.cell>
+                                <flux:table.cell class="text-center">
                                     @if ($isProgUnlocked)
                                         <flux:badge color="emerald" size="sm" class="uppercase font-bold">
                                             <flux:icon.lock-open class="size-3 mr-1" />
@@ -374,8 +380,8 @@ new #[Layout('layouts.app')] #[Title('CBT PIN Access Control')] class extends Co
                                             {{ __('Locked (Default)') }}
                                         </flux:badge>
                                     @endif
-                                </td>
-                                <td class="py-3.5 px-4 text-right">
+                                </flux:table.cell>
+                                <flux:table.cell class="text-right">
                                     <flux:button
                                         size="sm"
                                         variant="{{ $isProgUnlocked ? 'filled' : 'primary' }}"
@@ -384,17 +390,17 @@ new #[Layout('layouts.app')] #[Title('CBT PIN Access Control')] class extends Co
                                     >
                                         {{ $isProgUnlocked ? __('Lock') : __('Unlock') }}
                                     </flux:button>
-                                </td>
-                            </tr>
+                                </flux:table.cell>
+                            </flux:table.row>
                         @empty
-                            <tr>
-                                <td colspan="4" class="py-8 text-center text-zinc-400 italic">
+                            <flux:table.row>
+                                <flux:table.cell colspan="4" class="py-8 text-center text-zinc-400 italic">
                                     {{ __('No programs found.') }}
-                                </td>
-                            </tr>
+                                </flux:table.cell>
+                            </flux:table.row>
                         @endforelse
-                    </tbody>
-                </table>
+                    </flux:table.rows>
+                </flux:table>
             </div>
         </flux:card>
     @else

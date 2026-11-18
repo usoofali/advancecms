@@ -376,7 +376,9 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
         </flux:select>
     </div>
 
-    <flux:table :paginate="$students">
+    <flux:card>
+        <div class="relative overflow-x-auto">
+            <flux:table :paginate="$students">
         <flux:table.columns>
             <flux:table.column>{{ __('Matric Number') }}</flux:table.column>
             <flux:table.column>{{ __('Name') }}</flux:table.column>
@@ -443,12 +445,18 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
                         </flux:badge>
                     </flux:table.cell>
                     <flux:table.cell class="text-right">
-                        <div class="flex items-center justify-end gap-2">
-                            <flux:button size="sm" variant="ghost" icon="pencil"
-                                :href="route('cms.students.edit', $student)" wire:navigate />
-                            <flux:button size="sm" variant="ghost" icon="trash"
-                                x-on:click="$wire.deletingId = {{ $student->id }}; $flux.modal('delete-student').show()" />
-                        </div>
+                        <flux:dropdown position="bottom" align="end">
+                            <flux:button variant="ghost" size="sm" icon="ellipsis-horizontal" inset="top bottom" />
+                            <flux:menu>
+                                <flux:menu.item icon="pencil" :href="route('cms.students.edit', $student)" wire:navigate>
+                                    {{ __('Edit') }}
+                                </flux:menu.item>
+                                <flux:menu.separator />
+                                <flux:menu.item icon="trash" variant="danger" x-on:click="$wire.deletingId = {{ $student->id }}; $flux.modal('delete-student').show()">
+                                    {{ __('Delete') }}
+                                </flux:menu.item>
+                            </flux:menu>
+                        </flux:dropdown>
                     </flux:table.cell>
                 </flux:table.row>
             @empty
@@ -459,7 +467,9 @@ new #[Layout('layouts.app')] #[Title('Students')] class extends Component {
                 </flux:table.row>
             @endforelse
         </flux:table.rows>
-    </flux:table>
+            </flux:table>
+        </div>
+    </flux:card>
 
     {{-- Import Modal --}}
     <flux:modal name="import-students" variant="filled" class="min-w-[28rem]">

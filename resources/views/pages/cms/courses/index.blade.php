@@ -274,7 +274,9 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
         </flux:select>
     </div>
 
-    <flux:table :paginate="$courses">
+    <flux:card>
+        <div class="relative overflow-x-auto">
+            <flux:table :paginate="$courses">
         <flux:table.columns>
             <flux:table.column>{{ __('Code') }}</flux:table.column>
             <flux:table.column>{{ __('Title') }}</flux:table.column>
@@ -349,8 +351,10 @@ new #[Layout('layouts.app')] #[Title('Courses')] class extends Component {
                     </flux:table.cell>
                 </flux:table.row>
             @endforelse
-        </flux:table.rows>
-    </flux:table>
+            </flux:table.rows>
+            </flux:table>
+        </div>
+    </flux:card>
 
 
     {{-- Import Modal --}}

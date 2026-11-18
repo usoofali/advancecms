@@ -375,8 +375,9 @@ new #[Title('Review Application')] #[Layout('layouts.app')] class extends Compon
                             ['path' => Paginator::resolveCurrentPath(), 'pageName' => 'subjectsPage']
                         );
                     @endphp
-                    <div class="relative overflow-x-auto">
-                        <flux:table :paginate="$paginatedSubjects">
+                    <flux:card>
+                        <div class="relative overflow-x-auto">
+                            <flux:table :paginate="$paginatedSubjects">
                             <flux:table.columns>
                                 <flux:table.column>{{ __('Subject') }}</flux:table.column>
                                 <flux:table.column class="text-center">{{ __('Grade') }}</flux:table.column>
@@ -391,8 +392,9 @@ new #[Title('Review Application')] #[Layout('layouts.app')] class extends Compon
                                     </flux:table.row>
                                 @endforeach
                             </flux:table.rows>
-                        </flux:table>
-                    </div>
+                            </flux:table>
+                        </div>
+                    </flux:card>
 
                     <div class="mt-8">
                         <flux:heading size="sm" class="mb-3 text-zinc-500 uppercase tracking-widest font-semibold">{{ __('Attached Documents') }}</flux:heading>

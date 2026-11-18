@@ -724,7 +724,9 @@ new #[Layout('layouts.app')] #[Title('Monthly Payroll Runs')] class extends Comp
             </div>
         @endif
 
-        <flux:table :paginate="$items">
+        <flux:card>
+            <div class="relative overflow-x-auto">
+                <flux:table :paginate="$items">
             <flux:table.columns>
                 <flux:table.column>{{ __('Staff') }}</flux:table.column>
                 <flux:table.column>{{ __('Pay Basis') }}</flux:table.column>
@@ -819,7 +821,9 @@ new #[Layout('layouts.app')] #[Title('Monthly Payroll Runs')] class extends Comp
                     </flux:table.row>
                 @endforelse
             </flux:table.rows>
-        </flux:table>
+                </flux:table>
+            </div>
+        </flux:card>
 
         {{-- Approval Confirmation Modal --}}
         <flux:modal wire:model.self="showApproveModal" class="max-w-md w-full">

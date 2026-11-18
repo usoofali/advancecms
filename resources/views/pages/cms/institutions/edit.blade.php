@@ -228,8 +228,9 @@ new #[Layout('layouts.app')] #[Title('Edit Institution')] class extends Componen
             </form>
         </div>
 
-        <div class="overflow-x-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 shadow-sm">
-            <flux:table :paginate="$assignedUsers">
+        <flux:card>
+            <div class="relative overflow-x-auto">
+                <flux:table :paginate="$assignedUsers">
                     <flux:table.columns>
                         <flux:table.column>{{ __('User') }}</flux:table.column>
                         <flux:table.column>{{ __('Role') }}</flux:table.column>
@@ -254,8 +255,9 @@ new #[Layout('layouts.app')] #[Title('Edit Institution')] class extends Componen
                             </flux:table.row>
                         @endforelse
                     </flux:table.rows>
-            </flux:table>
-        </div>
+                </flux:table>
+            </div>
+        </flux:card>
     </div>
     @endcan
 </div>

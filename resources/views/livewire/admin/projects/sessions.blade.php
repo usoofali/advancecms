@@ -269,8 +269,9 @@ new #[Layout('layouts.app')] class extends Component {
     </div>
 
     <!-- Project Sessions Full-Width Table View -->
-    <div class="bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-xs mb-6">
-        <flux:table :paginate="$sessions" class="[&_td:first-child]:!ps-6 [&_td:last-child]:!pe-6 [&_th:first-child]:!ps-6 [&_th:last-child]:!pe-6 [&_td]:!px-6 [&_th]:!px-6 [&_td]:!py-4 [&_th]:!py-3.5">
+    <flux:card class="mb-6">
+        <div class="relative overflow-x-auto">
+            <flux:table :paginate="$sessions" class="[&_td:first-child]:!ps-6 [&_td:last-child]:!pe-6 [&_th:first-child]:!ps-6 [&_th:last-child]:!pe-6 [&_td]:!px-6 [&_th]:!px-6 [&_td]:!py-4 [&_th]:!py-3.5">
             <flux:table.columns>
                 <flux:table.column>Session & Academic Year</flux:table.column>
                 <flux:table.column>Coordinator Staff</flux:table.column>
@@ -340,8 +341,9 @@ new #[Layout('layouts.app')] class extends Component {
                     </flux:table.row>
                 @endforelse
             </flux:table.rows>
-        </flux:table>
-    </div>
+            </flux:table>
+        </div>
+    </flux:card>
 
     <!-- Workflow Stages Configuration Modal -->
     <flux:modal wire:model="showStagesConfigModal" class="w-full max-w-full sm:max-w-3xl">

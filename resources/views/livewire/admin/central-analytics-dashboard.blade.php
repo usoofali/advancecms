@@ -110,8 +110,9 @@
             </div>
         </div>
 
-        <div class="relative overflow-x-auto">
-            <flux:table :paginate="$tenants">
+        <flux:card>
+            <div class="relative overflow-x-auto">
+                <flux:table :paginate="$tenants">
                 <flux:table.columns>
                     <flux:table.column>Campus Name</flux:table.column>
                     <flux:table.column>Campus Code</flux:table.column>
@@ -161,8 +162,9 @@
                         </flux:table.row>
                     @endforelse
                 </flux:table.rows>
-            </flux:table>
-        </div>
+                </flux:table>
+            </div>
+        </flux:card>
     </div>
 
     <!-- Tenant Registration / Edit Modal -->

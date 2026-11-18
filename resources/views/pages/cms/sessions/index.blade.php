@@ -274,7 +274,9 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
                 
                 <!-- Desktop Table View -->
                 <div class="hidden sm:block">
-                    <flux:table :paginate="$sessions">
+                    <flux:card>
+                        <div class="relative overflow-x-auto">
+                            <flux:table :paginate="$sessions">
                         <flux:table.columns>
                             <flux:table.column>{{ __('Session') }}</flux:table.column>
                             <flux:table.column>{{ __('Dates') }}</flux:table.column>
@@ -343,7 +345,9 @@ new #[Layout('layouts.app')] #[Title('Academic Sessions')] class extends Compone
                                 </flux:table.row>
                             @endforelse
                         </flux:table.rows>
-                    </flux:table>
+                            </flux:table>
+                        </div>
+                    </flux:card>
                 </div>
 
                 <!-- Mobile Card View -->

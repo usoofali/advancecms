@@ -194,7 +194,9 @@ new #[Layout('layouts.app')] #[Title('CBT Connectivity & Sync')] class extends C
     </div>
     <div class="p-0">
         @if($tokens->total() > 0)
-            <flux:table :paginate="$tokens">
+            <flux:card>
+                <div class="relative overflow-x-auto">
+                    <flux:table :paginate="$tokens">
                 <flux:table.columns>
                     <flux:table.column class="px-8">{{ __('Server / Label') }}</flux:table.column>
                     <flux:table.column class="px-8">{{ __('Last Used') }}</flux:table.column>
@@ -226,7 +228,9 @@ new #[Layout('layouts.app')] #[Title('CBT Connectivity & Sync')] class extends C
                         </flux:table.row>
                     @endforeach
                 </flux:table.rows>
-            </flux:table>
+                    </flux:table>
+                </div>
+            </flux:card>
         @else
             <div class="p-12 text-center text-zinc-500 italic text-sm">
                 {{ __('No active lab server tokens found.') }}

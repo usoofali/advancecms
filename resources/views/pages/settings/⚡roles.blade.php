@@ -49,12 +49,12 @@ new #[Title('Role Management')] class extends Component
         Gate::authorize('roles.view');
     }
 
-    #[Computed]
     public function updatingSearch(): void
     {
         $this->resetPage();
     }
 
+    #[Computed]
     public function roles(): LengthAwarePaginator
     {
         return Role::query()
@@ -320,7 +320,7 @@ new #[Title('Role Management')] class extends Component
                     >
                         <flux:icon.shield-check class="size-4" />
                         <span>{{ __('Roles') }}</span>
-                        <flux:badge size="sm" color="zinc">{{ $this->roles->count() }}</flux:badge>
+                        <flux:badge size="sm" color="zinc">{{ $this->roles->total() }}</flux:badge>
                     </button>
 
                     <button
@@ -356,7 +356,9 @@ new #[Title('Role Management')] class extends Component
 
             {{-- Roles Tab --}}
             <div x-show="currentTab === 'roles'" class="space-y-4">
-                <flux:table :paginate="$this->roles">
+                <flux:card>
+                    <div class="relative overflow-x-auto">
+                        <flux:table :paginate="$this->roles">
                     <flux:table.columns>
                         <flux:table.column>{{ __('Role') }}</flux:table.column>
                         <flux:table.column class="text-center">{{ __('Users') }}</flux:table.column>
@@ -433,7 +435,9 @@ new #[Title('Role Management')] class extends Component
                             </flux:table.row>
                         @endforelse
                     </flux:table.rows>
-                </flux:table>
+                        </flux:table>
+                    </div>
+                </flux:card>
             </div>
 
             {{-- Permissions Reference Tab --}}

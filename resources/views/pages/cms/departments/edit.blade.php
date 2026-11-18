@@ -213,7 +213,9 @@ new #[Layout('layouts.app')] #[Title('Edit Department')] class extends Component
             </form>
         </div>
 
-        <flux:table :paginate="$assignedUsers">
+        <flux:card>
+            <div class="relative overflow-x-auto">
+                <flux:table :paginate="$assignedUsers">
             <flux:table.columns>
                 <flux:table.column>{{ __('User') }}</flux:table.column>
                 <flux:table.column>{{ __('Role') }}</flux:table.column>
@@ -238,7 +240,9 @@ new #[Layout('layouts.app')] #[Title('Edit Department')] class extends Component
                     </flux:table.row>
                 @endforelse
             </flux:table.rows>
-        </flux:table>
+                </flux:table>
+            </div>
+        </flux:card>
     </div>
     @endcan
 </div>

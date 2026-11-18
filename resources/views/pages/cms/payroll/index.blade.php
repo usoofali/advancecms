@@ -269,7 +269,9 @@ new #[Layout('layouts.app')] #[Title('Payroll Overview')] class extends Componen
             </flux:button>
         </div>
 
-        <flux:table :paginate="$recentRuns">
+        <flux:card>
+            <div class="relative overflow-x-auto">
+                <flux:table :paginate="$recentRuns">
             <flux:table.columns>
                 <flux:table.column>{{ __('Payroll Period') }}</flux:table.column>
                 <flux:table.column class="text-center">{{ __('Staff') }}</flux:table.column>
@@ -336,7 +338,9 @@ new #[Layout('layouts.app')] #[Title('Payroll Overview')] class extends Componen
                     </flux:table.row>
                 @endforelse
             </flux:table.rows>
-        </flux:table>
+                </flux:table>
+            </div>
+        </flux:card>
     </div>
 
     {{-- Delete Payroll Run Modal --}}

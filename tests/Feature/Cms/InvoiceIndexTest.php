@@ -300,3 +300,56 @@ it('can delete all student invoices with payments and then delete the template',
 
     expect(Invoice::find($invoice->id))->toBeNull();
 });
+
+it('defaults invoice list to the current active session and filters by session', function (): void {
+    $institution = Institution::factory()->create();
+    $department = Department::factory()->for($institution)->create();
+
+    $pastSession = AcademicSession::factory()->create([
+        'name' => '2023/2024',
+        'status' => 'closed',
+    ]);
+    $activeSession = AcademicSession::factory()->create([
+        'name' => '2024/2025',
+        'status' => 'active',
+    ]);
+
+    $user = User::factory()->withRole('Institutional Admin')->create([
+        'institution_id' => $institution->id,
+    ]);
+
+    Invoice::query()->create([
+        'institution_id' => $institution->id,
+        'title' => 'Past Session Fee',
+        'academic_session_id' => $pastSession->id,
+        'due_date' => now()->addMonth()->toDateString(),
+        'target_type' => 'dept',
+        'department_id' => $department->id,
+        'status' => 'published',
+        'created_by' => $user->id,
+    ]);
+
+    Invoice::query()->create([
+        'institution_id' => $institution->id,
+        'title' => 'Current Session Fee',
+        'academic_session_id' => $activeSession->id,
+        'due_date' => now()->addMonth()->toDateString(),
+        'target_type' => 'dept',
+        'department_id' => $department->id,
+        'status' => 'published',
+        'created_by' => $user->id,
+    ]);
+
+    $this->actingAs($user);
+
+    Livewire::test('pages::cms.invoices.invoice-index')
+        ->assertSet('sessionFilter', $activeSession->id)
+        ->assertSee('Current Session Fee')
+        ->assertDontSee('Past Session Fee')
+        ->set('sessionFilter', $pastSession->id)
+        ->assertSee('Past Session Fee')
+        ->assertDontSee('Current Session Fee')
+        ->set('sessionFilter', null)
+        ->assertSee('Current Session Fee')
+        ->assertSee('Past Session Fee');
+});

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\AcademicSession;
 use App\Models\Invoice;
 use App\Models\StudentInvoice;
 use Livewire\Attributes\Layout;
@@ -14,6 +15,7 @@ new #[Layout('layouts.app')] #[Title('Invoices')] class extends Component
     public string $search = '';
 
     public string $statusFilter = 'all';
+    public ?int $sessionFilter = null;
     public ?int $institutionFilter = null;
     public ?int $departmentFilter = null;
 
@@ -27,6 +29,7 @@ new #[Layout('layouts.app')] #[Title('Invoices')] class extends Component
         return Invoice::query()
             ->when($this->search, fn ($q) => $q->where('title', 'like', '%'.$this->search.'%'))
             ->when($this->statusFilter !== 'all', fn ($q) => $q->where('status', $this->statusFilter))
+            ->when($this->sessionFilter, fn ($q) => $q->where('academic_session_id', $this->sessionFilter))
             ->when($user->hasRole('Super Admin') && $this->institutionFilter, fn ($q) => $q->where('institution_id', $this->institutionFilter))
             ->when(!$user->hasRole('Super Admin'), fn ($q) => $q->where('institution_id', $user->institution_id))
             ->when($this->departmentFilter, fn ($q) => $q->where('department_id', $this->departmentFilter))
@@ -94,6 +97,8 @@ new #[Layout('layouts.app')] #[Title('Invoices')] class extends Component
     {
         Gate::authorize('invoices.view');
 
+        $this->sessionFilter = AcademicSession::where('status', 'active')->value('id');
+
         $user = auth()->user();
 
         // 1. Check polymorphic scoped roles
@@ -136,6 +141,11 @@ new #[Layout('layouts.app')] #[Title('Invoices')] class extends Component
     }
 
     public function updatedStatusFilter()
+    {
+        $this->resetPage();
+    }
+
+    public function updatedSessionFilter(): void
     {
         $this->resetPage();
     }
@@ -208,6 +218,15 @@ new #[Layout('layouts.app')] #[Title('Invoices')] class extends Component
                 @endphp
                 @foreach($depts as $dept)
                 <flux:select.option value="{{ $dept->id }}">{{ $dept->name }}</flux:select.option>
+                @endforeach
+            </flux:select>
+        </div>
+
+        <div class="w-full md:w-48">
+            <flux:select wire:model.live="sessionFilter" :label="__('Academic Session')">
+                <flux:select.option value="">All Sessions</flux:select.option>
+                @foreach(AcademicSession::orderByDesc('name')->get() as $academicSession)
+                    <flux:select.option value="{{ $academicSession->id }}">{{ $academicSession->name }}</flux:select.option>
                 @endforeach
             </flux:select>
         </div>

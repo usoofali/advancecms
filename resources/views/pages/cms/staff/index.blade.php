@@ -1,20 +1,28 @@
 <?php
 
-use App\Models\Staff;
+use App\Imports\StaffImport;
 use App\Models\Department;
+use App\Models\Institution;
 use App\Models\Role;
+use App\Models\Staff;
+use App\Services\ActivityLogger;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 new #[Layout('layouts.app')] #[Title('Staff Management')] class extends Component {
-    use WithPagination;
+    use WithFileUploads, WithPagination;
 
     public string $search = '';
     public int|string $role_id = '';
+    public int|string $filterInstitution = '';
     public int|string|null $deletingId = null;
     public array $scopedDepartmentIds = [];
+    public $importFile = null;
+    public array $importFailures = [];
+    public int $importedCount = 0;
 
     public function mount(): void
     {
@@ -47,6 +55,47 @@ new #[Layout('layouts.app')] #[Title('Staff Management')] class extends Componen
     public function updatingSearch(): void
     {
         $this->resetPage();
+    }
+
+    public function import(): void
+    {
+        Gate::authorize('staff.import');
+
+        $institutionId = $this->filterInstitution ?: auth()->user()->institution_id;
+
+        if (! $institutionId) {
+            $this->dispatch('notify', [
+                'type' => 'error',
+                'message' => __('Please select an institution before importing.'),
+            ]);
+
+            return;
+        }
+
+        $this->validate(['importFile' => ['required', 'file', 'mimes:csv,txt,xlsx,xls', 'max:5120']]);
+
+        $this->importFailures = [];
+        $this->importedCount = 0;
+
+        $importer = new StaffImport($institutionId);
+        $importer->import($this->importFile->getRealPath());
+
+        $this->importedCount = $importer->imported;
+        $this->importFailures = $importer->failures;
+        $this->importFile = null;
+
+        ActivityLogger::log(
+            action: 'imported',
+            module: 'Staff',
+            description: "Bulk imported {$this->importedCount} staff records from file"
+        );
+
+        if ($this->importedCount > 0) {
+            $this->dispatch('notify', [
+                'type' => 'success',
+                'message' => __(':count staff member(s) imported successfully.', ['count' => $this->importedCount]),
+            ]);
+        }
     }
 
     public function confirmDelete(): void
@@ -93,21 +142,33 @@ new #[Layout('layouts.app')] #[Title('Staff Management')] class extends Componen
                 ->whereNotIn('role_id', [1, 9])
                 ->orderBy('role_name')
                 ->get(),
+            'institutions' => auth()->user()->institution_id
+                ? collect()
+                : Institution::query()->where('status', 'active')->orderBy('name')->get(),
         ];
     }
 }; ?>
 
 <div class="flex h-full w-full flex-1 flex-col gap-4">
-    <div class="flex items-center justify-between">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
             <flux:heading size="xl">{{ __('Staff Directory') }}</flux:heading>
             <flux:subheading>{{ __('Manage academic and non-academic staff members') }}</flux:subheading>
         </div>
-        @can('staff.create')
-        <flux:button icon="plus" variant="primary" :href="route('cms.staff.create')" wire:navigate>
-            {{ __('Add Staff') }}
-        </flux:button>
-        @endcan
+        <div class="flex flex-wrap items-center gap-2">
+            @can('staff.import')
+                <flux:modal.trigger name="import-staff">
+                    <flux:button icon="arrow-up-tray" variant="outline" class="w-full sm:w-auto">
+                        {{ __('Import Excel/CSV') }}
+                    </flux:button>
+                </flux:modal.trigger>
+            @endcan
+            @can('staff.create')
+                <flux:button icon="plus" variant="primary" :href="route('cms.staff.create')" wire:navigate class="w-full sm:w-auto">
+                    {{ __('Add Staff') }}
+                </flux:button>
+            @endcan
+        </div>
     </div>
 
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
@@ -197,6 +258,54 @@ new #[Layout('layouts.app')] #[Title('Staff Management')] class extends Componen
             @endforelse
         </flux:table.rows>
     </flux:table>
+
+    {{-- Import Modal --}}
+    <flux:modal name="import-staff" variant="filled" class="min-w-[28rem]">
+        <form wire:submit="import" class="space-y-6">
+            <div>
+                <flux:heading size="lg">{{ __('Import Staff from Excel / CSV') }}</flux:heading>
+                <flux:subheading>
+                    {{ __('Upload an Excel (.xlsx, .xls) or CSV file with the required staff columns.') }}
+                    <a href="/templates/staff-import-template.csv" class="text-accent underline" download>
+                        {{ __('Download template') }}
+                    </a>
+                </flux:subheading>
+            </div>
+
+            @if (! auth()->user()->institution_id)
+                <flux:select wire:model="filterInstitution" :label="__('Target Institution')" required>
+                    <flux:select.option value="">{{ __('Select institution...') }}</flux:select.option>
+                    @foreach ($institutions as $inst)
+                        <flux:select.option :value="$inst->id">{{ $inst->name }}</flux:select.option>
+                    @endforeach
+                </flux:select>
+            @endif
+
+            <flux:input type="file" wire:model="importFile" accept=".csv,.xlsx,.xls" :label="__('File (Excel or CSV)')" />
+            <flux:error name="importFile" />
+
+            @if (!empty($importFailures))
+                <div class="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/30 dark:border-red-900 p-4 space-y-1 max-h-48 overflow-y-auto">
+                    <p class="text-sm font-medium text-red-700 dark:text-red-400">
+                        {{ count($importFailures) }} {{ __('row(s) failed:') }}
+                    </p>
+                    @foreach ($importFailures as $failure)
+                        <p class="text-xs text-red-600 dark:text-red-400">{{ $failure }}</p>
+                    @endforeach
+                </div>
+            @endif
+
+            <div class="flex gap-2">
+                <flux:spacer />
+                <flux:modal.close>
+                    <flux:button variant="ghost">{{ __('Cancel') }}</flux:button>
+                </flux:modal.close>
+                <flux:button type="submit" variant="primary" wire:loading.attr="disabled">
+                    {{ __('Import Staff') }}
+                </flux:button>
+            </div>
+        </form>
+    </flux:modal>
 
     <flux:modal name="delete-staff" variant="filled" class="min-w-[22rem]">
         <form wire:submit="confirmDelete" class="space-y-6">

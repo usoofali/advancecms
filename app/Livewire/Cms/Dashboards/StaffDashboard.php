@@ -81,7 +81,9 @@ class StaffDashboard extends Component
             $deptIds = collect([$staff->department_id]);
         }
 
-        $totalDeptStudents = Student::whereIn('department_id', $deptIds)->count();
+        $totalDeptStudents = $deptIds->isNotEmpty()
+            ? Student::whereHas('program', fn ($q) => $q->whereIn('department_id', $deptIds))->count()
+            : 0;
         $totalDeptPrograms = Program::whereIn('department_id', $deptIds)->count();
 
         $showTeachingKpis = $user->hasRole('Lecturer') || $user->can('courses.view_assigned') || $allocationsCount > 0;

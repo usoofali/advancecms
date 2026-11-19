@@ -266,7 +266,7 @@ new #[Layout('layouts.app')] #[Title('Monthly Payroll Runs')] class extends Comp
         $instId = $this->resolveInstitutionId();
         $run = PayrollRun::where('institution_id', $instId)->findOrFail($this->run_id);
 
-        if (! in_array($run->status, ['under_review', 'approved'])) {
+        if ($run->status !== 'approved') {
             return;
         }
 
@@ -658,7 +658,7 @@ new #[Layout('layouts.app')] #[Title('Monthly Payroll Runs')] class extends Comp
                         @endcan
                     @endif
 
-                    @if(in_array($selectedRun->status, ['under_review', 'approved']))
+                    @if($selectedRun->status === 'approved')
                         @can('payroll.approve')
                             <flux:button size="sm" variant="danger" icon="arrow-uturn-left" wire:click="openDisapproveModal">
                                 {{ __('Disapprove') }}

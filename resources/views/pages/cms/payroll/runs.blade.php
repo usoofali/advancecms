@@ -442,7 +442,7 @@ new #[Layout('layouts.app')] #[Title('Monthly Payroll Runs')] class extends Comp
         $this->dispatch('notify', ['type' => 'success', 'message' => __('Contacts reset to Attendance records.')]);
     }
 
-    public function markPaid(): void
+    public function markPaid(PayrollCalculator $calculator): void
     {
         Gate::authorize('payroll.mark_paid');
         $instId = $this->resolveInstitutionId();
@@ -451,6 +451,8 @@ new #[Layout('layouts.app')] #[Title('Monthly Payroll Runs')] class extends Comp
         if ($run->status !== 'approved') {
             return;
         }
+
+        $calculator->settleRunLoans($run, auth()->user());
 
         $run->update([
             'status' => 'paid',

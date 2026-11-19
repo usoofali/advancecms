@@ -277,6 +277,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::livewire('/', 'pages::cms.payroll.index')->name('index')->middleware('can:payroll.view');
         Route::livewire('/settings', 'pages::cms.payroll.settings')->name('settings')->middleware('can:payroll.manage');
         Route::livewire('/staff', 'pages::cms.payroll.staff')->name('staff')->middleware('can:payroll.manage');
+        Route::livewire('/loans', 'pages::cms.payroll.loans')->name('loans')->middleware('can:payroll.view');
         Route::livewire('/runs', 'pages::cms.payroll.runs')->name('runs')->middleware('can:payroll.view');
         Route::livewire('/runs/{run}/bank-schedule', 'pages::cms.payroll.bank-schedule')->name('bank-schedule')->middleware('can:payroll.reports');
         Route::livewire('/runs/{run}/department-sheet', 'pages::cms.payroll.department-sheet')->name('department-sheet')->middleware('can:payroll.reports');

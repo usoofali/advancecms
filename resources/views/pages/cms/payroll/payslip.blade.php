@@ -148,8 +148,15 @@ new #[Layout('layouts.app')] #[Title('Payslips')] class extends Component
                 <div class="space-y-2">
                     <h3 class="text-xs font-bold uppercase tracking-wider text-red-700 dark:text-red-400 border-b border-zinc-200 dark:border-zinc-700 pb-1.5">{{ __('Deductions') }}</h3>
                     @forelse($selectedItem->deductions_breakdown ?? [] as $ded)
-                        <div class="flex justify-between py-1 text-zinc-600 dark:text-zinc-300">
-                            <span>{{ $ded['name'] }}</span>
+                        <div class="flex justify-between items-baseline py-1 text-zinc-600 dark:text-zinc-300">
+                            <div>
+                                <span>{{ $ded['name'] }}</span>
+                                @if(isset($ded['remaining_after']))
+                                    <span class="block text-[11px] text-zinc-400">
+                                        {{ __('Remaining Balance:') }} ₦{{ number_format((float) $ded['remaining_after'], 2) }}
+                                    </span>
+                                @endif
+                            </div>
                             <span class="font-mono">₦{{ number_format((float) $ded['amount'], 2) }}</span>
                         </div>
                     @empty

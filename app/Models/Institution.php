@@ -16,6 +16,7 @@ class Institution extends Model
     protected $fillable = [
         'name',
         'default_allowance',
+        'max_concurrent_staff_loans',
         'slug',
         'address',
         'email',
@@ -41,6 +42,7 @@ class Institution extends Model
     {
         return [
             'status' => 'string',
+            'max_concurrent_staff_loans' => 'integer',
             'is_admission_open' => 'boolean',
             'admission_start_date' => 'datetime',
             'admission_end_date' => 'datetime',

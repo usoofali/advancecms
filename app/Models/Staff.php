@@ -151,6 +151,11 @@ class Staff extends Model
         return $this->hasOne(PayrollStaffProfile::class);
     }
 
+    public function loans(): HasMany
+    {
+        return $this->hasMany(StaffLoan::class);
+    }
+
     public function payrollItems(): HasMany
     {
         return $this->hasMany(PayrollItem::class);

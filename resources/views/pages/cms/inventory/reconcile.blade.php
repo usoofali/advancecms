@@ -412,7 +412,7 @@ new #[Layout('layouts.app')] #[Title('Stock Count & Updates')] class extends Com
     @if(!$selectedLocation)
         <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-10 text-center text-zinc-500">
             <flux:icon.lock-closed class="size-10 mx-auto mb-3 opacity-30" />
-            <p class="font-semibold text-zinc-800 dark:text-zinc-200">{{ __('No Assigned Locations') }}</p>
+            <p class="font-semibold text-zinc-800 dark:text-zinc-200">{{ __('No Locations') }}</p>
             <p class="text-xs mt-1">{{ __('You have not been assigned access to any active location yet.') }}</p>
         </div>
     @else

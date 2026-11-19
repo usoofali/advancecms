@@ -11,6 +11,8 @@ use App\Models\PayrollItem;
 use App\Models\PayrollRun;
 use App\Models\PayrollStaffProfile;
 use App\Models\Staff;
+use App\Models\StaffLoan;
+use App\Models\StaffLoanRepayment;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -72,6 +74,13 @@ class PayrollCalculator
                 ->where('institution_id', $institution->id)
                 ->where('is_active', true)
                 ->get();
+
+            $activeLoansByStaff = StaffLoan::query()
+                ->where('institution_id', $institution->id)
+                ->activeForPeriod($month, $year)
+                ->orderBy('id')
+                ->get()
+                ->groupBy('staff_id');
 
             $staffList = Staff::query()
                 ->with(['payrollProfile.category', 'user'])
@@ -181,7 +190,14 @@ class PayrollCalculator
                 $adjustmentNote = $prior ? $prior['adjustment_note'] : null;
 
                 $grossPay = round($basePay + $itemAllowancesTotal + max(0, $manualAdjustment), 2);
-                $effectiveDeductions = round($itemDeductionsTotal + ($manualAdjustment < 0 ? abs($manualAdjustment) : 0), 2);
+                $nonLoanDeductions = round($itemDeductionsTotal + ($manualAdjustment < 0 ? abs($manualAdjustment) : 0), 2);
+                $loanDeductionsTotal = $this->applyLoanDeductions(
+                    $activeLoansByStaff->get($staff->id, collect()),
+                    $grossPay,
+                    $nonLoanDeductions,
+                    $deductionsBreakdown
+                );
+                $effectiveDeductions = round($nonLoanDeductions + $loanDeductionsTotal, 2);
                 $netPay = round(max(0, $grossPay - $effectiveDeductions), 2);
 
                 PayrollItem::create([
@@ -334,7 +350,20 @@ class PayrollCalculator
 
         $manualAdjustment = (float) $item->manual_adjustment;
         $grossPay = round($basePay + $itemAllowancesTotal + max(0, $manualAdjustment), 2);
-        $effectiveDeductions = round($itemDeductionsTotal + ($manualAdjustment < 0 ? abs($manualAdjustment) : 0), 2);
+        $nonLoanDeductions = round($itemDeductionsTotal + ($manualAdjustment < 0 ? abs($manualAdjustment) : 0), 2);
+        $staffLoans = StaffLoan::query()
+            ->where('institution_id', $item->institution_id)
+            ->where('staff_id', $item->staff_id)
+            ->activeForPeriod($item->run->month, $item->run->year)
+            ->orderBy('id')
+            ->get();
+        $loanDeductionsTotal = $this->applyLoanDeductions(
+            $staffLoans,
+            $grossPay,
+            $nonLoanDeductions,
+            $deductionsBreakdown
+        );
+        $effectiveDeductions = round($nonLoanDeductions + $loanDeductionsTotal, 2);
         $netPay = round(max(0, $grossPay - $effectiveDeductions), 2);
 
         $item->update([
@@ -471,6 +500,108 @@ class PayrollCalculator
             }
 
             return false;
+        });
+    }
+
+    /**
+     * Apply due staff loan installments capped at remaining available pay.
+     *
+     * @param  Collection<int, StaffLoan>  $loans
+     * @param  array<int, array<string, mixed>>  $deductionsBreakdown
+     */
+    private function applyLoanDeductions(
+        Collection $loans,
+        float $grossPay,
+        float $nonLoanDeductions,
+        array &$deductionsBreakdown
+    ): float {
+        $remainingAvailablePay = round(max(0, $grossPay - $nonLoanDeductions), 2);
+        $loanDeductionsTotal = 0.0;
+
+        foreach ($loans as $loan) {
+            if ($remainingAvailablePay <= 0) {
+                break;
+            }
+
+            $scheduled = $loan->dueInstallmentAmount();
+            $actual = round(min($scheduled, $remainingAvailablePay), 2);
+
+            if ($actual <= 0) {
+                continue;
+            }
+
+            $deductionsBreakdown[] = [
+                'name' => "Loan: {$loan->title}",
+                'amount' => $actual,
+                'loan_id' => $loan->id,
+                'remaining_after' => round(max(0, (float) $loan->remaining_balance - $actual), 2),
+            ];
+
+            $remainingAvailablePay = round($remainingAvailablePay - $actual, 2);
+            $loanDeductionsTotal += $actual;
+        }
+
+        return round($loanDeductionsTotal, 2);
+    }
+
+    /**
+     * Post loan repayments when an approved payroll run is marked as paid.
+     */
+    public function settleRunLoans(PayrollRun $run, User $actor): void
+    {
+        DB::transaction(function () use ($run, $actor): void {
+            $items = $run->items()->get();
+
+            foreach ($items as $item) {
+                $breakdown = is_array($item->deductions_breakdown) ? $item->deductions_breakdown : [];
+
+                foreach ($breakdown as $entry) {
+                    $loanId = $entry['loan_id'] ?? null;
+                    $amount = round((float) ($entry['amount'] ?? 0), 2);
+
+                    if (! $loanId || $amount <= 0) {
+                        continue;
+                    }
+
+                    $alreadyPosted = StaffLoanRepayment::query()
+                        ->where('staff_loan_id', $loanId)
+                        ->where('payroll_run_id', $run->id)
+                        ->exists();
+
+                    if ($alreadyPosted) {
+                        continue;
+                    }
+
+                    $loan = StaffLoan::query()->lockForUpdate()->find($loanId);
+                    if (! $loan || (float) $loan->remaining_balance <= 0) {
+                        continue;
+                    }
+
+                    $balanceBefore = (float) $loan->remaining_balance;
+                    $appliedAmount = round(min($amount, $balanceBefore), 2);
+                    $balanceAfter = round(max(0, $balanceBefore - $appliedAmount), 2);
+
+                    StaffLoanRepayment::create([
+                        'staff_loan_id' => $loan->id,
+                        'institution_id' => $loan->institution_id,
+                        'payroll_run_id' => $run->id,
+                        'payroll_item_id' => $item->id,
+                        'amount' => $appliedAmount,
+                        'balance_before' => $balanceBefore,
+                        'balance_after' => $balanceAfter,
+                        'payment_source' => 'payroll',
+                        'paid_at' => now(),
+                        'recorded_by' => $actor->id,
+                        'notes' => "Payroll Run: {$run->title}",
+                    ]);
+
+                    $loan->update([
+                        'total_repaid' => round((float) $loan->total_repaid + $appliedAmount, 2),
+                        'remaining_balance' => $balanceAfter,
+                        'status' => $balanceAfter <= 0 ? 'completed' : $loan->status,
+                    ]);
+                }
+            }
         });
     }
 }

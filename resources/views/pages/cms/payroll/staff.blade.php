@@ -235,12 +235,18 @@ new #[Layout('layouts.app')] #[Title('Staff Pay Setup')] class extends Component
                                 $effType = $profile ? $profile->effectivePayType($defaultCategory) : ($defaultCategory?->pay_type ?? 'fixed');
                                 $effRate = $profile ? $profile->effectiveRate($defaultCategory) : (float) ($defaultCategory?->default_rate ?? $staff->attendance_allowance ?? 0);
                                 $isCustom = $profile?->hasCustomOverride() ?? false;
+                                $isSuspended = $profile?->status === 'suspended';
                                 $bankName = $staff->bank_name;
                                 $acctNo = $staff->account_number;
                             @endphp
-                            <flux:table.row :key="$staff->id">
+                            <flux:table.row :key="$staff->id" class="{{ $isSuspended ? 'opacity-65' : '' }}">
                                 <flux:table.cell>
-                                    <div class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $staff->first_name }} {{ $staff->last_name }}</div>
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $staff->first_name }} {{ $staff->last_name }}</span>
+                                        @if($isSuspended)
+                                            <flux:badge size="sm" color="red">{{ __('Suspended') }}</flux:badge>
+                                        @endif
+                                    </div>
                                     <div class="text-xs font-mono text-zinc-500">{{ $staff->staff_number }} &bull; {{ $staff->role?->role_name ?? __('Staff') }}</div>
                                 </flux:table.cell>
                                 <flux:table.cell class="text-xs">
@@ -300,11 +306,17 @@ new #[Layout('layouts.app')] #[Title('Staff Pay Setup')] class extends Component
                 $profile = $staff->payrollProfile;
                 $effType = $profile ? $profile->effectivePayType($defaultCategory) : ($defaultCategory?->pay_type ?? 'fixed');
                 $effRate = $profile ? $profile->effectiveRate($defaultCategory) : (float) ($defaultCategory?->default_rate ?? $staff->attendance_allowance ?? 0);
+                $isSuspended = $profile?->status === 'suspended';
             @endphp
-            <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4 space-y-2.5">
+            <div class="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-4 space-y-2.5 {{ $isSuspended ? 'opacity-65' : '' }}">
                 <div class="flex items-start justify-between gap-2">
                     <div>
-                        <div class="font-bold text-zinc-900 dark:text-zinc-100">{{ $staff->first_name }} {{ $staff->last_name }}</div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-bold text-zinc-900 dark:text-zinc-100">{{ $staff->first_name }} {{ $staff->last_name }}</span>
+                            @if($isSuspended)
+                                <flux:badge size="sm" color="red">{{ __('Suspended') }}</flux:badge>
+                            @endif
+                        </div>
                         <div class="text-xs font-mono text-zinc-500">{{ $staff->staff_number }}</div>
                     </div>
                     <flux:badge size="sm" :color="$effType === 'fixed' ? 'emerald' : 'amber'">

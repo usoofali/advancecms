@@ -208,7 +208,7 @@ new #[Layout('layouts.app')] #[Title('Inventory Overview')] class extends Compon
 
         <flux:card class="flex items-center justify-between">
             <div>
-                <div class="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{{ __('Assigned Locations') }}</div>
+                <div class="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{{ __('Locations') }}</div>
                 <div class="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white mt-1">{{ number_format($stats['accessible_locations']) }}</div>
                 <div class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">{{ __('Labs, stores & offices') }}</div>
             </div>

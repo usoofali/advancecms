@@ -612,6 +612,14 @@
                         </flux:sidebar.item>
                     @endcan
 
+                    @canany(['payroll.view', 'payroll.manage_loans'])
+                        <flux:sidebar.item icon="credit-card" icon:class="text-amber-500 dark:text-amber-400"
+                            :href="route('cms.payroll.loans')" :current="request()->routeIs('cms.payroll.loans')"
+                            wire:navigate>
+                            {{ __('Staff Loans') }}
+                        </flux:sidebar.item>
+                    @endcanany
+
                     @can('payroll.view')
                         <flux:sidebar.item icon="calculator" icon:class="text-amber-500 dark:text-amber-400"
                             :href="route('cms.payroll.runs')" :current="request()->routeIs('cms.payroll.runs') || request()->routeIs('cms.payroll.bank-schedule') || request()->routeIs('cms.payroll.department-sheet')"

@@ -61,6 +61,9 @@ new #[Layout('layouts.app')] #[Title('Payroll Categories & Rules')] class extend
 
     public bool $comp_is_active = true;
 
+    // Loan Policy Setting
+    public int $max_concurrent_staff_loans = 1;
+
     public function mount(): void
     {
         Gate::authorize('payroll.manage');
@@ -71,6 +74,41 @@ new #[Layout('layouts.app')] #[Title('Payroll Categories & Rules')] class extend
         } elseif (! $this->institution_id) {
             $this->institution_id = Institution::where('status', 'active')->value('id');
         }
+
+        $this->loadLoanPolicy();
+    }
+
+    public function updatedInstitutionId(): void
+    {
+        $this->loadLoanPolicy();
+    }
+
+    private function loadLoanPolicy(): void
+    {
+        $instId = $this->resolveInstitutionId();
+        if ($instId) {
+            $this->max_concurrent_staff_loans = (int) (Institution::find($instId)?->max_concurrent_staff_loans ?? 1);
+        }
+    }
+
+    public function saveLoanPolicy(): void
+    {
+        Gate::authorize('payroll.manage');
+
+        $this->validate([
+            'max_concurrent_staff_loans' => ['required', 'integer', 'min:1', 'max:20'],
+        ]);
+
+        $instId = $this->resolveInstitutionId();
+        if (! $instId) {
+            return;
+        }
+
+        Institution::where('id', $instId)->update([
+            'max_concurrent_staff_loans' => $this->max_concurrent_staff_loans,
+        ]);
+
+        $this->dispatch('notify', ['type' => 'success', 'message' => __('Staff loan policy updated.')]);
     }
 
     private function resolveInstitutionId(): ?int
@@ -361,6 +399,23 @@ new #[Layout('layouts.app')] #[Title('Payroll Categories & Rules')] class extend
                 {{ __('Load Default Categories') }}
             </flux:button>
         </div>
+
+        <form wire:submit="saveLoanPolicy" class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 bg-white dark:bg-zinc-800 p-4 rounded-xl border border-zinc-200 dark:border-zinc-700">
+            <div class="space-y-1">
+                <h3 class="text-sm font-bold text-zinc-900 dark:text-zinc-100">{{ __('Staff Loan Policy') }}</h3>
+                <p class="text-xs text-zinc-500 dark:text-zinc-400">
+                    {{ __('Maximum number of concurrent open loans (active or paused) a staff member can hold at once.') }}
+                </p>
+            </div>
+            <div class="flex items-end gap-2 shrink-0">
+                <div class="w-28">
+                    <flux:input type="number" min="1" max="20" wire:model="max_concurrent_staff_loans" :label="__('Max Loans')" />
+                </div>
+                <flux:button type="submit" size="sm" variant="primary" wire:loading.attr="disabled">
+                    {{ __('Save Policy') }}
+                </flux:button>
+            </div>
+        </form>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             @forelse($categories as $cat)

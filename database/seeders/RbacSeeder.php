@@ -144,6 +144,7 @@ class RbacSeeder extends Seeder
             'payroll.create_run' => 'Prepare monthly payrolls, adjust staff pay items, and submit for approval',
             'payroll.approve' => 'Give final approval to monthly payrolls',
             'payroll.mark_paid' => 'Mark approved monthly payrolls as paid',
+            'payroll.manage_loans' => 'Create, edit, pause, cancel, and record manual repayments for staff loans',
             'payroll.reports' => 'View and export departmental payroll summaries and bank payment schedules',
             'payroll.view_own_payslip' => 'View and print your own approved monthly payslips',
         ];
@@ -239,7 +240,7 @@ class RbacSeeder extends Seeder
                         'placements.view', 'placements.organizations', 'placements.types', 'placements.manage', 'placements.supervisors', 'placements.supervise', 'placements.reports', 'placements.templates',
                         'projects.view', 'projects.manage_sessions', 'projects.assign_supervisors', 'projects.review_topics', 'projects.supervise', 'projects.view_dept', 'projects.reports',
                         'inventory.view', 'inventory.view_all', 'inventory.reconcile', 'inventory.assign_officers', 'inventory.reports',
-                        'payroll.view', 'payroll.manage', 'payroll.create_run', 'payroll.approve', 'payroll.mark_paid', 'payroll.reports', 'payroll.view_own_payslip',
+                        'payroll.view', 'payroll.manage', 'payroll.create_run', 'payroll.approve', 'payroll.mark_paid', 'payroll.manage_loans', 'payroll.reports', 'payroll.view_own_payslip',
                         'dashboard.view', 'id_cards.request', 'id_cards.manage',
                         'activity_logs.view', 'activity_logs.export',
                         'institutions.assign_roles', 'departments.assign_roles', 'courses.assign_roles', 'cbt_exams.assign_roles',
@@ -263,7 +264,7 @@ class RbacSeeder extends Seeder
             'Payroll Officer' => [
                 'description' => 'Prepare monthly payrolls, manage staff pay rules, and export bank schedules (cannot approve)',
                 'permissions' => [
-                    'payroll.view', 'payroll.manage', 'payroll.create_run', 'payroll.reports', 'payroll.view_own_payslip',
+                    'payroll.view', 'payroll.manage', 'payroll.create_run', 'payroll.manage_loans', 'payroll.reports', 'payroll.view_own_payslip',
                     'attendance.view_history', 'dashboard.view', 'id_cards.request',
                 ],
             ],
@@ -338,7 +339,7 @@ class RbacSeeder extends Seeder
                         'attendance_payments.process', 'attendance.view_history', 'attendance.manage',
                         'invoices.generate', 'invoices.cancel', 'invoices.print_report', 'payments.verify', 'applications.print_receipt',
                         'inventory.view', 'inventory.view_all', 'inventory_categories.view', 'inventory_items.view', 'inventory_locations.view', 'inventory.reports',
-                        'payroll.view', 'payroll.create_run', 'payroll.mark_paid', 'payroll.reports', 'payroll.view_own_payslip',
+                        'payroll.view', 'payroll.create_run', 'payroll.mark_paid', 'payroll.manage_loans', 'payroll.reports', 'payroll.view_own_payslip',
                         'dashboard.view', 'id_cards.request',
                     ]
                 ),
